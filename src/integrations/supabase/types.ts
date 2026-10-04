@@ -395,6 +395,42 @@ export type Database = {
           },
         ]
       }
+      consultation_requests: {
+        Row: {
+          contact_name: string
+          created_at: string
+          email: string
+          id: string
+          message: string
+          organisation_type: string
+          phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contact_name: string
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          organisation_type?: string
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_name?: string
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          organisation_type?: string
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           athlete_id: string
