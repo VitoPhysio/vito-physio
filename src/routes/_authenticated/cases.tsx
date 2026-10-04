@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SimpleForm, clean, selectClass, type Field } from "@/components/vito/SimpleForm";
+import { SimpleForm, clean, type Field } from "@/components/vito/SimpleForm";
 import { Compose } from "@/components/vito/Communications";
 import logo from "@/assets/vito-logo.png.asset.json";
 
@@ -601,5 +601,3 @@ function RecordSub({ userId, injuryId, athleteId, schoolId, caseCode }: Ctx & { 
   );
 }
 
-// keep selectClass referenced for tree-shaking clarity
-void selectClass;
