@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 
 const name = z.string().trim().min(2).max(120);
-const email = z.email().max(255);
+const email = z.string().trim().email().max(255);
 const phone = z.string().trim().max(40).optional();
 const organisation = z.enum(['school', 'academy', 'club']);
 
@@ -16,7 +16,7 @@ export const registerOrganisation = createServerFn({ method: 'POST' })
   });
 
 export const registerAthlete = createServerFn({ method: 'POST' })
-  .inputValidator((input) => z.object({ first_name: name, surname: name, sport: z.string().trim().max(120).optional(), phone, date_of_birth: z.iso.date().optional() }).parse(input))
+  .inputValidator((input) => z.object({ first_name: name, surname: name, sport: z.string().trim().max(120).optional(), phone, date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }).parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     const { data: row, error } = await supabaseAdmin.from('athletes').insert({ ...data, self_registered: true }).select('athlete_code').single();
