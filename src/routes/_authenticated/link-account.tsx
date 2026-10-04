@@ -1,0 +1,17 @@
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { useState, type FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { linkAccount } from '@/lib/link.functions';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+export const Route = createFileRoute('/_authenticated/link-account')({ head: () => ({ meta: [{ title: 'Link your account — VITO Physio' }, { name: 'description', content: 'Connect your VITO Physio account to an athlete or organisation.' }, { property: 'og:title', content: 'Link your account — VITO Physio' }, { property: 'og:description', content: 'Connect your account to an athlete or organisation.' }, { property: 'og:type', content: 'website' }, { name: 'twitter:card', content: 'summary' }] }), component: LinkAccount });
+function LinkAccount() {
+ const { user } = Route.useRouteContext(); const navigate = useNavigate(); const [code, setCode] = useState(''); const [surname, setSurname] = useState(''); const [busy, setBusy] = useState(false); const [message, setMessage] = useState('');
+ const { data } = useQuery({ queryKey: ['link-status', user.id], queryFn: async () => { const [r,a,s] = await Promise.all([supabase.from('user_roles').select('role').eq('user_id',user.id),supabase.from('athlete_guardians').select('id').eq('user_id',user.id),supabase.from('school_users').select('id').eq('user_id',user.id)]); return { role: r.data?.[0]?.role, linked: Boolean(a.data?.length || s.data?.length) }; } });
+ const individual = data?.role === 'athlete' || data?.role === 'parent';
+ async function submit(e: FormEvent) { e.preventDefault(); setBusy(true); setMessage(''); try { const ok = await linkAccount({ data: { code, ...(individual ? { surname } : {}) } }); if (ok) navigate({ to: '/dashboard' }); else setMessage('No matching record found. Check the ID and surname.'); } catch (err) { setMessage(err instanceof Error ? err.message : 'Could not link account.'); } finally { setBusy(false); } }
+ return <main className="mx-auto max-w-lg px-5 py-16"><p className="text-sm font-bold uppercase text-accent">VITO Physio</p><h1 className="mt-2 text-3xl font-bold">Link your account</h1><p className="mt-3 text-muted-foreground">{individual ? 'Enter the athlete ID and surname to view their records.' : 'Enter your school, academy or club ID to access its athletes.'}</p>{data?.linked && <p className="mt-4 text-sm text-primary">Your account is already linked. You can add another record below.</p>}<form onSubmit={submit} className="mt-8 space-y-4"><div><Label htmlFor="code">{individual ? 'Athlete ID' : 'Organisation ID'}</Label><Input id="code" value={code} onChange={e => setCode(e.target.value)} required className="mt-1" placeholder={individual ? 'VITO-ATH-00000001' : 'VITO-SCH-00000001'}/></div>{individual && <div><Label htmlFor="surname">Athlete surname</Label><Input id="surname" value={surname} onChange={e => setSurname(e.target.value)} required className="mt-1"/></div>}{message && <p role="alert" className="text-sm text-destructive">{message}</p>}<div className="flex items-center gap-4"><Button type="submit" disabled={busy || !data}>{busy ? 'Checking…' : 'Link account'}</Button><Button asChild variant="ghost"><Link to="/dashboard">Skip for now</Link></Button></div></form></main>;
+}
