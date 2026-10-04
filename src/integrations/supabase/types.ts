@@ -917,10 +917,6 @@ export type Database = {
         Args: { _athlete: string; _user: string }
         Returns: boolean
       }
-      claim_athlete_by_code: {
-        Args: { _code: string; _surname: string }
-        Returns: boolean
-      }
       get_sender_names: {
         Args: { _ids: string[] }
         Returns: {
@@ -937,7 +933,6 @@ export type Database = {
         Returns: boolean
       }
       is_vito_staff: { Args: { _user_id: string }; Returns: boolean }
-      join_school_by_code: { Args: { _code: string }; Returns: boolean }
     }
     Enums: {
       app_role:

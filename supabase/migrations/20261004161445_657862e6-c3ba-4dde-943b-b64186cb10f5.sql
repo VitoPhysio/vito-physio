@@ -1,0 +1,1 @@
+DROP FUNCTION public.claim_athlete_by_code(text,text); DROP FUNCTION public.join_school_by_code(text);
