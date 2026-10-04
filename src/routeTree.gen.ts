@@ -16,6 +16,7 @@ import { Route as PortalRouteImport } from './routes/portal'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AuthenticatedCasesRouteImport } from './routes/_authenticated/cases'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedLinkAccountRouteImport } from './routes/_authenticated/link-account'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -51,6 +52,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLinkAccountRoute =
+  AuthenticatedLinkAccountRouteImport.update({
+    id: '/link-account',
+    path: '/link-account',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/cases': typeof AuthenticatedCasesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/link-account': typeof AuthenticatedLinkAccountRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,6 +75,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/cases': typeof AuthenticatedCasesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/link-account': typeof AuthenticatedLinkAccountRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,12 +86,27 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/_authenticated/cases': typeof AuthenticatedCasesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/link-account': typeof AuthenticatedLinkAccountRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/portal' | '/register' | '/cases' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/portal'
+    | '/register'
+    | '/cases'
+    | '/dashboard'
+    | '/link-account'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/portal' | '/register' | '/cases' | '/dashboard'
+  to:
+    | '/'
+    | '/auth'
+    | '/portal'
+    | '/register'
+    | '/cases'
+    | '/dashboard'
+    | '/link-account'
   id:
     | '__root__'
     | '/'
@@ -92,6 +116,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/_authenticated/cases'
     | '/_authenticated/dashboard'
+    | '/_authenticated/link-account'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -153,17 +178,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/link-account': {
+      id: '/_authenticated/link-account'
+      path: '/link-account'
+      fullPath: '/link-account'
+      preLoaderRoute: typeof AuthenticatedLinkAccountRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCasesRoute: typeof AuthenticatedCasesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedLinkAccountRoute: typeof AuthenticatedLinkAccountRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCasesRoute: AuthenticatedCasesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedLinkAccountRoute: AuthenticatedLinkAccountRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
