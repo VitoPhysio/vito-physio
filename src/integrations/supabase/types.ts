@@ -357,6 +357,44 @@ export type Database = {
           },
         ]
       }
+      consent_requests: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          id: string
+          requester_email: string
+          requester_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          id?: string
+          requester_email: string
+          requester_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          id?: string
+          requester_email?: string
+          requester_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_requests_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           athlete_id: string
@@ -879,6 +917,10 @@ export type Database = {
         Args: { _athlete: string; _user: string }
         Returns: boolean
       }
+      claim_athlete_by_code: {
+        Args: { _code: string; _surname: string }
+        Returns: boolean
+      }
       get_sender_names: {
         Args: { _ids: string[] }
         Returns: {
@@ -895,6 +937,7 @@ export type Database = {
         Returns: boolean
       }
       is_vito_staff: { Args: { _user_id: string }; Returns: boolean }
+      join_school_by_code: { Args: { _code: string }; Returns: boolean }
     }
     Enums: {
       app_role:
