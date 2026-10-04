@@ -20,7 +20,8 @@ function RegisterPage() {
   const [error, setError] = useState('');
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setBusy(true); setError(''); setResult('');
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     const get = (key: string) => String(fd.get(key) ?? '').trim();
     try {
       if (mode === 'organisation') {
@@ -33,7 +34,7 @@ function RegisterPage() {
         await requestConsultation({ data: { contact_name: get('name'), email: get('email'), phone: get('phone'), organisation_type: get('organisation_type') as 'individual' | 'school' | 'academy' | 'club', message: get('message') } });
         setResult('Your consultation request has been saved. The VITO team can review it.');
       }
-      e.currentTarget.reset();
+      form.reset();
     } catch (err) { setError(err instanceof Error ? err.message : 'Please try again.'); }
     finally { setBusy(false); }
   }
