@@ -96,11 +96,27 @@
   --sidebar-border: oklch(0.91 0.025 300);
   --sidebar-ring: oklch(0.45 0.22 295);
   --gradient-brand: linear-gradient(135deg, oklch(0.45 0.22 295), oklch(0.3 0.15 290));
+  --gradient-hero: radial-gradient(58% 46% at 50% 0%, color-mix(in oklab, var(--primary) 16%, transparent) 0%, transparent 72%), radial-gradient(34% 34% at 88% 22%, color-mix(in oklab, var(--accent) 15%, transparent) 0%, transparent 70%), radial-gradient(30% 30% at 10% 30%, color-mix(in oklab, var(--primary) 10%, transparent) 0%, transparent 70%);
+  --shadow-glow: 0 22px 55px -22px color-mix(in oklab, var(--primary) 60%, transparent);
+  --shadow-card-lift: 0 26px 60px -30px color-mix(in oklab, var(--primary) 45%, transparent);
 }
 
 @utility bg-brand-gradient {
   background-image: var(--gradient-brand);
 }
+
+@utility bg-hero-glow {
+  background-image: var(--gradient-hero);
+}
+
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
+
+@utility shadow-card-lift {
+  box-shadow: var(--shadow-card-lift);
+}
+
 
 .dark {
   --background: oklch(0.129 0.042 264.695);

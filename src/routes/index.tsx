@@ -1,6 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ClipboardList, Activity, Dumbbell, CalendarCheck2, HeartPulse, Stethoscope, Building2, UserRound, LockKeyhole } from "lucide-react";
+import {
+  ArrowRight,
+  ClipboardList,
+  Activity,
+  Dumbbell,
+  CalendarCheck2,
+  HeartPulse,
+  Stethoscope,
+  UserRound,
+  LockKeyhole,
+  LogIn,
+  LayoutDashboard,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/vito-logo.png.asset.json";
@@ -27,6 +39,9 @@ const cycle = [
   { icon: CalendarCheck2, title: "Review", detail: "Follow-ups" },
   { icon: HeartPulse, title: "Return to sport", detail: "Recovery progress" },
 ];
+
+const audience = ["Schools", "Academies", "Clubs", "Independent athletes"];
+
 function Index() {
   const [signedIn, setSignedIn] = useState(false);
   useEffect(() => {
@@ -34,9 +49,115 @@ function Index() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session)));
     return () => subscription.unsubscribe();
   }, []);
-  return <div className="min-h-screen bg-background text-foreground">
-    <header className="border-b bg-card"><div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-4"><Link to="/" className="flex items-center gap-2"><img src={logo.url} alt="VITO Physio" className="h-10 w-10"/><span className="font-bold text-primary">VITO Physio</span></Link><Button asChild variant="outline" size="sm"><Link to={signedIn ? "/dashboard" : "/auth"}>{signedIn ? "Dashboard" : "Sign in"} <ArrowRight className="ml-2 size-4"/></Link></Button></div></header>
-    <main><section className="mx-auto max-w-6xl px-5 pb-10 pt-10 sm:pt-16"><div className="max-w-3xl"><p className="mb-3 text-xs font-bold uppercase text-accent">Sports physiotherapy · VITO Physio</p><h1 className="text-4xl font-bold leading-tight sm:text-5xl">VITO Physio</h1><p className="mt-4 max-w-2xl text-lg text-muted-foreground">From the first injury report to a confident return to sport. Connected care for athletes, schools, academies and clubs.</p><div className="mt-7 flex flex-wrap gap-3"><Button asChild size="lg"><Link to="/register"><Stethoscope className="mr-2 size-4"/> Consult or register</Link></Button><Button asChild size="lg" variant="outline"><Link to="/portal"><LockKeyhole className="mr-2 size-4"/> Parent portal</Link></Button></div></div><div className="mt-10 flex items-center gap-5 border-t pt-6"><img src={logo.url} alt="VITO Physio logo" className="h-20 w-20 object-contain sm:h-24 sm:w-24"/><div><p className="font-semibold text-primary">Care that moves with you</p><p className="text-sm text-muted-foreground">For schools, academies, clubs and independent athletes.</p></div></div></section>
-    <section className="border-t bg-card"><div className="mx-auto max-w-6xl px-5 py-10"><div className="mb-6 flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase text-accent">The care pathway</p><h2 className="mt-2 text-2xl font-bold">From injury to return</h2></div><Building2 className="size-7 text-primary" aria-hidden="true"/></div><ol className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 lg:grid-cols-6">{cycle.map(({icon: Icon,title,detail},i) => <li key={title} className="border-t-2 border-primary pt-4"><div className="mb-4 flex items-center justify-between"><Icon className="size-6 text-primary" aria-hidden="true"/><span className="text-xs font-bold text-accent">0{i+1}</span></div><h3 className="font-semibold">{title}</h3><p className="mt-1 text-sm text-muted-foreground">{detail}</p></li>)}</ol></div></section></main>
-  </div>;
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-50 border-b border-border bg-card">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3.5">
+          <Link to="/" className="flex min-w-0 items-center gap-2.5">
+            <img src={logo.url} alt="VITO Physio" className="h-10 w-10 shrink-0 object-contain" />
+            <span className="truncate text-lg font-extrabold tracking-tight">
+              <span className="text-primary">VITO</span> <span className="text-accent">Physio</span>
+            </span>
+          </Link>
+          <Button
+            asChild
+            size="sm"
+            className="bg-brand-gradient shrink-0 gap-2 rounded-full px-5 font-semibold text-primary-foreground shadow-glow ring-1 ring-primary/25 transition-transform hover:-translate-y-0.5"
+          >
+            <Link to={signedIn ? "/dashboard" : "/auth"}>
+              {signedIn ? <LayoutDashboard className="size-4" /> : <LogIn className="size-4" />}
+              {signedIn ? "Dashboard" : "Sign in"}
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+        </div>
+      </header>
+
+      <main>
+        <section className="bg-hero-glow relative overflow-hidden">
+          <div className="mx-auto max-w-3xl px-5 pb-14 pt-16 text-center sm:pt-24">
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-card px-4 py-1.5 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-primary shadow-sm">
+              <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />
+              Sports physiotherapy
+            </span>
+
+            <h1 className="mt-7 text-5xl font-black leading-[1.03] tracking-tight sm:text-7xl">
+              <span className="bg-brand-gradient bg-clip-text text-transparent">VITO</span>{" "}
+              <span className="text-foreground">Physio</span>
+            </h1>
+
+            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+              From the first injury report to a confident return to sport. Connected care for athletes,
+              schools, academies and clubs.
+            </p>
+
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+              <Button asChild size="lg" className="bg-brand-gradient rounded-full px-7 text-base shadow-glow ring-1 ring-primary/25 transition-transform hover:-translate-y-0.5">
+                <Link to="/register">
+                  <Stethoscope className="mr-2 size-4" />
+                  Consult or register
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="rounded-full px-7 text-base">
+                <Link to="/portal">
+                  <LockKeyhole className="mr-2 size-4" />
+                  Parent portal
+                </Link>
+              </Button>
+            </div>
+
+            <ul className="mt-12 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {audience.map((name, i) => (
+                <li key={name} className="flex items-center gap-3">
+                  {i > 0 && <span className="size-1 rounded-full bg-accent/60" aria-hidden="true" />}
+                  {name}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 border-t px-5 py-10 text-center">
+            <img src={logo.url} alt="VITO Physio logo" className="h-24 w-24 object-contain sm:h-28 sm:w-28" />
+            <p className="text-base font-bold text-primary">Care that moves with you</p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              One record per athlete: injuries, assessments, rehab plans, follow-ups and recovery progress,
+              shared only with the people who need to see them.
+            </p>
+          </div>
+        </section>
+
+        <section className="border-t bg-card">
+          <div className="mx-auto max-w-6xl px-5 py-16">
+            <div className="mx-auto mb-12 max-w-2xl text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">The care pathway</p>
+              <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">From injury to return</h2>
+              <p className="mt-4 text-muted-foreground">
+                Every case follows the same six steps, so nothing gets lost between the first report and the
+                final clearance.
+              </p>
+            </div>
+
+            <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {cycle.map(({ icon: Icon, title, detail }, i) => (
+                <li
+                  key={title}
+                  className="group relative rounded-2xl border bg-background p-6 text-center transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-card-lift"
+                >
+                  <span className="absolute right-5 top-5 text-xs font-black tracking-widest text-accent/70">
+                    0{i + 1}
+                  </span>
+                  <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-secondary text-primary transition group-hover:bg-brand-gradient group-hover:text-primary-foreground">
+                    <Icon className="size-7" aria-hidden="true" />
+                  </div>
+                  <h3 className="mt-5 text-lg font-bold">{title}</h3>
+                  <p className="mt-1.5 text-sm text-muted-foreground">{detail}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
 }
