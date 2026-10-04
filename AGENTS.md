@@ -8,3 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Rules
+- Backend is the user-connected external Supabase project; never enable Lovable Cloud. Why: user owns the data there.
+- Roles live only in user_roles, assigned by the handle_new_user trigger. Why: prevents privilege escalation.
