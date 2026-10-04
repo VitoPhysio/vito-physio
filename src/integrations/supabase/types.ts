@@ -14,39 +14,239 @@ export type Database = {
   }
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          appointment_code: string
+          athlete_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          injury_id: string | null
+          location: string | null
+          purpose: string | null
+          scheduled_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_code?: string
+          athlete_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          injury_id?: string | null
+          location?: string | null
+          purpose?: string | null
+          scheduled_at: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_code?: string
+          athlete_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          injury_id?: string | null
+          location?: string | null
+          purpose?: string | null
+          scheduled_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_injury_id_fkey"
+            columns: ["injury_id"]
+            isOneToOne: false
+            referencedRelation: "injuries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessments: {
+        Row: {
+          assessment_code: string
+          assessment_date: string | null
+          assessment_type: string | null
+          athlete_id: string
+          balance: string | null
+          clinical_impression: string | null
+          created_at: string
+          created_by: string | null
+          follow_up_date: string | null
+          functional_tests: string | null
+          history: string | null
+          id: string
+          injury_id: string
+          mechanism: string | null
+          observation: string | null
+          pain: string | null
+          plan: string | null
+          presenting_complaint: string | null
+          range_of_motion: string | null
+          red_flags: string | null
+          referral_recommendation: string | null
+          sport_specific_findings: string | null
+          strength: string | null
+          symptoms: string | null
+          updated_at: string
+        }
+        Insert: {
+          assessment_code?: string
+          assessment_date?: string | null
+          assessment_type?: string | null
+          athlete_id: string
+          balance?: string | null
+          clinical_impression?: string | null
+          created_at?: string
+          created_by?: string | null
+          follow_up_date?: string | null
+          functional_tests?: string | null
+          history?: string | null
+          id?: string
+          injury_id: string
+          mechanism?: string | null
+          observation?: string | null
+          pain?: string | null
+          plan?: string | null
+          presenting_complaint?: string | null
+          range_of_motion?: string | null
+          red_flags?: string | null
+          referral_recommendation?: string | null
+          sport_specific_findings?: string | null
+          strength?: string | null
+          symptoms?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assessment_code?: string
+          assessment_date?: string | null
+          assessment_type?: string | null
+          athlete_id?: string
+          balance?: string | null
+          clinical_impression?: string | null
+          created_at?: string
+          created_by?: string | null
+          follow_up_date?: string | null
+          functional_tests?: string | null
+          history?: string | null
+          id?: string
+          injury_id?: string
+          mechanism?: string | null
+          observation?: string | null
+          pain?: string | null
+          plan?: string | null
+          presenting_complaint?: string | null
+          range_of_motion?: string | null
+          red_flags?: string | null
+          referral_recommendation?: string | null
+          sport_specific_findings?: string | null
+          strength?: string | null
+          symptoms?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessments_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessments_injury_id_fkey"
+            columns: ["injury_id"]
+            isOneToOne: false
+            referencedRelation: "injuries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athlete_guardians: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          id: string
+          relationship: string | null
+          user_id: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          id?: string
+          relationship?: string | null
+          user_id: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          id?: string
+          relationship?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athlete_guardians_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athletes: {
         Row: {
           athlete_code: string
+          athlete_number: string | null
           created_at: string
           created_by: string | null
           date_of_birth: string | null
           first_name: string
+          gender: string | null
           id: string
+          phone: string | null
           school_id: string | null
+          self_registered: boolean
           sport: string | null
           surname: string
           updated_at: string
         }
         Insert: {
           athlete_code?: string
+          athlete_number?: string | null
           created_at?: string
           created_by?: string | null
           date_of_birth?: string | null
           first_name: string
+          gender?: string | null
           id?: string
+          phone?: string | null
           school_id?: string | null
+          self_registered?: boolean
           sport?: string | null
           surname: string
           updated_at?: string
         }
         Update: {
           athlete_code?: string
+          athlete_number?: string | null
           created_at?: string
           created_by?: string | null
           date_of_birth?: string | null
           first_name?: string
+          gender?: string | null
           id?: string
+          phone?: string | null
           school_id?: string | null
+          self_registered?: boolean
           sport?: string | null
           surname?: string
           updated_at?: string
@@ -61,6 +261,277 @@ export type Database = {
           },
         ]
       }
+      clinical_notes: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          injury_id: string
+          note: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          injury_id: string
+          note: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          injury_id?: string
+          note?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_notes_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_notes_injury_id_fkey"
+            columns: ["injury_id"]
+            isOneToOne: false
+            referencedRelation: "injuries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communications: {
+        Row: {
+          athlete_id: string | null
+          audience: string | null
+          body: string
+          created_at: string
+          id: string
+          recipient_id: string | null
+          school_id: string | null
+          sender_id: string
+          subject: string | null
+        }
+        Insert: {
+          athlete_id?: string | null
+          audience?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          recipient_id?: string | null
+          school_id?: string | null
+          sender_id: string
+          subject?: string | null
+        }
+        Update: {
+          athlete_id?: string | null
+          audience?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          recipient_id?: string | null
+          school_id?: string | null
+          sender_id?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communications_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          created_by: string | null
+          file_size: number | null
+          id: string
+          injury_id: string | null
+          storage_path: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          created_by?: string | null
+          file_size?: number | null
+          id?: string
+          injury_id?: string | null
+          storage_path: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          created_by?: string | null
+          file_size?: number | null
+          id?: string
+          injury_id?: string | null
+          storage_path?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_injury_id_fkey"
+            columns: ["injury_id"]
+            isOneToOne: false
+            referencedRelation: "injuries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercises: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          created_by: string | null
+          frequency: string | null
+          id: string
+          injury_id: string
+          instructions: string | null
+          name: string
+          plan_id: string | null
+          reps: string | null
+          sets: number | null
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          created_by?: string | null
+          frequency?: string | null
+          id?: string
+          injury_id: string
+          instructions?: string | null
+          name: string
+          plan_id?: string | null
+          reps?: string | null
+          sets?: number | null
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          created_by?: string | null
+          frequency?: string | null
+          id?: string
+          injury_id?: string
+          instructions?: string | null
+          name?: string
+          plan_id?: string | null
+          reps?: string | null
+          sets?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercises_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercises_injury_id_fkey"
+            columns: ["injury_id"]
+            isOneToOne: false
+            referencedRelation: "injuries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercises_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "rehabilitation_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follow_ups: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          created_by: string | null
+          findings: string | null
+          id: string
+          injury_id: string
+          next_steps: string | null
+          pain_score: number | null
+          progress: string | null
+          review_date: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          created_by?: string | null
+          findings?: string | null
+          id?: string
+          injury_id: string
+          next_steps?: string | null
+          pain_score?: number | null
+          progress?: string | null
+          review_date: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          created_by?: string | null
+          findings?: string | null
+          id?: string
+          injury_id?: string
+          next_steps?: string | null
+          pain_score?: number | null
+          progress?: string | null
+          review_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follow_ups_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_ups_injury_id_fkey"
+            columns: ["injury_id"]
+            isOneToOne: false
+            referencedRelation: "injuries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       injuries: {
         Row: {
           athlete_id: string
@@ -71,7 +542,9 @@ export type Database = {
           injury_code: string
           injury_date: string | null
           mechanism: string | null
+          notes: string | null
           pain_score: number | null
+          sport_context: string | null
           status: string
           updated_at: string
         }
@@ -84,7 +557,9 @@ export type Database = {
           injury_code?: string
           injury_date?: string | null
           mechanism?: string | null
+          notes?: string | null
           pain_score?: number | null
+          sport_context?: string | null
           status?: string
           updated_at?: string
         }
@@ -97,7 +572,9 @@ export type Database = {
           injury_code?: string
           injury_date?: string | null
           mechanism?: string | null
+          notes?: string | null
           pain_score?: number | null
+          sport_context?: string | null
           status?: string
           updated_at?: string
         }
@@ -135,16 +612,209 @@ export type Database = {
         }
         Relationships: []
       }
+      recovery_updates: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          injury_id: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          injury_id: string
+          notes?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          injury_id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recovery_updates_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recovery_updates_injury_id_fkey"
+            columns: ["injury_id"]
+            isOneToOne: false
+            referencedRelation: "injuries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          injury_id: string | null
+          reason: string | null
+          referral_code: string
+          referred_to: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          injury_id?: string | null
+          reason?: string | null
+          referral_code?: string
+          referred_to: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          injury_id?: string | null
+          reason?: string | null
+          referral_code?: string
+          referred_to?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_injury_id_fkey"
+            columns: ["injury_id"]
+            isOneToOne: false
+            referencedRelation: "injuries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rehabilitation_plans: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          created_by: string | null
+          goals: string | null
+          id: string
+          injury_id: string
+          notes: string | null
+          phase: string | null
+          plan_code: string
+          start_date: string | null
+          target_return_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          created_by?: string | null
+          goals?: string | null
+          id?: string
+          injury_id: string
+          notes?: string | null
+          phase?: string | null
+          plan_code?: string
+          start_date?: string | null
+          target_return_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          created_by?: string | null
+          goals?: string | null
+          id?: string
+          injury_id?: string
+          notes?: string | null
+          phase?: string | null
+          plan_code?: string
+          start_date?: string | null
+          target_return_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rehabilitation_plans_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rehabilitation_plans_injury_id_fkey"
+            columns: ["injury_id"]
+            isOneToOne: false
+            referencedRelation: "injuries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      school_users: {
+        Row: {
+          created_at: string
+          id: string
+          school_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          school_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          school_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_users_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schools: {
         Row: {
           contact_phone: string | null
           created_at: string
           created_by: string | null
           id: string
+          intake_notes: string | null
           location: string | null
           name: string
           school_code: string
           school_type: string
+          self_registered: boolean
           updated_at: string
         }
         Insert: {
@@ -152,10 +822,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          intake_notes?: string | null
           location?: string | null
           name: string
           school_code?: string
           school_type?: string
+          self_registered?: boolean
           updated_at?: string
         }
         Update: {
@@ -163,10 +835,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          intake_notes?: string | null
           location?: string | null
           name?: string
           school_code?: string
           school_type?: string
+          self_registered?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -194,6 +868,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_read_communication: {
+        Args: {
+          _c: Database["public"]["Tables"]["communications"]["Row"]
+          _user: string
+        }
+        Returns: boolean
+      }
+      can_view_athlete: {
+        Args: { _athlete: string; _user: string }
+        Returns: boolean
+      }
+      get_sender_names: {
+        Args: { _ids: string[] }
+        Returns: {
+          full_name: string
+          id: string
+          is_admin: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
