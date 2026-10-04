@@ -484,15 +484,15 @@ function DocumentsSub({ userId, injuryId, athleteId }: Ctx) {
   const [busy, setBusy] = useState(false);
 
   async function upload() {
-    if (!file) return toast.error("Choose a PDF first.");
-    if (file.type !== "application/pdf") return toast.error("Only PDF files are allowed.");
+    if (!file) { toast.error("Choose a PDF first."); return; }
+    if (file.type !== "application/pdf") { toast.error("Only PDF files are allowed."); return; }
     setBusy(true);
     const path = `${athleteId}/${injuryId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
     const up = await supabase.storage.from("case-documents").upload(path, file, { contentType: "application/pdf" });
-    if (up.error) { setBusy(false); return toast.error(up.error.message); }
+    if (up.error) { setBusy(false); { toast.error(up.error.message); return; } }
     const { error } = await supabase.from("documents").insert({ injury_id: injuryId, athlete_id: athleteId, title: title || file.name, storage_path: path, file_size: file.size, created_by: userId });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Document uploaded");
     setFile(null); setTitle("");
     qc.invalidateQueries({ queryKey: ["case-record", injuryId] });
@@ -500,7 +500,7 @@ function DocumentsSub({ userId, injuryId, athleteId }: Ctx) {
 
   async function open(path: string) {
     const { data: s, error } = await supabase.storage.from("case-documents").createSignedUrl(path, 300);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     window.open(s.signedUrl, "_blank");
   }
 

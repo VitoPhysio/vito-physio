@@ -77,7 +77,7 @@ export function Compose({ userId, athleteId, schoolId, defaultSubject }: { userI
   });
 
   async function send() {
-    if (!body.trim()) return toast.error("Write a message first.");
+    if (!body.trim()) { toast.error("Write a message first."); return; }
     const row = {
       sender_id: userId,
       subject: subject.trim() || null,
@@ -87,11 +87,11 @@ export function Compose({ userId, athleteId, schoolId, defaultSubject }: { userI
       school_id: target === "school" ? school || null : null,
       audience: target === "group" ? audience : null,
     };
-    if (!row.recipient_id && !row.athlete_id && !row.school_id && !row.audience) return toast.error("Choose who receives this.");
+    if (!row.recipient_id && !row.athlete_id && !row.school_id && !row.audience) { toast.error("Choose who receives this."); return; }
     setBusy(true);
     const { error } = await supabase.from("communications").insert(row);
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Message sent");
     setBody("");
     qc.invalidateQueries({ queryKey: ["inbox"] });
