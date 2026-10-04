@@ -14,16 +14,205 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      athletes: {
+        Row: {
+          athlete_code: string
+          created_at: string
+          created_by: string | null
+          date_of_birth: string | null
+          first_name: string
+          id: string
+          school_id: string | null
+          sport: string | null
+          surname: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_code?: string
+          created_at?: string
+          created_by?: string | null
+          date_of_birth?: string | null
+          first_name: string
+          id?: string
+          school_id?: string | null
+          sport?: string | null
+          surname: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_code?: string
+          created_at?: string
+          created_by?: string | null
+          date_of_birth?: string | null
+          first_name?: string
+          id?: string
+          school_id?: string | null
+          sport?: string | null
+          surname?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletes_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      injuries: {
+        Row: {
+          athlete_id: string
+          body_region: string
+          created_at: string
+          created_by: string | null
+          id: string
+          injury_code: string
+          injury_date: string | null
+          mechanism: string | null
+          pain_score: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          body_region: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          injury_code?: string
+          injury_date?: string | null
+          mechanism?: string | null
+          pain_score?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          body_region?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          injury_code?: string
+          injury_date?: string | null
+          mechanism?: string | null
+          pain_score?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "injuries_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      schools: {
+        Row: {
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          location: string | null
+          name: string
+          school_code: string
+          school_type: string
+          updated_at: string
+        }
+        Insert: {
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          school_code?: string
+          school_type?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          school_code?: string
+          school_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_vito_staff: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "super_admin"
+        | "vito_admin"
+        | "clinical_professional"
+        | "clinical_supervisor"
+        | "school_admin"
+        | "coach"
+        | "athlete"
+        | "parent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +339,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "super_admin",
+        "vito_admin",
+        "clinical_professional",
+        "clinical_supervisor",
+        "school_admin",
+        "coach",
+        "athlete",
+        "parent",
+      ],
+    },
   },
 } as const
