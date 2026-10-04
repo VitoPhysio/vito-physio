@@ -52,7 +52,7 @@ function Index() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-50 border-b bg-card/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3.5">
           <Link to="/" className="flex min-w-0 items-center gap-2.5">
             <img src={logo.url} alt="VITO Physio" className="h-10 w-10 shrink-0 object-contain" />
