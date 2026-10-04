@@ -1,7 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Inbox, Compose } from "@/components/vito/Communications";
 import logo from "@/assets/vito-logo.png.asset.json";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -33,18 +34,32 @@ function Dashboard() {
         supabase.from("user_roles").select("role").eq("user_id", user.id),
       ]);
       const role = roles?.[0]?.role ?? "athlete";
-      let stats: { label: string; value: number }[] = [];
-      if (STAFF.includes(role)) {
-        const count = async (t: "schools" | "athletes" | "injuries") =>
-          (await supabase.from(t).select("id", { count: "exact", head: true })).count ?? 0;
-        const [s, a, i] = await Promise.all([count("schools"), count("athletes"), count("injuries")]);
-        stats = [
-          { label: "Schools & clubs", value: s },
-          { label: "Athletes", value: a },
-          { label: "Injury cases", value: i },
-        ];
-      }
-      return { name: profile?.full_name ?? user.email, role, stats };
+      const staff = STAFF.includes(role);
+      const count = async (t: "athletes" | "injuries" | "referrals", f?: [string, string]) => {
+        let q = supabase.from(t).select("id", { count: "exact", head: true });
+        if (f) q = q.eq(f[0], f[1]);
+        return (await q).count ?? 0;
+      };
+      const [schools, athletes, cases, openRefs, recent, partners] = await Promise.all([
+        supabase.from("schools").select("id", { count: "exact", head: true }).then((r) => r.count ?? 0),
+        count("athletes"),
+        count("injuries"),
+        staff ? count("referrals", ["status", "open"]) : Promise.resolve(0),
+        supabase.from("injuries").select("id, injury_code, body_region, status, created_at, athletes(first_name, surname, athlete_code)").order("updated_at", { ascending: false }).limit(10),
+        staff ? supabase.from("schools").select("id, name, school_code, school_type").order("name") : Promise.resolve({ data: [] as { id: string; name: string; school_code: string; school_type: string }[] }),
+      ]);
+      const stats = staff
+        ? [
+            { label: "Schools, academies & clubs", value: schools },
+            { label: "Athletes", value: athletes },
+            { label: "Injury cases", value: cases },
+            { label: "Open referrals", value: openRefs },
+          ]
+        : [
+            { label: "Athletes", value: athletes },
+            { label: "Injury cases", value: cases },
+          ];
+      return { name: profile?.full_name ?? user.email, role, staff, stats, recent: recent.data ?? [], partners: partners.data ?? [] };
     },
   });
 
@@ -60,6 +75,8 @@ function Dashboard() {
       </div>
     );
   }
+
+  const isAdmin = data.role === "super_admin" || data.role === "vito_admin";
 
   return (
     <div className="min-h-screen bg-background">
@@ -80,24 +97,59 @@ function Dashboard() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-5 py-8">
-        {data.stats.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-3">
-            {data.stats.map((s) => (
-              <div key={s.label} className="rounded-2xl border bg-card p-5">
-                <p className="text-sm text-muted-foreground">{s.label}</p>
-                <p className="mt-1 text-3xl font-extrabold text-primary">{s.value}</p>
+      <main className="mx-auto max-w-5xl space-y-8 px-5 py-8">
+        {data.staff && (
+          <Button asChild size="lg" className="w-full sm:w-auto"><Link to="/cases">Go to case workspace</Link></Button>
+        )}
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {data.stats.map((s) => (
+            <div key={s.label} className="rounded-2xl border bg-card p-5">
+              <p className="text-sm text-muted-foreground">{s.label}</p>
+              <p className="mt-1 text-3xl font-extrabold text-primary">{s.value}</p>
+            </div>
+          ))}
+        </div>
+
+        <section>
+          <h2 className="mb-3 text-lg font-bold">{data.staff ? "Caseload & recovery monitoring" : "Injuries & recovery status"}</h2>
+          {data.recent.length ? (
+            <ul className="space-y-2">
+              {data.recent.map((c) => (
+                <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card p-3 text-sm">
+                  <span><b className="text-primary">{c.injury_code}</b> · {c.athletes?.first_name} {c.athletes?.surname} · {c.body_region}</span>
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{c.status}</span>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-sm text-muted-foreground">No cases to show yet.</p>}
+        </section>
+
+        {isAdmin && (
+          <section className="grid gap-4 md:grid-cols-3">
+            {(["school", "academy", "club"] as const).map((t) => (
+              <div key={t} className="rounded-2xl border bg-card p-4">
+                <h3 className="mb-2 font-bold capitalize">Partner {t === "academy" ? "academies" : `${t}s`}</h3>
+                <ul className="space-y-1 text-sm">
+                  {data.partners.filter((p) => p.school_type === t).map((p) => <li key={p.id}>{p.name} <span className="text-xs text-primary">{p.school_code}</span></li>)}
+                  {!data.partners.some((p) => p.school_type === t) && <li className="text-muted-foreground">None yet.</li>}
+                </ul>
               </div>
             ))}
-          </div>
-        ) : (
-          <div className="rounded-2xl border bg-card p-6">
-            <h2 className="font-semibold text-foreground">Your records</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Your injury cases, rehab plan and messages from your clinician will appear here.
-            </p>
-          </div>
+          </section>
         )}
+
+        <section className="grid gap-6 md:grid-cols-2">
+          <div>
+            <h2 className="mb-3 text-lg font-bold">Communications</h2>
+            <Inbox userId={user.id} />
+          </div>
+          {data.staff && (
+            <div>
+              <h2 className="mb-3 text-lg font-bold">Send a message</h2>
+              <Compose userId={user.id} />
+            </div>
+          )}
+        </section>
       </main>
     </div>
   );
