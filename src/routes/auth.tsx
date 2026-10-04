@@ -19,12 +19,15 @@ export const Route = createFileRoute("/auth")({
 });
 
 const CATEGORIES = [
+  { value: "vito_admin", label: "VITO admin" },
   { value: "clinical_professional", label: "Clinician" },
   { value: "school_admin", label: "School admin" },
+  { value: "school_admin:club", label: "Club / academy admin" },
   { value: "coach", label: "Coach" },
   { value: "athlete", label: "Athlete" },
   { value: "parent", label: "Parent / guardian" },
 ];
+const NEEDS_APPROVAL = ["vito_admin", "clinical_professional"];
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -46,7 +49,7 @@ function AuthPage() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/dashboard`,
-          data: { full_name: fullName, requested_role: role },
+          data: { full_name: fullName, requested_role: role.split(":")[0], account_kind: role.includes(":club") ? "club_academy" : null },
         },
       });
       setMsg(error ? { kind: "err", text: error.message } : { kind: "ok", text: "Check your email and click the link to verify your account, then sign in." });
@@ -81,6 +84,14 @@ function AuthPage() {
                     </Button>
                   ))}
                 </div>
+                {NEEDS_APPROVAL.includes(role) && (
+                  <p className="rounded-md border-l-4 border-accent bg-secondary p-2 text-xs text-foreground">
+                    Staff access is granted only after the VITO super admin approves your request.
+                  </p>
+                )}
+                {role === "school_admin:club" && (
+                  <p className="text-xs text-muted-foreground">Register your club or academy first to get its ID, then link it after signing in.</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="name">Full name</Label>
