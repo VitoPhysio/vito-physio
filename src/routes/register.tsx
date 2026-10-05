@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { registerOrganisation, registerAthlete, requestConsultation } from '@/lib/intake.functions';
+import { PhotoPicker, fileToPhotoPath } from '@/components/vito/Photo';
 import { selectClass } from '@/components/vito/SimpleForm';
 
 type Mode = 'organisation' | 'athlete' | 'consult';
@@ -24,11 +25,13 @@ function RegisterPage() {
     const fd = new FormData(form);
     const get = (key: string) => String(fd.get(key) ?? '').trim();
     try {
+      const file = fd.get('photo') as File | null;
+      const photo = mode !== 'consult' && file && file.size ? { photo_path: await fileToPhotoPath(file) } : {};
       if (mode === 'organisation') {
-        const code = await registerOrganisation({ data: { name: get('name'), school_type: get('school_type') as 'school' | 'academy' | 'club', location: get('location'), contact_phone: get('phone'), intake_notes: get('notes') } });
+        const code = await registerOrganisation({ data: { name: get('name'), school_type: get('school_type') as 'school' | 'academy' | 'club', location: get('location'), contact_phone: get('phone'), intake_notes: get('notes'), ...photo } });
         setResult(`Registration saved. Your organisation ID is ${code}. Keep this ID to link your account.`);
       } else if (mode === 'athlete') {
-        const code = await registerAthlete({ data: { first_name: get('first_name'), surname: get('surname'), sport: get('sport'), phone: get('phone'), ...(get('date_of_birth') ? { date_of_birth: get('date_of_birth') } : {}) } });
+        const code = await registerAthlete({ data: { first_name: get('first_name'), surname: get('surname'), sport: get('sport'), phone: get('phone'), ...(get('date_of_birth') ? { date_of_birth: get('date_of_birth') } : {}), ...photo } });
         setResult(`Registration saved. Your athlete ID is ${code}. Keep this ID to link your account.`);
       } else {
         await requestConsultation({ data: { contact_name: get('name'), email: get('email'), phone: get('phone'), organisation_type: get('organisation_type') as 'individual' | 'school' | 'academy' | 'club', message: get('message') } });
@@ -48,6 +51,7 @@ function RegisterPage() {
           <div><Label htmlFor="organisation_type">{mode === 'consult' ? 'I am contacting as' : 'Organisation type'}</Label><select id="organisation_type" name={mode === 'consult' ? 'organisation_type' : 'school_type'} className={`${selectClass} mt-1`} required>{mode === 'consult' && <option value="individual">Individual</option>}<option value="school">School</option><option value="academy">Academy</option><option value="club">Club</option></select></div>
           {mode === 'consult' ? <><Field label="Email" name="email" type="email" required/><Field label="Phone" name="phone"/><div className="sm:col-span-2"><Label htmlFor="message">What do you need help with?</Label><Textarea id="message" name="message" required minLength={10} maxLength={2000} className="mt-1" rows={4}/></div></> : <><Field label="Location" name="location"/><Field label="Contact phone" name="phone"/><div className="sm:col-span-2"><Label htmlFor="notes">Notes</Label><Textarea id="notes" name="notes" maxLength={1000} className="mt-1" rows={3}/></div></>}
         </>}
+        {mode !== 'consult' && <div className="sm:col-span-2"><PhotoPicker key={mode} label={mode === 'athlete' ? 'Athlete photo' : 'Logo or photo'} /></div>}
         {error && <p role="alert" className="text-sm text-destructive sm:col-span-2">{error}</p>}
         {result && <p role="status" className="border-l-4 border-accent bg-secondary p-4 font-semibold text-foreground sm:col-span-2">{result}</p>}
         <div className="sm:col-span-2"><Button type="submit" disabled={busy}>{busy ? 'Saving…' : mode === 'consult' ? 'Request consultation' : 'Register'}</Button></div>
