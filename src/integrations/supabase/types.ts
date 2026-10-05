@@ -213,6 +213,7 @@ export type Database = {
           gender: string | null
           id: string
           phone: string | null
+          photo_path: string | null
           school_id: string | null
           self_registered: boolean
           sport: string | null
@@ -229,6 +230,7 @@ export type Database = {
           gender?: string | null
           id?: string
           phone?: string | null
+          photo_path?: string | null
           school_id?: string | null
           self_registered?: boolean
           sport?: string | null
@@ -245,6 +247,7 @@ export type Database = {
           gender?: string | null
           id?: string
           phone?: string | null
+          photo_path?: string | null
           school_id?: string | null
           self_registered?: boolean
           sport?: string | null
@@ -664,6 +667,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_path: string | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -672,6 +676,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avatar_path?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -680,6 +685,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avatar_path?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -888,6 +894,7 @@ export type Database = {
           id: string
           intake_notes: string | null
           location: string | null
+          logo_path: string | null
           name: string
           school_code: string
           school_type: string
@@ -901,6 +908,7 @@ export type Database = {
           id?: string
           intake_notes?: string | null
           location?: string | null
+          logo_path?: string | null
           name: string
           school_code?: string
           school_type?: string
@@ -914,6 +922,7 @@ export type Database = {
           id?: string
           intake_notes?: string | null
           location?: string | null
+          logo_path?: string | null
           name?: string
           school_code?: string
           school_type?: string
