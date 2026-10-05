@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhotoPicker, fileToPhotoPath } from "@/components/vito/Photo";
 import logo from "@/assets/vito-logo.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
@@ -44,12 +45,15 @@ function AuthPage() {
     setBusy(true);
     setMsg(null);
     if (mode === "signup") {
+      let avatar_path: string | null = null;
+      const file = new FormData(e.currentTarget as HTMLFormElement).get("photo") as File | null;
+      try { if (file && file.size) avatar_path = await fileToPhotoPath(file); } catch (err) { setMsg({ kind: "err", text: err instanceof Error ? err.message : "Photo failed" }); setBusy(false); return; }
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/dashboard`,
-          data: { full_name: fullName, requested_role: role.split(":")[0], account_kind: role.includes(":club") ? "club_academy" : null },
+          data: { full_name: fullName, requested_role: role.split(":")[0], account_kind: role.includes(":club") ? "club_academy" : null, avatar_path },
         },
       });
       setMsg(error ? { kind: "err", text: error.message } : { kind: "ok", text: "Check your email and click the link to verify your account, then sign in." });
@@ -97,6 +101,7 @@ function AuthPage() {
                 <Label htmlFor="name">Full name</Label>
                 <Input id="name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
               </div>
+              <PhotoPicker />
             </>
           )}
           <div className="space-y-1">

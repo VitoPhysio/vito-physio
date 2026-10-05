@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Inbox, Compose } from "@/components/vito/Communications";
+import { PhotoAvatar } from "@/components/vito/Photo";
 import logo from "@/assets/vito-logo.png.asset.json";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -30,7 +31,7 @@ function Dashboard() {
     queryKey: ["dashboard", user.id],
     queryFn: async () => {
       const [{ data: profile }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+        supabase.from("profiles").select("full_name, avatar_path").eq("id", user.id).maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", user.id),
       ]);
       const role = roles?.[0]?.role ?? "athlete";
@@ -45,7 +46,7 @@ function Dashboard() {
         count("athletes"),
         count("injuries"),
         staff ? count("referrals", ["status", "open"]) : Promise.resolve(0),
-        supabase.from("injuries").select("id, injury_code, body_region, status, created_at, athletes(first_name, surname, athlete_code)").order("updated_at", { ascending: false }).limit(10),
+        supabase.from("injuries").select("id, injury_code, body_region, status, created_at, athletes(first_name, surname, athlete_code, photo_path)").order("updated_at", { ascending: false }).limit(10),
         staff ? supabase.from("schools").select("id, name, school_code, school_type").order("name") : Promise.resolve({ data: [] as { id: string; name: string; school_code: string; school_type: string }[] }),
       ]);
       const stats = staff
@@ -59,7 +60,7 @@ function Dashboard() {
             { label: "Athletes", value: athletes },
             { label: "Injury cases", value: cases },
           ];
-      return { name: profile?.full_name ?? user.email, role, staff, stats, recent: recent.data ?? [], partners: partners.data ?? [] };
+      return { avatar: profile?.avatar_path ?? null, name: profile?.full_name ?? user.email, role, staff, stats, recent: recent.data ?? [], partners: partners.data ?? [] };
     },
   });
 
@@ -83,7 +84,7 @@ function Dashboard() {
       <header className="bg-brand-gradient text-primary-foreground">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <img src={logo.url} alt="VITO Physio" className="h-12 w-12 rounded-xl bg-card p-1" />
+            <PhotoAvatar path={data.avatar} name={data.name} className="size-12 border-2 border-card" />
             <div>
               <p className="text-sm opacity-80">Welcome back</p>
               <h1 className="text-xl font-bold">{data.name}</h1>
@@ -101,6 +102,9 @@ function Dashboard() {
         {data.staff && (
           <Button asChild size="lg" className="w-full sm:w-auto"><Link to="/cases">Go to case workspace</Link></Button>
         )}
+        {isAdmin && (
+          <Button asChild size="lg" variant="outline" className="ml-0 w-full sm:ml-3 sm:w-auto"><Link to="/admin">Accounts & approvals</Link></Button>
+        )}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {data.stats.map((s) => (
             <div key={s.label} className="rounded-2xl border bg-card p-5">
@@ -116,7 +120,7 @@ function Dashboard() {
             <ul className="space-y-2">
               {data.recent.map((c) => (
                 <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card p-3 text-sm">
-                  <span><b className="text-primary">{c.injury_code}</b> · {c.athletes?.first_name} {c.athletes?.surname} · {c.body_region}</span>
+                  <span className="flex items-center gap-2"><PhotoAvatar path={c.athletes?.photo_path} name={`${c.athletes?.first_name} ${c.athletes?.surname}`} className="size-7" /><b className="text-primary">{c.injury_code}</b> · {c.athletes?.first_name} {c.athletes?.surname} · {c.body_region}</span>
                   <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{c.status}</span>
                 </li>
               ))}

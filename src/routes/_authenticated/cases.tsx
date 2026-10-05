@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SimpleForm, clean, type Field } from "@/components/vito/SimpleForm";
 import { Compose } from "@/components/vito/Communications";
+import { PhotoAvatar, fileToPhotoPath } from "@/components/vito/Photo";
 import logo from "@/assets/vito-logo.png.asset.json";
 
 export const Route = createFileRoute("/_authenticated/cases")({
@@ -164,12 +165,13 @@ function AthletesStep({ userId }: { userId: string }) {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase text-muted-foreground">
-              <tr><th className="p-2">ID</th><th className="p-2">Name</th><th className="p-2">Sport</th><th className="p-2">School</th><th className="p-2">Athlete no.</th></tr>
+              <tr><th className="p-2">ID</th><th className="p-2">Photo</th><th className="p-2">Name</th><th className="p-2">Sport</th><th className="p-2">School</th><th className="p-2">Athlete no.</th></tr>
             </thead>
             <tbody>
               {list.map((a) => (
                 <tr key={a.id} className="border-t">
                   <td className="p-2 text-primary">{a.athlete_code}</td>
+                  <td className="p-2"><label className="cursor-pointer" title="Change photo"><PhotoAvatar path={a.photo_path} name={`${a.first_name} ${a.surname}`} /><input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; try { const path = await fileToPhotoPath(f); const { error } = await supabase.from("athletes").update({ photo_path: path }).eq("id", a.id); if (error) throw error; toast.success("Photo updated"); qc.invalidateQueries(); } catch (err) { toast.error(err instanceof Error ? err.message : "Upload failed"); } }} /></label></td>
                   <td className="p-2 font-medium">{a.first_name} {a.surname}</td>
                   <td className="p-2">{a.sport ?? "—"}</td>
                   <td className="p-2">{a.schools?.name ?? "Independent"}</td>
@@ -251,7 +253,7 @@ function ManageStep({ userId }: { userId: string }) {
     queryKey: ["cases"],
     queryFn: async () => {
       const { data, error } = await supabase.from("injuries")
-        .select("*, athletes(id, first_name, surname, athlete_code, sport, school_id, schools(name))")
+        .select("*, athletes(id, first_name, surname, athlete_code, photo_path, sport, school_id, schools(name))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -274,7 +276,7 @@ function ManageStep({ userId }: { userId: string }) {
                   <span className="font-semibold text-primary">{c.injury_code}</span>
                   <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{c.status}</span>
                 </div>
-                <p className="text-foreground">{c.athletes?.first_name} {c.athletes?.surname} · {c.body_region}</p>
+                <p className="flex items-center gap-2 text-foreground"><PhotoAvatar path={c.athletes?.photo_path} name={`${c.athletes?.first_name} ${c.athletes?.surname}`} className="size-7" />{c.athletes?.first_name} {c.athletes?.surname} · {c.body_region}</p>
                 <p className="text-xs text-muted-foreground">{c.athletes?.athlete_code} · {c.athletes?.schools?.name ?? "Independent"}</p>
               </button>
             </li>
@@ -289,9 +291,12 @@ function ManageStep({ userId }: { userId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 rounded-2xl bg-brand-gradient p-4 text-primary-foreground sm:flex-row sm:items-center sm:justify-between print:hidden">
-        <div>
+        <div className="flex items-center gap-3">
+          <PhotoAvatar path={current.athletes?.photo_path} name={`${current.athletes?.first_name} ${current.athletes?.surname}`} className="size-14 border-2 border-card" />
+          <div>
           <p className="text-sm opacity-80">{current.injury_code} · {current.status}</p>
           <p className="text-lg font-bold">{current.athletes?.first_name} {current.athletes?.surname} — {current.body_region}</p>
+          </div>
         </div>
         <Button variant="secondary" onClick={() => setCaseId("")}>Choose another case</Button>
       </div>
@@ -553,6 +558,7 @@ function RecordSub({ userId, injuryId, athleteId, schoolId, caseCode }: Ctx & { 
           </div>
         </header>
         <Section title="Athlete">
+          {a?.photo_path && <div className="col-span-full"><PhotoAvatar path={a.photo_path} name={`${a.first_name} ${a.surname}`} className="size-20" /></div>}
           <Row label="Name" value={`${a?.first_name} ${a?.surname}`} /><Row label="Athlete ID" value={a?.athlete_code} />
           <Row label="Athlete no." value={a?.athlete_number} /><Row label="Sport" value={a?.sport} />
           <Row label="School" value={a?.schools?.name ?? "Independent"} /><Row label="Date of birth" value={a?.date_of_birth} />
