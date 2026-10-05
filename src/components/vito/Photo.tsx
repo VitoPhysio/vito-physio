@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { uploadPhoto } from '@/lib/photo.functions';
 import { cn } from '@/lib/utils';
 
-export function PhotoAvatar({ path, name, className }: { path?: string | null; name?: string | null; className?: string }) {
+export function PhotoAvatar({ path, name, className }: { path?: string | null | undefined; name?: string | null | undefined; className?: string }) {
   const { data: url } = useQuery({
     queryKey: ['avatar', path],
     enabled: !!path,
