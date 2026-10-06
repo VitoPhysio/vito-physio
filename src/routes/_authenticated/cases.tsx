@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { SimpleForm, clean, type Field } from "@/components/vito/SimpleForm";
 import { Compose } from "@/components/vito/Communications";
 import { PhotoAvatar, fileToPhotoPath } from "@/components/vito/Photo";
-import logo from "@/assets/vito-logo.png.asset.json";
+import logo from "@/assets/vito-logo.png";
 
 export const Route = createFileRoute("/_authenticated/cases")({
   head: () => ({ meta: [{ title: "Case workspace — VITO Physio" }] }),
@@ -59,7 +59,7 @@ function CasesPage() {
       <header className="border-b bg-card print:hidden">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <img src={logo.url} alt="VITO Physio" className="h-10 w-10" />
+            <img src={logo} alt="VITO Physio" className="h-10 w-10" />
             <h1 className="text-lg font-bold text-primary">Clinician case workspace</h1>
           </div>
           <Button asChild variant="outline"><Link to="/dashboard">Return to dashboard</Link></Button>
@@ -551,7 +551,7 @@ function RecordSub({ userId, injuryId, athleteId, schoolId, caseCode }: Ctx & { 
       {showMsg && <div className="print:hidden"><Compose userId={userId} athleteId={athleteId} schoolId={schoolId} defaultSubject={`Update on case ${caseCode}`} /></div>}
       <article className="space-y-4 rounded-2xl border bg-card p-6 print:border-0 print:p-0">
         <header className="flex items-center gap-3">
-          <img src={logo.url} alt="VITO Physio" className="h-14 w-14" />
+          <img src={logo} alt="VITO Physio" className="h-14 w-14" />
           <div>
             <h2 className="text-xl font-extrabold text-primary">VITO Physio — Case summary</h2>
             <p className="text-sm text-muted-foreground">{injury.injury_code} · printed {new Date().toLocaleDateString()}</p>

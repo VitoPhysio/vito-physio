@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import logo from "@/assets/vito-logo.png.asset.json";
+import logo from "@/assets/vito-logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -55,7 +55,7 @@ function Index() {
       <header className="sticky top-0 z-50 border-b border-border bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3.5">
           <Link to="/" className="flex min-w-0 items-center gap-2.5">
-            <img src={logo.url} alt="VITO Physio" className="h-10 w-10 shrink-0 object-contain" />
+            <img src={logo} alt="VITO Physio" className="h-10 w-10 shrink-0 object-contain" />
             <span className="truncate text-lg font-extrabold tracking-tight">
               <span className="text-primary">VITO</span> <span className="text-accent">Physio</span>
             </span>
@@ -118,7 +118,7 @@ function Index() {
           </div>
 
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 border-t px-5 py-10 text-center">
-            <img src={logo.url} alt="VITO Physio logo" className="h-24 w-24 object-contain sm:h-28 sm:w-28" />
+            <img src={logo} alt="VITO Physio logo" className="h-24 w-24 object-contain sm:h-28 sm:w-28" />
             <p className="text-base font-bold text-primary">Care that moves with you</p>
             <p className="max-w-md text-sm text-muted-foreground">
               One record per athlete: injuries, assessments, rehab plans, follow-ups and recovery progress,

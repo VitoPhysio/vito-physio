@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Inbox, Compose } from "@/components/vito/Communications";
 import { PhotoAvatar } from "@/components/vito/Photo";
-import logo from "@/assets/vito-logo.png.asset.json";
+import logo from "@/assets/vito-logo.png";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — VITO Physio" }] }),
@@ -72,7 +72,7 @@ function Dashboard() {
   if (isLoading || !data) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <img src={logo.url} alt="Loading" className="h-20 w-20 animate-pulse" />
+        <img src={logo} alt="Loading" className="h-20 w-20 animate-pulse" />
       </div>
     );
   }

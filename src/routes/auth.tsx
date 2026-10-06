@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhotoPicker, fileToPhotoPath } from "@/components/vito/Photo";
 import { signInWithIdentifier } from "@/lib/auth.functions";
-import logo from "@/assets/vito-logo.png.asset.json";
+import logo from "@/assets/vito-logo.png";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -75,7 +75,7 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-lg">
         <Link to="/" className="mb-4 flex flex-col items-center gap-1">
-          <img src={logo.url} alt="VITO Physio" className="h-16 w-16" />
+          <img src={logo} alt="VITO Physio" className="h-16 w-16" />
           <span className="font-bold text-primary">VITO Physio</span>
         </Link>
         <div className="mb-5 grid grid-cols-2 gap-2">
