@@ -13,3 +13,4 @@
 - Backend is the user-connected external Supabase project; never enable Lovable Cloud. Why: user owns the data there.
 - Roles live only in user_roles, assigned by the handle_new_user trigger. Why: prevents privilege escalation.
 - Profile/athlete/organisation photos live in the private 'avatars' bucket, uploaded via the uploadPhoto server fn and shown with signed URLs. Why: workspace blocks public buckets.
+- Sign-in aliases use each profile's unique VITO account ID; athlete and organisation IDs remain record-linking identifiers. Why: shared record IDs cannot safely identify one login account.
