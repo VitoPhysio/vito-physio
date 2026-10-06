@@ -58,10 +58,7 @@ function CasesPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card print:hidden">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <img src={logo} alt="VITO Physio" className="h-10 w-10" />
-            <h1 className="text-lg font-bold text-primary">Clinician case workspace</h1>
-          </div>
+          <h1 className="text-lg font-bold text-primary">Clinician case workspace</h1>
           <Button asChild variant="outline"><Link to="/dashboard">Return to dashboard</Link></Button>
         </div>
         <nav className="mx-auto grid max-w-6xl grid-cols-2 gap-2 px-5 pb-4 sm:grid-cols-4">

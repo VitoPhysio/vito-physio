@@ -1,10 +1,9 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Inbox, Compose } from "@/components/vito/Communications";
 import { PhotoAvatar } from "@/components/vito/Photo";
-import { QuickMenu } from "@/components/vito/QuickMenu";
 import logo from "@/assets/vito-logo.png";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -26,7 +25,6 @@ const STAFF = ["super_admin", "vito_admin", "clinical_professional", "clinical_s
 
 function Dashboard() {
   const { user } = Route.useRouteContext();
-  const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard", user.id],
@@ -65,11 +63,6 @@ function Dashboard() {
     },
   });
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    navigate({ to: "/" });
-  }
-
   if (isLoading || !data) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -82,7 +75,7 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-brand-gradient text-primary-foreground">
+      <section className="bg-brand-gradient text-primary-foreground">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <PhotoAvatar path={data.avatar} name={data.name} className="size-12 border-2 border-card" />
@@ -91,15 +84,11 @@ function Dashboard() {
               <h1 className="text-xl font-bold">{data.name}</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground">
-              {ROLE_LABEL[data.role] ?? data.role}
-            </span>
-            <QuickMenu />
-            <Button variant="secondary" size="sm" onClick={signOut}>Sign out</Button>
-          </div>
+          <span className="self-start rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground sm:self-auto">
+            {ROLE_LABEL[data.role] ?? data.role}
+          </span>
         </div>
-      </header>
+      </section>
       <main className="mx-auto max-w-5xl space-y-8 px-5 py-8">
         {data.staff && (
           <Button asChild size="lg" className="w-full sm:w-auto"><Link to="/cases">Go to case workspace</Link></Button>
