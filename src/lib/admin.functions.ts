@@ -18,7 +18,7 @@ export const listAccounts = createServerFn({ method: 'GET' })
     const level = await adminLevel(context.supabase, context.userId);
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     const [{ data: profiles }, { data: roles }] = await Promise.all([
-      supabaseAdmin.from('profiles').select('id, full_name, email, requested_role, avatar_path, created_at').order('created_at', { ascending: false }),
+      supabaseAdmin.from('profiles').select('id, account_code, full_name, email, requested_role, avatar_path, created_at').order('created_at', { ascending: false }),
       supabaseAdmin.from('user_roles').select('user_id, role'),
     ]);
     return { level, me: context.userId, accounts: (profiles ?? []).map((p) => ({ ...p, role: roles?.find((r) => r.user_id === p.id)?.role ?? 'athlete' })) };

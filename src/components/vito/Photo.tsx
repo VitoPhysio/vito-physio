@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { uploadPhoto } from '@/lib/photo.functions';
+import { updateLinkedPhoto, uploadPhoto } from '@/lib/photo.functions';
 import { cn } from '@/lib/utils';
 
 export function PhotoAvatar({ path, name, className }: { path?: string | null | undefined; name?: string | null | undefined; className?: string }) {
@@ -38,5 +38,30 @@ export function PhotoPicker({ name = 'photo', label = 'Profile picture' }: { nam
       <span><span className="font-medium">{label}</span><br /><span className="text-xs text-muted-foreground">Optional · PNG/JPG, max 2MB</span></span>
       <input type="file" name={name} accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; setPreview(f ? URL.createObjectURL(f) : ''); }} />
     </label>
+  );
+}
+
+export function EditablePhoto({ path, name, target, targetId, onUpdated, label = 'Change photo' }: { path?: string | null; name?: string | null; target: 'profile' | 'athlete' | 'organisation'; targetId: string; onUpdated?: () => void; label?: string }) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  return (
+    <div className="flex items-center gap-3">
+      <PhotoAvatar path={path} name={name} className="size-16 border-2 border-card" />
+      <label className="cursor-pointer text-sm font-semibold text-primary">
+        {busy ? 'Uploading…' : label}
+        <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={busy} onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          setBusy(true); setMessage('');
+          try {
+            const nextPath = await fileToPhotoPath(file);
+            await updateLinkedPhoto({ data: { target, targetId, path: nextPath } });
+            setMessage('Photo updated.'); onUpdated?.();
+          } catch (error) { setMessage(error instanceof Error ? error.message : 'Upload failed.'); }
+          finally { setBusy(false); e.target.value = ''; }
+        }} />
+      </label>
+      {message && <span className="text-xs text-muted-foreground">{message}</span>}
+    </div>
   );
 }

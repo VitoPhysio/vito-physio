@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhotoPicker, fileToPhotoPath } from "@/components/vito/Photo";
+import { signInWithIdentifier } from "@/lib/auth.functions";
 import logo from "@/assets/vito-logo.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
@@ -35,7 +36,7 @@ function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [role, setRole] = useState("athlete");
   const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -49,7 +50,7 @@ function AuthPage() {
       const file = new FormData(e.currentTarget as HTMLFormElement).get("photo") as File | null;
       try { if (file && file.size) avatar_path = await fileToPhotoPath(file); } catch (err) { setMsg({ kind: "err", text: err instanceof Error ? err.message : "Photo failed" }); setBusy(false); return; }
       const { error } = await supabase.auth.signUp({
-        email,
+        email: identifier,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/dashboard`,
@@ -58,9 +59,14 @@ function AuthPage() {
       });
       setMsg(error ? { kind: "err", text: error.message } : { kind: "ok", text: "Check your email and click the link to verify your account, then sign in." });
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setMsg({ kind: "err", text: error.message.includes("confirmed") ? "Please verify your email first — check your inbox for the link." : error.message });
-      else navigate({ to: "/dashboard" });
+      try {
+        const session = await signInWithIdentifier({ data: { identifier, password } });
+        const { error } = await supabase.auth.setSession(session);
+        if (error) throw error;
+        navigate({ to: "/dashboard" });
+      } catch (error) {
+        setMsg({ kind: "err", text: error instanceof Error ? error.message : "Sign-in failed." });
+      }
     }
     setBusy(false);
   }
@@ -105,8 +111,8 @@ function AuthPage() {
             </>
           )}
           <div className="space-y-1">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Label htmlFor="email">{mode === "signin" ? "Email or VITO account ID" : "Email"}</Label>
+              <Input id="email" type={mode === "signin" ? "text" : "email"} required value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder={mode === "signin" ? "name@example.com or VITO-ACC-…" : "name@example.com"} autoComplete="username" />
           </div>
           <div className="space-y-1">
             <Label htmlFor="pw">Password</Label>
