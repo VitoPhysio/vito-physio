@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Inbox, Compose } from "@/components/vito/Communications";
 import { PhotoAvatar } from "@/components/vito/Photo";
+import { QuickMenu } from "@/components/vito/QuickMenu";
 import logo from "@/assets/vito-logo.png";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -94,6 +95,7 @@ function Dashboard() {
             <span className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground">
               {ROLE_LABEL[data.role] ?? data.role}
             </span>
+            <QuickMenu />
             <Button variant="secondary" size="sm" onClick={signOut}>Sign out</Button>
           </div>
         </div>
