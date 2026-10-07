@@ -18,7 +18,7 @@ import { STAGE_LABEL, stageProgress, useHealth, useViewer } from './data';
 import logo from '@/assets/vito-logo.png';
 
 type View = 'home' | 'discover' | 'profile';
-type HomeSection = 'overview' | 'register' | 'actions' | 'connections';
+type HomeSection = 'overview' | 'register' | 'actions' | 'connections' | 'recovery' | 'updates' | 'activity';
 type Tool = 'injuries' | 'rehab' | 'assessments' | 'appointments' | 'reports' | 'messages' | 'report' | 'contact' | 'notifications';
 const tools: { key: Tool; label: string; icon: typeof HeartPulse }[] = [
   { key: 'report', label: 'Register new case', icon: Plus }, { key: 'injuries', label: 'My injuries', icon: HeartPulse },
@@ -27,11 +27,14 @@ const tools: { key: Tool; label: string; icon: typeof HeartPulse }[] = [
   { key: 'reports', label: 'Reports & history', icon: FileText }, { key: 'notifications', label: 'Care updates', icon: Activity },
 ];
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not scheduled';
-const homeSections: { key: HomeSection; label: string; icon: typeof HeartPulse }[] = [
-  { key: 'overview', label: 'Home', icon: Home },
-  { key: 'register', label: 'Register new case', icon: Plus },
-  { key: 'actions', label: 'Quick actions', icon: Activity },
-  { key: 'connections', label: 'Connections', icon: Users },
+const homeSections: { key: HomeSection; label: string }[] = [
+  { key: 'overview', label: 'For you' },
+  { key: 'register', label: 'Register new case' },
+  { key: 'actions', label: 'Quick actions' },
+  { key: 'connections', label: 'Connections' },
+  { key: 'recovery', label: 'Recovery tracking' },
+  { key: 'updates', label: 'Care updates' },
+  { key: 'activity', label: 'Sporting activity' },
 ];
 
 export function AthletePortal({ user, view = 'home' }: { user: User; view?: View }) {
@@ -71,36 +74,29 @@ export function AthletePortal({ user, view = 'home' }: { user: User; view?: View
   return <div className="min-h-screen bg-background pb-24 sm:pb-8">
     <main className="mx-auto max-w-6xl space-y-8 px-4 py-7 pb-28 sm:px-5">
       {view === 'home' && <>
-        <section className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4"><PhotoAvatar path={v?.avatar} name={v?.name} className="size-16" /><div><p className="text-xs font-semibold uppercase text-accent">Your sporting journey</p><h1 className="mt-1 text-2xl font-bold">Welcome back{v?.firstName ? `, ${v.firstName}` : ''}</h1><p className="mt-1 text-sm text-muted-foreground">{athlete?.sport || 'VITO athlete'}{athlete ? ` · ${athlete.first_name} ${athlete.surname}` : ''}</p></div></div>
-          <Button onClick={() => { setHomeSection('register'); setTool('report'); }}><Plus className="size-4" />Register new case</Button>
+        <section id="for-you" aria-labelledby="for-you-title" className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Athlete portal</p>
+          <h1 id="for-you-title" className="text-3xl font-bold tracking-tight">For you</h1>
         </section>
         {health.isError && <div role="alert" className="flex items-center justify-between gap-3 border-l-4 border-destructive bg-card p-4"><p>Health records could not be loaded.</p><Button variant="outline" onClick={() => health.refetch()}>Retry</Button></div>}
         {!health.isLoading && h && !h.linked && <div className="flex flex-wrap items-center justify-between gap-3 border-l-4 border-accent bg-card p-4"><p className="text-sm">No athlete record linked to this account.</p><Button asChild variant="outline"><Link to="/link-account">Link athlete record<ArrowUpRight className="size-4" /></Link></Button></div>}
-        <section aria-label="Athlete home sections" className="space-y-4">
-          <div role="tablist" aria-label="Athlete home sections" className="flex gap-2 overflow-x-auto border-b pb-3">
-            {homeSections.map(section => <Button key={section.key} role="tab" aria-selected={homeSection === section.key} aria-controls={`home-panel-${section.key}`} variant={homeSection === section.key ? 'default' : 'outline'} className="shrink-0" onClick={() => setHomeSection(section.key)}><section.icon className="size-4" />{section.label}</Button>)}
+        <section aria-label="For you sections" className="space-y-5">
+          <div role="tablist" aria-label="For you sections" className="flex gap-2 overflow-x-auto border-b pb-3">
+            {homeSections.map(section => <Button key={section.key} role="tab" aria-selected={homeSection === section.key} aria-controls={`home-panel-${section.key}`} variant={homeSection === section.key ? 'default' : 'outline'} className="shrink-0" onClick={() => setHomeSection(section.key)}>{section.label}</Button>)}
           </div>
           <div id={`home-panel-${homeSection}`} role="tabpanel" aria-label={homeSections.find(section => section.key === homeSection)?.label} className="space-y-8">
-            {homeSection === 'overview' && <div className="space-y-8">
-              <section><Heading title="Health & injury overview" icon={HeartPulse} /><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <Summary label="Current injuries" value={health.isLoading ? '…' : String(h?.active.length ?? 0)} detail={h?.active[0]?.body_region || 'No active injury recorded'} icon={HeartPulse} onClick={() => setTool('injuries')} />
-                <Summary label="Rehabilitation" value={health.isLoading ? '…' : String(h?.rehab.filter(p => h.active.some(i => i.id === p.injury_id)).length ?? 0)} detail={h?.rehab[0]?.phase || 'Plans & prescribed exercises'} icon={Dumbbell} onClick={() => setTool('rehab')} />
-                <Summary label="Next appointment" value={h?.upcoming[0] ? date(h.upcoming[0].scheduled_at) : 'Not scheduled'} detail={h?.upcoming[0]?.purpose || 'Appointments & follow-ups'} icon={CalendarDays} onClick={() => setTool('appointments')} />
-                <Summary label="Assessments" value={health.isLoading ? '…' : String(h?.assessments.length ?? 0)} detail="Your assessment summaries" icon={ShieldCheck} onClick={() => setTool('assessments')} />
-              </div></section>
-              {!!h?.active.length && <section><Heading title="Recovery tracking" icon={Activity} /><div className="grid gap-3 sm:grid-cols-2">{h.active.map(i => <Button key={i.id} variant="outline" className="h-auto flex-col items-stretch gap-3 bg-card p-4 text-left" onClick={() => setTool('injuries')}><span className="flex justify-between gap-2"><span className="font-semibold">{i.body_region}</span><span className="text-xs text-primary">{STAGE_LABEL[i.status] ?? i.status}</span></span><Progress value={stageProgress(i.status)} /><span className="text-xs text-muted-foreground">{i.injury_code}</span></Button>)}</div></section>}
-              <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr]">
-                <section><Heading title="Care updates" icon={Activity} />{h?.timeline.length ? <ul className="divide-y border-y">{h.timeline.slice(0,4).map(t => <li key={t.id} className="flex gap-3 py-4"><span className="mt-1 size-2 shrink-0 rounded-full bg-accent" /><div><p className="text-sm font-medium">{t.title}</p><p className="mt-1 text-xs text-muted-foreground">{date(t.at)}</p></div></li>)}</ul> : <Empty icon={Activity} text="No care updates yet." />}</section>
-                <section><Heading title="Sporting activity" icon={Trophy} /><Empty icon={Trophy} text="No sporting updates yet." /></section>
-              </div>
-            </div>}
+            {homeSection === 'overview' && <section className="overflow-hidden rounded-2xl border bg-card shadow-sm"><div className="flex items-start justify-between gap-5 border-b bg-secondary/50 p-5 sm:p-7"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Your care at a glance</p><h2 className="mt-2 text-2xl font-bold tracking-tight">Health & injury overview</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Keep track of your current health, recovery plan, appointments, and clinical assessments in one place.</p></div><div className="hidden rounded-2xl bg-primary/10 p-3 text-primary sm:block"><HeartPulse className="size-7" /></div></div><div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+              <Summary label="Current injuries" value={health.isLoading ? '…' : String(h?.active.length ?? 0)} detail={h?.active[0]?.body_region || 'No active injury recorded'} icon={HeartPulse} onClick={() => setTool('injuries')} />
+              <Summary label="Rehabilitation" value={health.isLoading ? '…' : String(h?.rehab.filter(p => h.active.some(i => i.id === p.injury_id)).length ?? 0)} detail={h?.rehab[0]?.phase || 'Plans & prescribed exercises'} icon={Dumbbell} onClick={() => setTool('rehab')} />
+              <Summary label="Next appointment" value={h?.upcoming[0] ? date(h.upcoming[0].scheduled_at) : 'Not scheduled'} detail={h?.upcoming[0]?.purpose || 'Appointments & follow-ups'} icon={CalendarDays} onClick={() => setTool('appointments')} />
+              <Summary label="Assessments" value={health.isLoading ? '…' : String(h?.assessments.length ?? 0)} detail="Your assessment summaries" icon={ShieldCheck} onClick={() => setTool('assessments')} />
+            </div></section>}
             {homeSection === 'register' && <section className="rounded-xl border bg-card p-6 shadow-sm"><div className="max-w-2xl"><p className="text-xs font-semibold uppercase tracking-wide text-accent">Start a care record</p><h2 className="mt-2 text-2xl font-bold">Register a new case</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Tell the VITO clinical team about a new injury or concern. Your report will be added to your care workspace for review.</p><Button className="mt-5" onClick={() => setTool('report')}><Plus className="size-4" />Register new case</Button>{!h?.linked && <p className="mt-3 text-xs text-muted-foreground">Link your athlete record before submitting a case.</p>}</div></section>}
             {homeSection === 'actions' && <section><Heading title="Quick actions" icon={Activity} /><div className="flex flex-wrap gap-2">{tools.map(t => <Button key={t.key} variant="outline" className="h-auto min-h-11 justify-start whitespace-normal bg-card py-3" onClick={() => setTool(t.key)}><t.icon className="size-4 shrink-0 text-primary" />{t.label}</Button>)}</div></section>}
-            {homeSection === 'connections' && <div className="grid gap-8 lg:grid-cols-2">
-              <section><Heading title="My clinical team" icon={LockKeyhole} />{h?.careTeam.length ? h.careTeam.map(c => <div key={c.id} className="mb-3 flex items-center gap-3"><PhotoAvatar name={c.name} /><span className="text-sm font-medium">{c.name}</span></div>) : <Empty icon={LockKeyhole} text="Your clinical team will appear here." />}<div className="mt-4 flex flex-wrap gap-2"><Button onClick={() => setTool('contact')}><MessageSquare className="size-4" />Contact clinician</Button><Button variant="outline" onClick={() => setTool('messages')}>Messages</Button></div></section>
-              <section><Heading title="My network" icon={Users} /><Empty icon={Users} text="No connections to display." /><Button asChild variant="outline"><Link to="/discover">Discover the VITO community<ArrowUpRight className="size-4" /></Link></Button></section>
-            </div>}
+            {homeSection === 'connections' && <div className="grid gap-8 lg:grid-cols-2"><section><Heading title="My clinical team" icon={LockKeyhole} />{h?.careTeam.length ? h.careTeam.map(c => <div key={c.id} className="mb-3 flex items-center gap-3"><PhotoAvatar name={c.name} /><span className="text-sm font-medium">{c.name}</span></div>) : <Empty icon={LockKeyhole} text="Your clinical team will appear here." />}<div className="mt-4 flex flex-wrap gap-2"><Button onClick={() => setTool('contact')}><MessageSquare className="size-4" />Contact clinician</Button><Button variant="outline" onClick={() => setTool('messages')}>Messages</Button></div></section><section><Heading title="My network" icon={Users} /><Empty icon={Users} text="No connections to display." /><Button asChild variant="outline"><Link to="/discover">Discover the VITO community<ArrowUpRight className="size-4" /></Link></Button></section></div>}
+            {homeSection === 'recovery' && <section><Heading title="Recovery tracking" icon={Activity} />{!!h?.active.length ? <div className="grid gap-3 sm:grid-cols-2">{h.active.map(i => <Button key={i.id} variant="outline" className="h-auto flex-col items-stretch gap-3 bg-card p-4 text-left" onClick={() => setTool('injuries')}><span className="flex justify-between gap-2"><span className="font-semibold">{i.body_region}</span><span className="text-xs text-primary">{STAGE_LABEL[i.status] ?? i.status}</span></span><Progress value={stageProgress(i.status)} /><span className="text-xs text-muted-foreground">{i.injury_code}</span></Button>)}</div> : <Empty icon={Activity} text="No recovery tracking available yet." />}</section>}
+            {homeSection === 'updates' && <section><Heading title="Care updates" icon={Activity} />{h?.timeline.length ? <ul className="divide-y border-y">{h.timeline.slice(0, 8).map(t => <li key={t.id} className="flex gap-3 py-4"><span className="mt-1 size-2 shrink-0 rounded-full bg-accent" /><div><p className="text-sm font-medium">{t.title}</p><p className="mt-1 text-xs text-muted-foreground">{date(t.at)}</p></div></li>)}</ul> : <Empty icon={Activity} text="No care updates yet." />}</section>}
+            {homeSection === 'activity' && <section><Heading title="Sporting activity" icon={Trophy} /><Empty icon={Trophy} text="No sporting updates yet." /></section>}
           </div>
         </section>
       </>}
@@ -111,8 +107,8 @@ export function AthletePortal({ user, view = 'home' }: { user: User; view?: View
       </>}
     </main>
     <nav aria-label="Athlete navigation" className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 shadow-[0_-8px_24px_-18px_rgba(40,20,80,0.45)] backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-4 py-2">
-        {([{ to: '/dashboard', label: 'Home', icon: Home, key: 'home' }, { to: '/discover', label: 'Discover', icon: Compass, key: 'discover' }, { to: '/profile', label: 'Profile', icon: UserRound, key: 'profile' }] as const).map(n => <Link key={n.key} to={n.to} aria-label={n.label} title={n.label} aria-current={view === n.key ? 'page' : undefined} className={`flex size-12 items-center justify-center rounded-xl transition-colors ${view === n.key ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}><n.icon className="size-5" /></Link>)}
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-3 items-center px-4 py-2">
+        {([{ to: '/dashboard', label: 'Home', icon: Home, key: 'home', position: 'justify-self-start' }, { to: '/discover', label: 'Discover', icon: Compass, key: 'discover', position: 'justify-self-center' }, { to: '/profile', label: 'Profile', icon: UserRound, key: 'profile', position: 'justify-self-end' }] as const).map(n => <Link key={n.key} to={n.to} aria-label={n.label} title={n.label} aria-current={view === n.key ? 'page' : undefined} className={`${n.position} flex size-12 items-center justify-center rounded-xl transition-colors ${view === n.key ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}><n.icon className="size-5" /></Link>)}
       </div>
     </nav>
     <Dialog open={editing} onOpenChange={setEditing}><DialogContent><DialogHeader><DialogTitle>Edit profile</DialogTitle></DialogHeader><EditablePhoto path={v?.avatar ?? null} name={v?.name ?? null} target="profile" targetId={user.id} onUpdated={() => { qc.invalidateQueries({ queryKey: ['viewer', user.id] }); qc.invalidateQueries({ queryKey: ['app-header', user.id] }); }} /><form className="space-y-3" onSubmit={async e => { e.preventDefault(); const f = new FormData(e.currentTarget); setBusy(true); const { error } = await supabase.from('profiles').update({ full_name: String(f.get('name')).trim() }).eq('id', user.id); setBusy(false); if (error) toast.error('Profile could not be saved.'); else { toast.success('Profile updated'); qc.invalidateQueries({ queryKey: ['viewer', user.id] }); qc.invalidateQueries({ queryKey: ['app-header', user.id] }); setEditing(false); } }}><Label htmlFor="profile-name">Name</Label><Input id="profile-name" name="name" required maxLength={120} defaultValue={v?.name} /><Button disabled={busy} type="submit">{busy ? 'Saving…' : 'Save profile'}</Button></form></DialogContent></Dialog>
