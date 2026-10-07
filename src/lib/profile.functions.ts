@@ -34,7 +34,9 @@ export const loadAthleteProfile = createServerFn({ method: 'POST' })
       db.from('community_profiles').select('headline, sport, position, school_name, team, district, country, bio, skills, interests, cover_path, discoverable, visibility').eq('user_id', context.userId).maybeSingle(),
       db.from('athlete_guardians').select('athlete_id, athletes(id, first_name, surname, sport, date_of_birth, phone, photo_path, athlete_code)').eq('user_id', context.userId).limit(1),
     ]);
-    if (profileError || communityError || linksError) throw new Error('Profile could not be loaded.');
+    if (profileError) { console.error('[profile] profile row load failed', profileError); throw new Error('Your account profile could not be loaded.'); }
+    if (communityError) { console.error('[profile] community row load failed', communityError); throw new Error('Your community profile could not be loaded. Please run the latest database migrations.'); }
+    if (linksError) { console.error('[profile] athlete link load failed', linksError); throw new Error('Your athlete record link could not be loaded.'); }
     return { profile, community, athlete: links?.[0]?.athletes ?? null };
   });
 
@@ -44,38 +46,26 @@ export const saveAthleteProfile = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     const db = supabaseAdmin as any;
-    const { error: profileError } = await db.from('profiles').update({ full_name: data.full_name }).eq('id', context.userId);
-    if (profileError) throw new Error('Profile could not be saved.');
-
-    const { data: links, error: linksError } = await db.from('athlete_guardians').select('athlete_id').eq('user_id', context.userId).limit(1);
-    if (linksError) throw new Error('Athlete record could not be loaded.');
-    const athleteId = links?.[0]?.athlete_id;
-    if (athleteId) {
-      const { error: athleteError } = await db.from('athletes').update({
-        first_name: data.first_name,
-        surname: data.surname,
-        sport: data.sport || null,
-        date_of_birth: data.date_of_birth || null,
-        phone: data.phone || null,
-      }).eq('id', athleteId);
-      if (athleteError) throw new Error('Athlete details could not be saved.');
-    }
-
-    const { error: communityError } = await db.from('community_profiles').upsert({
-      user_id: context.userId,
-      headline: data.headline || null,
-      sport: data.sport || null,
-      position: data.position || null,
-      school_name: data.school_name || null,
-      team: data.team || null,
-      district: data.district || null,
-      country: data.country || null,
-      bio: data.bio || null,
-      skills: data.skills,
-      interests: data.interests,
-      discoverable: data.discoverable,
-      visibility: data.visibility,
-    }, { onConflict: 'user_id' });
-    if (communityError) throw new Error('Community profile could not be saved.');
+    const { error } = await db.rpc('save_athlete_profile', {
+      p_user_id: context.userId,
+      p_full_name: data.full_name,
+      p_first_name: data.first_name,
+      p_surname: data.surname,
+      p_sport: data.sport || null,
+      p_date_of_birth: data.date_of_birth || null,
+      p_phone: data.phone || null,
+      p_headline: data.headline || null,
+      p_position: data.position || null,
+      p_school_name: data.school_name || null,
+      p_team: data.team || null,
+      p_district: data.district || null,
+      p_country: data.country || null,
+      p_bio: data.bio || null,
+      p_skills: data.skills,
+      p_interests: data.interests,
+      p_discoverable: data.discoverable,
+      p_visibility: data.visibility,
+    });
+    if (error) { console.error('[profile] atomic save failed', error); throw new Error(`Profile could not be saved: ${error.message}`); }
     return { ok: true };
   });

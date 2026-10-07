@@ -12,8 +12,8 @@ export const uploadPhoto = createServerFn({ method: 'POST' })
     if (bytes.length > 2 * 1024 * 1024) throw new Error('Photo must be under 2MB.');
     const path = `uploads/${crypto.randomUUID()}.${TYPES[data.contentType]}`;
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-    const { error } = await supabaseAdmin.storage.from('avatars').upload(path, bytes, { contentType: data.contentType });
-    if (error) throw new Error('Photo could not be uploaded.');
+    const { error } = await supabaseAdmin.storage.from('avatars').upload(path, bytes, { contentType: data.contentType, upsert: false });
+    if (error) { console.error('[photo] avatar upload failed', error); throw new Error(`Photo could not be uploaded: ${error.message}`); }
     return path;
   });
 
@@ -47,6 +47,6 @@ export const updateLinkedPhoto = createServerFn({ method: 'POST' })
           ? admin.from('athletes').update({ photo_path: data.path }).eq('id', data.targetId)
           : admin.from('schools').update({ logo_path: data.path }).eq('id', data.targetId);
     const { error } = await query;
-    if (error) throw new Error('Photo could not be updated.');
+    if (error) { console.error('[photo] linked photo update failed', { target: data.target, targetId: data.targetId, error }); throw new Error(`Photo could not be updated: ${error.message}`); }
     return { ok: true };
   });
