@@ -11,7 +11,7 @@ import { PhotoAvatar, fileToPhotoPath } from "@/components/vito/Photo";
 import logo from "@/assets/vito-logo.png";
 
 export const Route = createFileRoute("/_authenticated/cases")({
-  head: () => ({ meta: [{ title: "Case workspace — VITO Physio" }] }),
+  head: () => ({ meta: [{ title: "Case workspace — VITO Physio" }, { name: "description", content: "VITO Physio clinical case assessment, rehabilitation and recovery management." }, { property: "og:title", content: "Case workspace — VITO Physio" }, { property: "og:description", content: "Manage authorized athlete injury cases and clinical care." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   beforeLoad: async ({ context }) => {
     const { data } = await supabase.rpc("is_vito_staff", { _user_id: context.user.id });
     if (!data) throw redirect({ to: "/dashboard" });

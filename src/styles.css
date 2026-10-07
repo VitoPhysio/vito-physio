@@ -163,3 +163,11 @@
     color: var(--color-foreground);
   }
 }
+
+@media print {
+  body:has(.athlete-print-summary) * { visibility: hidden; }
+  body:has(.athlete-print-summary) .athlete-print-summary,
+  body:has(.athlete-print-summary) .athlete-print-summary * { visibility: visible; }
+  body:has(.athlete-print-summary) .athlete-print-summary { position: fixed; inset: 0; overflow: visible; background: var(--card); color: var(--foreground); padding: 24px; }
+  body:has(.athlete-print-summary) .athlete-print-summary button { display: none; }
+}
