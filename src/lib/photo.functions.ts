@@ -20,12 +20,12 @@ export const uploadPhoto = createServerFn({ method: 'POST' })
 export const updateLinkedPhoto = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({
-    target: z.enum(['profile', 'athlete', 'organisation']),
+    target: z.enum(['profile', 'athlete', 'organisation', 'community-cover']),
     targetId: z.string().uuid(),
     path: z.string().regex(/^uploads\/[0-9a-f-]{36}\.(png|jpg|webp)$/),
   }).parse(input))
   .handler(async ({ data, context }) => {
-    const isSelf = data.target === 'profile' && data.targetId === context.userId;
+    const isSelf = ['profile', 'community-cover'].includes(data.target) && data.targetId === context.userId;
     const { data: staff } = await context.supabase.rpc('is_vito_staff', { _user_id: context.userId });
     let allowed = isSelf || Boolean(staff);
     if (!allowed && data.target === 'athlete') {
@@ -38,11 +38,14 @@ export const updateLinkedPhoto = createServerFn({ method: 'POST' })
     }
     if (!allowed) throw new Error('You cannot change this photo.');
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const admin = supabaseAdmin as any;
     const query = data.target === 'profile'
-      ? supabaseAdmin.from('profiles').update({ avatar_path: data.path }).eq('id', data.targetId)
-      : data.target === 'athlete'
-        ? supabaseAdmin.from('athletes').update({ photo_path: data.path }).eq('id', data.targetId)
-        : supabaseAdmin.from('schools').update({ logo_path: data.path }).eq('id', data.targetId);
+      ? admin.from('profiles').update({ avatar_path: data.path }).eq('id', data.targetId)
+      : data.target === 'community-cover'
+        ? admin.from('community_profiles').upsert({ user_id: data.targetId, cover_path: data.path }, { onConflict: 'user_id' })
+        : data.target === 'athlete'
+          ? admin.from('athletes').update({ photo_path: data.path }).eq('id', data.targetId)
+          : admin.from('schools').update({ logo_path: data.path }).eq('id', data.targetId);
     const { error } = await query;
     if (error) throw new Error('Photo could not be updated.');
     return { ok: true };
