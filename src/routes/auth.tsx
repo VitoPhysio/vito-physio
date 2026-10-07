@@ -59,7 +59,7 @@ function AuthPage() {
           data: { full_name: fullName, requested_role: role.split(":")[0], account_kind: role.includes(":club") ? "club_academy" : null, avatar_path },
         },
       });
-      setMsg(error ? { kind: "err", text: error.message } : { kind: "ok", text: "Check your email and click the link to verify your account, then sign in." });
+      setMsg(error ? { kind: "err", text: error.message } : { kind: "ok", text: role === "athlete" ? "Your athlete record will be created automatically. Check your email to verify your account, then sign in." : "Check your email and click the link to verify your account, then sign in." });
     } else {
       try {
         const session = await signInWithIdentifier({ data: { identifier, password } });
