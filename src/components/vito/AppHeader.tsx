@@ -2,6 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ClipboardList,
+  Compass,
+  UserRound,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -60,6 +62,7 @@ export function AppHeader({ user }: { user: User }) {
     const nav: QuickMenuItem[] = [
       { key: "dashboard", label: "Dashboard", description: "Your overview", icon: LayoutDashboard, to: "/dashboard" },
     ];
+    if (role === "athlete" || role === "parent") nav.push({ key: "discover", label: "Discover", icon: Compass, to: "/discover" }, { key: "profile", label: "Athlete profile", icon: UserRound, to: "/profile" });
     if (STAFF.includes(role)) nav.push({ key: "cases", label: "Case workspace", description: "Schools, athletes and cases", icon: ClipboardList, to: "/cases" });
     if (ADMIN.includes(role)) nav.push({ key: "admin", label: "Accounts & approvals", description: "Manage user access", icon: ShieldCheck, to: "/admin" });
     return [...nav, ...DEFAULT_QUICK_MENU_ITEMS];
@@ -80,7 +83,7 @@ export function AppHeader({ user }: { user: User }) {
     <header className="sticky top-0 z-40 bg-foreground text-background shadow-sm print:hidden">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
         <Link to="/dashboard" aria-label="VITO Physio home" className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60">
-          <img src={logo} alt="VITO Physio" className="size-10 rounded-lg bg-white object-contain p-0.5" />
+          <img src={logo} alt="VITO Physio" className="size-10 rounded-lg bg-card object-contain p-0.5" />
         </Link>
 
         <HeaderSearch items={items} onPick={go} />

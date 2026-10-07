@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Inbox, Compose } from "@/components/vito/Communications";
 import { PhotoAvatar } from "@/components/vito/Photo";
+import { AthletePortal } from "@/components/athlete/Portal";
 import logo from "@/assets/vito-logo.png";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — VITO Physio" }] }),
+  head: () => ({ meta: [{ title: "Home & care overview — VITO Physio" }, { name: "description", content: "Your VITO Physio care overview, recovery and professional sports network." }, { property: "og:title", content: "Home & care overview — VITO Physio" }, { property: "og:description", content: "Health, rehabilitation and connected care within VITO Physio." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: Dashboard,
 });
 
@@ -70,6 +71,8 @@ function Dashboard() {
       </div>
     );
   }
+
+  if (data.role === "athlete" || data.role === "parent") return <AthletePortal user={user} />;
 
   const isAdmin = data.role === "super_admin" || data.role === "vito_admin";
 
