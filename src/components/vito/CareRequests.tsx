@@ -32,7 +32,7 @@ export function CareRequests({ staff, userId }: { staff: boolean; userId: string
         if (error) throw error;
         appointment_id = data.id;
       }
-      const { error } = await supabase.from("care_requests").update({ status: schedule ? "scheduled" : "declined", appointment_id, handled_by: userId, response: schedule ? `Scheduled for ${new Date(when[id]).toLocaleString()}` : "Please contact the clinic." }).eq("id", id);
+      const { error } = await supabase.from("care_requests").update({ status: schedule ? "scheduled" : "declined", appointment_id, handled_by: userId, response: schedule ? `Scheduled for ${new Date(when[id] ?? "").toLocaleString()}` : "Please contact the clinic." }).eq("id", id);
       if (error) throw error;
       toast.success(schedule ? "Appointment scheduled" : "Request declined");
       qc.invalidateQueries({ queryKey: ["care-requests"] });
