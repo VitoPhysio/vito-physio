@@ -170,6 +170,44 @@ export type Database = {
           },
         ]
       }
+      athlete_achievements: {
+        Row: {
+          achieved_on: string | null
+          category: string
+          created_at: string
+          detail: string | null
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          achieved_on?: string | null
+          category?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          achieved_on?: string | null
+          category?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athlete_achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athlete_guardians: {
         Row: {
           athlete_id: string
@@ -356,6 +394,158 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_activity: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          kind: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          kind?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_activity_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_profiles: {
+        Row: {
+          bio: string | null
+          country: string | null
+          cover_path: string | null
+          created_at: string
+          discoverable: boolean
+          district: string | null
+          gallery_paths: string[]
+          headline: string | null
+          interests: string[]
+          position: string | null
+          school_id: string | null
+          school_name: string | null
+          skills: string[]
+          sport: string | null
+          team: string | null
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          bio?: string | null
+          country?: string | null
+          cover_path?: string | null
+          created_at?: string
+          discoverable?: boolean
+          district?: string | null
+          gallery_paths?: string[]
+          headline?: string | null
+          interests?: string[]
+          position?: string | null
+          school_id?: string | null
+          school_name?: string | null
+          skills?: string[]
+          sport?: string | null
+          team?: string | null
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          bio?: string | null
+          country?: string | null
+          cover_path?: string | null
+          created_at?: string
+          discoverable?: boolean
+          district?: string | null
+          gallery_paths?: string[]
+          headline?: string | null
+          interests?: string[]
+          position?: string | null
+          school_id?: string | null
+          school_name?: string | null
+          skills?: string[]
+          sport?: string | null
+          team?: string | null
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_profiles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      connections: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connections_addressee_id_fkey"
+            columns: ["addressee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connections_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -665,6 +855,119 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string
+          consultation_request_id: string | null
+          created_at: string
+          data: Json
+          id: string
+          kind: string
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          consultation_request_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          kind?: string
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          consultation_request_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          kind?: string
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_consultation_request_id_fkey"
+            columns: ["consultation_request_id"]
+            isOneToOne: false
+            referencedRelation: "consultation_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opportunities: {
+        Row: {
+          contact: string | null
+          created_at: string
+          created_by: string
+          deadline: string | null
+          description: string | null
+          id: string
+          kind: string
+          location: string | null
+          organisation_id: string | null
+          organiser: string | null
+          published: boolean
+          sport: string | null
+          starts_on: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          contact?: string | null
+          created_at?: string
+          created_by?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          kind: string
+          location?: string | null
+          organisation_id?: string | null
+          organiser?: string | null
+          published?: boolean
+          sport?: string | null
+          starts_on?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          contact?: string | null
+          created_at?: string
+          created_by?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          kind?: string
+          location?: string | null
+          organisation_id?: string | null
+          organiser?: string | null
+          published?: boolean
+          sport?: string | null
+          starts_on?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           account_code: string
@@ -968,6 +1271,44 @@ export type Database = {
         Args: { _athlete: string; _user: string }
         Returns: boolean
       }
+      can_view_member: {
+        Args: { _owner: string; _viewer: string }
+        Returns: boolean
+      }
+      discover_members: {
+        Args: { _q?: string; _role?: string; _school?: string; _sport?: string }
+        Returns: string[]
+      }
+      discover_schools: {
+        Args: { _q?: string }
+        Returns: {
+          id: string
+          location: string
+          logo_path: string
+          member_count: number
+          name: string
+          school_type: string
+          sports: string[]
+        }[]
+      }
+      get_member_cards: {
+        Args: { _ids: string[] }
+        Returns: {
+          avatar_path: string
+          cover_path: string
+          full_name: string
+          headline: string
+          id: string
+          position: string
+          role: string
+          school: string
+          school_id: string
+          school_verified: boolean
+          sport: string
+          team: string
+          visibility: string
+        }[]
+      }
       get_sender_names: {
         Args: { _ids: string[] }
         Returns: {
@@ -983,7 +1324,33 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_connected: { Args: { _a: string; _b: string }; Returns: boolean }
+      is_discoverable_member: { Args: { _u: string }; Returns: boolean }
+      is_valid_photo_path: { Args: { _p: string }; Returns: boolean }
       is_vito_staff: { Args: { _user_id: string }; Returns: boolean }
+      save_athlete_profile: {
+        Args: {
+          p_bio: string
+          p_country: string
+          p_date_of_birth: string
+          p_discoverable: boolean
+          p_district: string
+          p_first_name: string
+          p_full_name: string
+          p_headline: string
+          p_interests: string[]
+          p_phone: string
+          p_position: string
+          p_school_name: string
+          p_skills: string[]
+          p_sport: string
+          p_surname: string
+          p_team: string
+          p_user_id: string
+          p_visibility: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
