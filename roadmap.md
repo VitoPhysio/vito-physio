@@ -8,4 +8,4 @@
 - [x] Complete athlete Home, Discover and Profile interface architecture while preserving the staff dashboard.
 - [x] Connect existing health records, reporting, appointments and private clinician messages.
 - [x] Provide honest empty states for community features awaiting integration.
-- [x] Record MVP, future phases and acceptance criteria.
+- [x] Record MVP, future phases and acceptance criteria.- [ ] Registration: email+password sign-up, choose existing school/club/academy, athletes searchable on admin
