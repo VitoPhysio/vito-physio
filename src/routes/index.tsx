@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -12,10 +12,11 @@ import {
   LockKeyhole,
   LogIn,
   LayoutDashboard,
-  Bell,
   Menu,
+  Search,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   DropdownMenu,
@@ -59,8 +60,65 @@ const cycle = [
 
 const audience = ["Schools", "Academies", "Clubs", "Independent athletes"];
 
+const publicSearchItems = [
+  {
+    label: "Consult or register",
+    description: "Start a consultation or register an athlete or organisation.",
+    to: "/register",
+    requiresLogin: false,
+  },
+  {
+    label: "Parent portal",
+    description: "View athlete recovery information.",
+    to: "/portal",
+    requiresLogin: false,
+  },
+  {
+    label: "Dashboard",
+    description: "Open your VITO Physio overview.",
+    to: "/dashboard",
+    requiresLogin: true,
+  },
+  {
+    label: "Case workspace",
+    description: "Manage clinical cases and recovery.",
+    to: "/cases",
+    requiresLogin: true,
+  },
+  {
+    label: "Notifications",
+    description: "View staff alerts and consultation requests.",
+    to: "/notifications",
+    requiresLogin: true,
+  },
+  {
+    label: "Athlete profile",
+    description: "View and update your athlete profile.",
+    to: "/profile",
+    requiresLogin: true,
+  },
+];
+
 function Index() {
+  const navigate = useNavigate();
   const [signedIn, setSignedIn] = useState(false);
+  const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const matches = publicSearchItems.filter((item) =>
+    `${item.label} ${item.description}`.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+
+  function selectSearchItem(item: (typeof publicSearchItems)[number]) {
+    setSearch("");
+    setSearchOpen(false);
+    if (item.requiresLogin && !signedIn) {
+      toast("Please sign in to open this area.");
+      navigate({ to: "/auth" });
+      return;
+    }
+    navigate({ to: item.to as never });
+  }
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user)));
     const {
@@ -84,15 +142,58 @@ function Index() {
               className="size-10 rounded-lg bg-card object-contain p-0.5"
             />
           </Link>
-          <div className="relative min-w-0 flex-1 sm:max-w-md">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold uppercase tracking-[0.16em] text-background/55">
-              VITO Physio
-            </span>
-            <div
-              aria-hidden="true"
-              className="h-10 w-full rounded-lg border border-background/10 bg-background/10"
+          <form
+            role="search"
+            className="relative mx-auto min-w-0 flex-1 sm:max-w-2xl"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (matches[0]) selectSearchItem(matches[0]);
+            }}
+          >
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-background/60" />
+            <input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+              onBlur={() => setTimeout(() => setSearchOpen(false), 120)}
+              type="search"
+              placeholder="Search VITO Physio…"
+              aria-label="Search VITO Physio"
+              className="h-10 w-full rounded-lg border border-background/10 bg-background/10 pl-10 pr-3 text-sm text-background placeholder:text-background/60 focus:border-background/30 focus:bg-background/15 focus:outline-none"
             />
-          </div>
+            {searchOpen && search.trim() && (
+              <ul className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg">
+                {matches.length ? (
+                  matches.map((item) => (
+                    <li key={item.to}>
+                      <button
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => selectSearchItem(item)}
+                        className="flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent/10"
+                      >
+                        <Search className="mt-0.5 size-4 shrink-0 text-primary" />
+                        <span>
+                          <span className="block font-medium">{item.label}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {item.description}
+                            {item.requiresLogin && " · Sign in required"}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <li className="px-3 py-2 text-sm text-muted-foreground">
+                    No VITO Physio results.
+                  </li>
+                )}
+              </ul>
+            )}
+          </form>
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
             {!signedIn && (
               <Link
@@ -114,12 +215,6 @@ function Index() {
                 <LayoutDashboard className="size-5" />
               </Link>
             )}
-            <span
-              className="inline-flex size-10 items-center justify-center rounded-full text-background/45"
-              title="Notifications available after sign in"
-            >
-              <Bell className="size-5" />
-            </span>
             <DropdownMenu>
               <DropdownMenuTrigger
                 aria-label="Open menu"
