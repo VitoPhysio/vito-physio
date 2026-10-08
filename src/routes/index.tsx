@@ -12,18 +12,35 @@ import {
   LockKeyhole,
   LogIn,
   LayoutDashboard,
+  Bell,
+  Menu,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import logo from "@/assets/vito-logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "VITO Physio — Sports physiotherapy care" },
-      { name: "description", content: "Injury cases, rehab and recovery tracking for schools, academies, clubs and athletes." },
+      {
+        name: "description",
+        content:
+          "Injury cases, rehab and recovery tracking for schools, academies, clubs and athletes.",
+      },
       { property: "og:title", content: "VITO Physio — Sports physiotherapy care" },
-      { property: "og:description", content: "Injury cases, rehab and recovery tracking for schools, academies, clubs and athletes." },
+      {
+        property: "og:description",
+        content:
+          "Injury cases, rehab and recovery tracking for schools, academies, clubs and athletes.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -46,31 +63,92 @@ function Index() {
   const [signedIn, setSignedIn] = useState(false);
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user)));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session)));
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session)));
     return () => subscription.unsubscribe();
   }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-50 border-b border-border bg-card">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-3.5">
-          <Link to="/" className="flex min-w-0 items-center gap-2.5">
-            <img src={logo} alt="VITO Physio" className="h-10 w-10 shrink-0 object-contain" />
-            <span className="truncate text-lg font-extrabold tracking-tight">
-              <span className="text-primary">VITO</span> <span className="text-accent">Physio</span>
-            </span>
-          </Link>
-          <Button
-            asChild
-            size="sm"
-            className="bg-brand-gradient shrink-0 gap-2 rounded-full px-5 font-semibold text-primary-foreground shadow-glow ring-1 ring-primary/25 transition-transform hover:-translate-y-0.5"
+      <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm">
+        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
+          <Link
+            to="/"
+            aria-label="VITO Physio home"
+            className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60"
           >
-            <Link to={signedIn ? "/dashboard" : "/auth"}>
-              {signedIn ? <LayoutDashboard className="size-4" /> : <LogIn className="size-4" />}
-              {signedIn ? "Dashboard" : "Sign in"}
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
+            <img
+              src={logo}
+              alt="VITO Physio"
+              className="size-10 rounded-lg bg-card object-contain p-0.5"
+            />
+          </Link>
+          <div className="relative min-w-0 flex-1 sm:max-w-md">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold uppercase tracking-[0.16em] text-background/55">
+              VITO Physio
+            </span>
+            <div
+              aria-hidden="true"
+              className="h-10 w-full rounded-lg border border-background/10 bg-background/10"
+            />
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+            {!signedIn && (
+              <Link
+                to="/auth"
+                aria-label="Log in"
+                title="Log in to your account"
+                className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition hover:brightness-105"
+              >
+                <LogIn className="size-4" />
+                Log in
+              </Link>
+            )}
+            {signedIn && (
+              <Link
+                to="/dashboard"
+                aria-label="Open dashboard"
+                className="inline-flex size-10 items-center justify-center rounded-full text-background/85 hover:bg-background/10"
+              >
+                <LayoutDashboard className="size-5" />
+              </Link>
+            )}
+            <span
+              className="inline-flex size-10 items-center justify-center rounded-full text-background/45"
+              title="Notifications available after sign in"
+            >
+              <Bell className="size-5" />
+            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="Open menu"
+                title="Open menu"
+                className="inline-flex size-10 items-center justify-center rounded-md text-background/80 transition-colors hover:bg-background/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60"
+              >
+                <Menu className="size-7" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 rounded-xl p-2">
+                <DropdownMenuLabel>
+                  {signedIn ? "Quick menu" : "Sign in required"}
+                </DropdownMenuLabel>
+                {!signedIn && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/auth" className="cursor-pointer">
+                      Sign in to open your menu
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                {signedIn && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="cursor-pointer">
+                      Open dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
 
@@ -88,12 +166,16 @@ function Index() {
             </h1>
 
             <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              From the first injury report to a confident return to sport. Connected care for athletes,
-              schools, academies and clubs.
+              From the first injury report to a confident return to sport. Connected care for
+              athletes, schools, academies and clubs.
             </p>
 
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-              <Button asChild size="lg" className="bg-brand-gradient rounded-full px-7 text-base shadow-glow ring-1 ring-primary/25 transition-transform hover:-translate-y-0.5">
+              <Button
+                asChild
+                size="lg"
+                className="bg-brand-gradient rounded-full px-7 text-base shadow-glow ring-1 ring-primary/25 transition-transform hover:-translate-y-0.5"
+              >
                 <Link to="/register">
                   <Stethoscope className="mr-2 size-4" />
                   Consult or register
@@ -110,7 +192,9 @@ function Index() {
             <ul className="mt-12 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {audience.map((name, i) => (
                 <li key={name} className="flex items-center gap-3">
-                  {i > 0 && <span className="size-1 rounded-full bg-accent/60" aria-hidden="true" />}
+                  {i > 0 && (
+                    <span className="size-1 rounded-full bg-accent/60" aria-hidden="true" />
+                  )}
                   {name}
                 </li>
               ))}
@@ -118,11 +202,15 @@ function Index() {
           </div>
 
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 border-t px-5 py-10 text-center">
-            <img src={logo} alt="VITO Physio logo" className="h-24 w-24 object-contain sm:h-28 sm:w-28" />
+            <img
+              src={logo}
+              alt="VITO Physio logo"
+              className="h-24 w-24 object-contain sm:h-28 sm:w-28"
+            />
             <p className="text-base font-bold text-primary">Care that moves with you</p>
             <p className="max-w-md text-sm text-muted-foreground">
-              One record per athlete: injuries, assessments, rehab plans, follow-ups and recovery progress,
-              shared only with the people who need to see them.
+              One record per athlete: injuries, assessments, rehab plans, follow-ups and recovery
+              progress, shared only with the people who need to see them.
             </p>
           </div>
         </section>
@@ -130,11 +218,15 @@ function Index() {
         <section className="border-t bg-card">
           <div className="mx-auto max-w-6xl px-5 py-16">
             <div className="mx-auto mb-12 max-w-2xl text-center">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">The care pathway</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">From injury to return</h2>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
+                The care pathway
+              </p>
+              <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+                From injury to return
+              </h2>
               <p className="mt-4 text-muted-foreground">
-                Every case follows the same six steps, so nothing gets lost between the first report and the
-                final clearance.
+                Every case follows the same six steps, so nothing gets lost between the first report
+                and the final clearance.
               </p>
             </div>
 
