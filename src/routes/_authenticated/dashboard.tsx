@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { AthletePortal } from "@/components/athlete/Portal";
+import { CareRequests } from "@/components/vito/CareRequests";
 import logo from "@/assets/vito-logo.png";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -151,6 +152,12 @@ function Dashboard() {
           ))}
         </div>
 
+        {data.staff && (
+          <section>
+            <h2 className="mb-3 text-lg font-bold">Athlete requests (from the athlete home page)</h2>
+            <CareRequests staff userId={user.id} />
+          </section>
+        )}
         <section>
           <h2 className="mb-3 text-lg font-bold">
             {data.staff ? "Caseload & recovery monitoring" : "Injuries & recovery status"}
