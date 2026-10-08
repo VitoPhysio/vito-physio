@@ -302,6 +302,66 @@ export type Database = {
           },
         ]
       }
+      care_requests: {
+        Row: {
+          appointment_id: string | null
+          athlete_id: string
+          created_at: string
+          handled_by: string | null
+          id: string
+          kind: string
+          message: string
+          preferred_date: string | null
+          requester_id: string
+          response: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          athlete_id: string
+          created_at?: string
+          handled_by?: string | null
+          id?: string
+          kind?: string
+          message: string
+          preferred_date?: string | null
+          requester_id: string
+          response?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          athlete_id?: string
+          created_at?: string
+          handled_by?: string | null
+          id?: string
+          kind?: string
+          message?: string
+          preferred_date?: string | null
+          requester_id?: string
+          response?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "care_requests_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_requests_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinical_notes: {
         Row: {
           athlete_id: string

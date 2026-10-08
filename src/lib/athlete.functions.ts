@@ -79,6 +79,10 @@ export const contactClinician = createServerFn({ method: 'POST' })
       body: data.body,
     });
     if (error) throw new Error('Your message could not be sent.');
+    // Appointment / consultation / follow-up requests also land in the staff request queue.
+    if (data.kind !== 'message' && data.athlete_id) {
+      await context.supabase.from('care_requests').insert({ athlete_id: data.athlete_id, requester_id: context.userId, kind: data.kind, message: data.body });
+    }
     return { ok: true };
   });
 
