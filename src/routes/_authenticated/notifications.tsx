@@ -19,6 +19,10 @@ type NotificationRow = {
     phone?: string;
     organisation_type?: string;
     message?: string;
+    sender?: string;
+    subject?: string | null;
+    audience?: string | null;
+    recipient?: string;
   };
   read_at: string | null;
   created_at: string;
@@ -38,13 +42,59 @@ function NotificationsPage() {
     enabled: Boolean(user),
     queryFn: async () => {
       const client = supabase as any;
-      const { data, error } = await client
-        .from("notifications")
-        .select("id,title,body,kind,data,read_at,created_at")
-        .order("created_at", { ascending: false })
-        .limit(50);
+      const [{ data, error }, { data: messages }] = await Promise.all([
+        client
+          .from("notifications")
+          .select("id,title,body,kind,data,read_at,created_at")
+          .order("created_at", { ascending: false })
+          .limit(50),
+        client
+          .from("communications")
+          .select("id,sender_id,subject,body,audience,recipient_id,created_at")
+          .order("created_at", { ascending: false })
+          .limit(50),
+      ]);
       if (error) throw error;
-      return (data ?? []) as NotificationRow[];
+      const senderIds = [
+        ...new Set((messages ?? []).map((message: { sender_id: string }) => message.sender_id)),
+      ];
+      const { data: senders } = senderIds.length
+        ? await client.rpc("get_sender_names", { _ids: senderIds })
+        : { data: [] };
+      const senderMap = new Map(
+        (senders ?? []).map((sender: { id: string; full_name?: string; is_admin?: boolean }) => [
+          sender.id,
+          sender.is_admin ? "VITO administration (admin)" : (sender.full_name ?? "VITO clinician"),
+        ]),
+      );
+      const communicationNotifications = (messages ?? []).map(
+        (message: {
+          id: string;
+          sender_id: string;
+          subject?: string | null;
+          body: string;
+          audience?: string | null;
+          recipient_id?: string | null;
+          created_at: string;
+        }) => ({
+          id: `communication-${message.id}`,
+          title: message.subject || "New communication",
+          body: `${senderMap.get(message.sender_id) ?? "VITO team"} sent a communication${message.audience ? ` to ${message.audience}` : ""}.`,
+          kind: "communication",
+          data: {
+            sender: senderMap.get(message.sender_id),
+            subject: message.subject,
+            message: message.body,
+            audience: message.audience,
+            recipient: message.recipient_id,
+          },
+          read_at: null,
+          created_at: message.created_at,
+        }),
+      );
+      return [...((data ?? []) as NotificationRow[]), ...communicationNotifications]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 50);
     },
   });
 
@@ -96,7 +146,7 @@ function NotificationsPage() {
                         </p>
                       </div>
                     </div>
-                    {!notification.read_at && (
+                    {!notification.read_at && notification.kind !== "communication" && (
                       <Button size="sm" variant="outline" onClick={() => markRead(notification.id)}>
                         <Check className="mr-1 size-4" />
                         Mark read
@@ -121,6 +171,17 @@ function NotificationsPage() {
                           {details.message}
                         </p>
                       </div>
+                    </div>
+                  )}
+                  {notification.kind === "communication" && (
+                    <div className="mt-4 rounded-xl bg-muted/50 p-4 text-sm">
+                      <p className="font-semibold text-foreground">
+                        From: {details.sender || "VITO team"}
+                      </p>
+                      {details.audience && (
+                        <p className="mt-1 text-xs text-accent">Audience: {details.audience}</p>
+                      )}
+                      <p className="mt-3 whitespace-pre-wrap leading-relaxed">{details.message}</p>
                     </div>
                   )}
                 </article>

@@ -2,13 +2,27 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Inbox, Compose } from "@/components/vito/Communications";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { AthletePortal } from "@/components/athlete/Portal";
 import logo from "@/assets/vito-logo.png";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Home & care overview — VITO Physio" }, { name: "description", content: "Your VITO Physio care overview, recovery and professional sports network." }, { property: "og:title", content: "Home & care overview — VITO Physio" }, { property: "og:description", content: "Health, rehabilitation and connected care within VITO Physio." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({
+    meta: [
+      { title: "Home & care overview — VITO Physio" },
+      {
+        name: "description",
+        content: "Your VITO Physio care overview, recovery and professional sports network.",
+      },
+      { property: "og:title", content: "Home & care overview — VITO Physio" },
+      {
+        property: "og:description",
+        content: "Health, rehabilitation and connected care within VITO Physio.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: Dashboard,
 });
 
@@ -42,12 +56,25 @@ function Dashboard() {
         return (await q).count ?? 0;
       };
       const [schools, athletes, cases, openRefs, recent, partners] = await Promise.all([
-        supabase.from("schools").select("id", { count: "exact", head: true }).then((r) => r.count ?? 0),
+        supabase
+          .from("schools")
+          .select("id", { count: "exact", head: true })
+          .then((r) => r.count ?? 0),
         count("athletes"),
         count("injuries"),
         staff ? count("referrals", ["status", "open"]) : Promise.resolve(0),
-        supabase.from("injuries").select("id, injury_code, body_region, status, created_at, athletes(first_name, surname, athlete_code, photo_path)").order("updated_at", { ascending: false }).limit(10),
-        staff ? supabase.from("schools").select("id, name, school_code, school_type").order("name") : Promise.resolve({ data: [] as { id: string; name: string; school_code: string; school_type: string }[] }),
+        supabase
+          .from("injuries")
+          .select(
+            "id, injury_code, body_region, status, created_at, athletes(first_name, surname, athlete_code, photo_path)",
+          )
+          .order("updated_at", { ascending: false })
+          .limit(10),
+        staff
+          ? supabase.from("schools").select("id, name, school_code, school_type").order("name")
+          : Promise.resolve({
+              data: [] as { id: string; name: string; school_code: string; school_type: string }[],
+            }),
       ]);
       const stats = staff
         ? [
@@ -60,7 +87,15 @@ function Dashboard() {
             { label: "Athletes", value: athletes },
             { label: "Injury cases", value: cases },
           ];
-      return { avatar: profile?.avatar_path ?? null, name: profile?.full_name ?? user.email, role, staff, stats, recent: recent.data ?? [], partners: partners.data ?? [] };
+      return {
+        avatar: profile?.avatar_path ?? null,
+        name: profile?.full_name ?? user.email,
+        role,
+        staff,
+        stats,
+        recent: recent.data ?? [],
+        partners: partners.data ?? [],
+      };
     },
   });
 
@@ -81,7 +116,11 @@ function Dashboard() {
       <section className="bg-brand-gradient text-primary-foreground">
         <div className="mx-auto flex max-w-5xl flex-col gap-3 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <PhotoAvatar path={data.avatar} name={data.name} className="size-12 border-2 border-card" />
+            <PhotoAvatar
+              path={data.avatar}
+              name={data.name}
+              className="size-12 border-2 border-card"
+            />
             <div>
               <p className="text-sm opacity-80">Welcome back</p>
               <h1 className="text-xl font-bold">{data.name}</h1>
@@ -94,10 +133,14 @@ function Dashboard() {
       </section>
       <main className="mx-auto max-w-5xl space-y-8 px-5 py-8">
         {data.staff && (
-          <Button asChild size="lg" className="w-full sm:w-auto"><Link to="/cases">Go to case workspace</Link></Button>
+          <Button asChild size="lg" className="w-full sm:w-auto">
+            <Link to="/cases">Go to case workspace</Link>
+          </Button>
         )}
         {isAdmin && (
-          <Button asChild size="lg" variant="outline" className="ml-0 w-full sm:ml-3 sm:w-auto"><Link to="/admin">Accounts & approvals</Link></Button>
+          <Button asChild size="lg" variant="outline" className="ml-0 w-full sm:ml-3 sm:w-auto">
+            <Link to="/admin">Accounts & approvals</Link>
+          </Button>
         )}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {data.stats.map((s) => (
@@ -109,45 +152,57 @@ function Dashboard() {
         </div>
 
         <section>
-          <h2 className="mb-3 text-lg font-bold">{data.staff ? "Caseload & recovery monitoring" : "Injuries & recovery status"}</h2>
+          <h2 className="mb-3 text-lg font-bold">
+            {data.staff ? "Caseload & recovery monitoring" : "Injuries & recovery status"}
+          </h2>
           {data.recent.length ? (
             <ul className="space-y-2">
               {data.recent.map((c) => (
-                <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card p-3 text-sm">
-                  <span className="flex items-center gap-2"><PhotoAvatar path={c.athletes?.photo_path} name={`${c.athletes?.first_name} ${c.athletes?.surname}`} className="size-7" /><b className="text-primary">{c.injury_code}</b> · {c.athletes?.first_name} {c.athletes?.surname} · {c.body_region}</span>
+                <li
+                  key={c.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card p-3 text-sm"
+                >
+                  <span className="flex items-center gap-2">
+                    <PhotoAvatar
+                      path={c.athletes?.photo_path}
+                      name={`${c.athletes?.first_name} ${c.athletes?.surname}`}
+                      className="size-7"
+                    />
+                    <b className="text-primary">{c.injury_code}</b> · {c.athletes?.first_name}{" "}
+                    {c.athletes?.surname} · {c.body_region}
+                  </span>
                   <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{c.status}</span>
                 </li>
               ))}
             </ul>
-          ) : <p className="text-sm text-muted-foreground">No cases to show yet.</p>}
+          ) : (
+            <p className="text-sm text-muted-foreground">No cases to show yet.</p>
+          )}
         </section>
 
         {isAdmin && (
           <section className="grid gap-4 md:grid-cols-3">
             {(["school", "academy", "club"] as const).map((t) => (
               <div key={t} className="rounded-2xl border bg-card p-4">
-                <h3 className="mb-2 font-bold capitalize">Partner {t === "academy" ? "academies" : `${t}s`}</h3>
+                <h3 className="mb-2 font-bold capitalize">
+                  Partner {t === "academy" ? "academies" : `${t}s`}
+                </h3>
                 <ul className="space-y-1 text-sm">
-                  {data.partners.filter((p) => p.school_type === t).map((p) => <li key={p.id}>{p.name} <span className="text-xs text-primary">{p.school_code}</span></li>)}
-                  {!data.partners.some((p) => p.school_type === t) && <li className="text-muted-foreground">None yet.</li>}
+                  {data.partners
+                    .filter((p) => p.school_type === t)
+                    .map((p) => (
+                      <li key={p.id}>
+                        {p.name} <span className="text-xs text-primary">{p.school_code}</span>
+                      </li>
+                    ))}
+                  {!data.partners.some((p) => p.school_type === t) && (
+                    <li className="text-muted-foreground">None yet.</li>
+                  )}
                 </ul>
               </div>
             ))}
           </section>
         )}
-
-        <section className="grid gap-6 md:grid-cols-2">
-          <div>
-            <h2 className="mb-3 text-lg font-bold">Communications</h2>
-            <Inbox userId={user.id} />
-          </div>
-          {data.staff && (
-            <div>
-              <h2 className="mb-3 text-lg font-bold">Send a message</h2>
-              <Compose userId={user.id} />
-            </div>
-          )}
-        </section>
       </main>
     </div>
   );
