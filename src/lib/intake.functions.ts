@@ -57,3 +57,11 @@ export const requestConsent = createServerFn({ method: 'POST' })
     if (error) throw new Error('Could not submit the request.');
     return { ok: true };
   });
+
+// Public list of registered organisations (names and types only) for sign-up pickers.
+export const listOrganisations = createServerFn({ method: 'GET' })
+  .handler(async () => {
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const { data } = await supabaseAdmin.from('schools').select('id, name, school_type').order('name').limit(500);
+    return data ?? [];
+  });
