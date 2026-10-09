@@ -7,6 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PhotoAvatar } from '@/components/vito/Photo';
+import { JoinRequests, AthleteRegistry } from '@/components/vito/AdminRegistry';
 import { listAccounts, approveAccount, removeAccount } from '@/lib/admin.functions';
 
 export const Route = createFileRoute('/_authenticated/admin')({
@@ -40,6 +41,8 @@ function AdminPage() {
               <span className="flex gap-2"><Button size="sm" onClick={() => run(() => approve({ data: { userId: a.id, approve: true } }), 'Approved')}>Approve</Button><Button size="sm" variant="outline" onClick={() => run(() => approve({ data: { userId: a.id, approve: false } }), 'Declined')}>Decline</Button></span>
             </li>))}</ul> : <p className="text-sm text-muted-foreground">No pending requests.</p>}
         </section>
+        <JoinRequests userId={data.me} />
+        <AthleteRegistry />
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-bold">Registered accounts ({data.accounts.length})</h2><Input placeholder="Search name, email, ID or role" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" /></div>
           <ul className="space-y-2">{shown.map((a) => (
