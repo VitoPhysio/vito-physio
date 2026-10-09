@@ -66,26 +66,30 @@ export function VitoInfoPanel({
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="h-screen w-[min(92vw,760px)] max-w-none overflow-y-auto border-l border-primary/20 bg-background p-0 shadow-2xl sm:w-[min(78vw,760px)]"
+        className="h-screen w-[min(92vw,760px)] max-w-none overflow-y-auto border-l border-primary/20 bg-background p-0 text-foreground shadow-2xl sm:w-[min(78vw,760px)] [&>button]:text-white"
       >
-        <div className="min-h-full bg-background px-6 py-8 sm:px-10 sm:py-10">
-          <SheetHeader className="pr-10 text-left">
+        <div className="relative min-h-full overflow-hidden bg-background px-6 py-8 sm:px-10 sm:py-10">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-brand-gradient opacity-95"
+          />
+          <SheetHeader className="relative pr-10 text-left">
             <div className="flex items-center justify-between gap-4">
               <img
                 src={logo}
                 alt="VITO Physio logo"
-                className="size-20 rounded-2xl bg-card object-contain p-1 shadow-glow sm:size-24"
+                className="size-20 rounded-2xl bg-brand-gradient object-contain p-1 shadow-glow sm:size-24"
               />
             </div>
-            <SheetTitle className="mt-6 bg-brand-gradient bg-clip-text text-3xl font-black tracking-tight text-transparent sm:text-4xl">
+            <SheetTitle className="mt-6 text-3xl font-black tracking-tight text-white sm:text-4xl">
               From Injury to Return
             </SheetTitle>
-            <SheetDescription className="mt-2 text-base font-semibold text-accent">
+            <SheetDescription className="mt-2 text-base font-semibold text-white/90">
               Connected sports physiotherapy care for athletes, schools, academies and clubs.
             </SheetDescription>
           </SheetHeader>
 
-          <div className="mt-8 space-y-3 border-t border-primary/15 pt-7">
+          <div className="relative mt-8 space-y-3 border-t border-primary/15 pt-7">
             <section className="overflow-hidden rounded-2xl border border-primary/15 bg-background">
               <button
                 type="button"
