@@ -1,5 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bell, Check, Mail, MessageSquareText, Phone, UserRound } from "lucide-react";
+import {
+  Bell,
+  Check,
+  ChevronDown,
+  Mail,
+  MessageCircle,
+  MessageSquareText,
+  Phone,
+  UserRound,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,15 +30,18 @@ type NotificationRow = {
     organisation_type?: string;
     message?: string;
     sender?: string;
+    sender_id?: string;
     subject?: string | null;
     audience?: string | null;
-    recipient?: string;
+    recipient?: string | null;
+    is_mine?: boolean;
   };
   read_at: string | null;
   created_at: string;
 };
 
 function NotificationsPage() {
+  const [filter, setFilter] = useState<"all" | "messages" | "requests">("all");
   const { data: user } = useQuery({
     queryKey: ["notifications-user"],
     queryFn: async () => (await supabase.auth.getUser()).data.user,
@@ -52,7 +65,7 @@ function NotificationsPage() {
           .from("communications")
           .select("id,sender_id,subject,body,audience,recipient_id,created_at")
           .order("created_at", { ascending: false })
-          .limit(50),
+          .limit(100),
       ]);
       if (error) throw error;
       const senderIds = [
@@ -67,7 +80,7 @@ function NotificationsPage() {
           sender.is_admin ? "VITO administration (admin)" : (sender.full_name ?? "VITO clinician"),
         ]),
       );
-      const communicationNotifications = (messages ?? []).map(
+      const communicationNotifications: NotificationRow[] = (messages ?? []).map(
         (message: {
           id: string;
           sender_id: string;
@@ -83,20 +96,35 @@ function NotificationsPage() {
           kind: "communication",
           data: {
             sender: senderMap.get(message.sender_id),
+            sender_id: message.sender_id,
             subject: message.subject,
             message: message.body,
             audience: message.audience,
             recipient: message.recipient_id,
+            is_mine: message.sender_id === user?.id,
           },
           read_at: null,
           created_at: message.created_at,
         }),
       );
-      return [...((data ?? []) as NotificationRow[]), ...communicationNotifications]
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 50);
+      return [...((data ?? []) as NotificationRow[]), ...communicationNotifications].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
     },
   });
+
+  const requests = notifications.filter((notification) => notification.kind !== "communication");
+  const messages = notifications.filter((notification) => notification.kind === "communication");
+  const messageGroups = useMemo(() => {
+    const groups = new Map<string, { sender: string; items: NotificationRow[] }>();
+    for (const message of messages) {
+      const key = message.data.sender_id ?? message.data.sender ?? "vito-team";
+      const existing = groups.get(key);
+      if (existing) existing.items.push(message);
+      else groups.set(key, { sender: message.data.sender ?? "VITO team", items: [message] });
+    }
+    return [...groups.values()];
+  }, [messages]);
 
   async function markRead(id: string) {
     const client = supabase as any;
@@ -112,85 +140,171 @@ function NotificationsPage() {
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Staff inbox</p>
             <h1 className="mt-2 text-3xl font-black tracking-tight">Notifications</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Consultation requests and other alerts assigned to your account.
+              Consultation requests and direct staff conversations assigned to your account.
             </p>
           </div>
           <Bell className="size-8 text-primary" aria-hidden="true" />
         </div>
 
+        <div className="flex flex-wrap gap-2 rounded-2xl border bg-card p-2 shadow-sm">
+          {(
+            [
+              ["all", "All updates"],
+              ["messages", "Messages"],
+              ["requests", "Consultation requests"],
+            ] as const
+          ).map(([value, label]) => (
+            <Button
+              key={value}
+              size="sm"
+              variant={filter === value ? "default" : "ghost"}
+              onClick={() => setFilter(value)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+
         {isLoading ? (
-          <p className="text-sm text-muted-foreground">Loading notifications…</p>
-        ) : notifications.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Loading inbox…</p>
+        ) : !notifications.length ? (
           <div className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">
             You are all caught up.
           </div>
         ) : (
-          <div className="space-y-3">
-            {notifications.map((notification) => {
-              const details = notification.data ?? {};
-              return (
-                <article
-                  key={notification.id}
-                  className={`rounded-2xl border bg-card p-5 shadow-sm ${notification.read_at ? "opacity-75" : "border-primary/40"}`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-start gap-3">
+          <div className="space-y-6">
+            {(filter === "all" || filter === "messages") && messageGroups.length > 0 && (
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="size-5 text-primary" />
+                  <h2 className="font-bold">Conversations</h2>
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+                    {messages.length}
+                  </span>
+                </div>
+                {messageGroups.map((group, index) => (
+                  <details
+                    key={group.sender}
+                    open={index === 0}
+                    className="group overflow-hidden rounded-2xl border bg-card shadow-sm"
+                  >
+                    <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 [&::-webkit-details-marker]:hidden">
                       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
                         <UserRound className="size-5" />
                       </span>
-                      <div className="min-w-0">
-                        <h2 className="font-bold">{notification.title}</h2>
-                        <p className="text-sm text-muted-foreground">{notification.body}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {new Date(notification.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                    {!notification.read_at && notification.kind !== "communication" && (
-                      <Button size="sm" variant="outline" onClick={() => markRead(notification.id)}>
-                        <Check className="mr-1 size-4" />
-                        Mark read
-                      </Button>
-                    )}
-                  </div>
-                  {notification.kind === "consultation" && (
-                    <div className="mt-4 grid gap-3 rounded-xl bg-muted/50 p-4 text-sm sm:grid-cols-2">
-                      <Detail icon={UserRound} label="Sender" value={details.contact_name} />
-                      <Detail
-                        icon={MessageSquareText}
-                        label="Contact type"
-                        value={details.organisation_type}
-                      />
-                      <Detail icon={Mail} label="Email" value={details.email} />
-                      <Detail icon={Phone} label="Phone" value={details.phone || "Not provided"} />
-                      <div className="sm:col-span-2">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          Message
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-bold">{group.sender}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {group.items.length} message{group.items.length === 1 ? "" : "s"} ·{" "}
+                          {String(group.items[0].data.message ?? "").slice(0, 56)}
+                          {String(group.items[0].data.message ?? "").length > 56 ? "…" : ""}
                         </span>
-                        <p className="mt-1 whitespace-pre-wrap leading-relaxed">
-                          {details.message}
-                        </p>
-                      </div>
+                      </span>
+                      <ChevronDown className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="space-y-3 border-t bg-muted/20 p-4">
+                      {group.items
+                        .slice()
+                        .reverse()
+                        .map((message) => (
+                          <div
+                            key={message.id}
+                            className={`rounded-2xl border p-4 ${message.data.is_mine ? "ml-8 border-red-200 bg-red-50 text-red-950" : "mr-8 bg-card"}`}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span
+                                className={`text-xs font-bold uppercase tracking-wide ${message.data.is_mine ? "text-red-700" : "text-primary"}`}
+                              >
+                                {message.data.is_mine ? "You" : group.sender}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(message.created_at).toLocaleString()}
+                              </span>
+                            </div>
+                            {message.data.subject && (
+                              <p className="mt-2 font-semibold">{message.data.subject}</p>
+                            )}
+                            <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">
+                              {message.data.message}
+                            </p>
+                          </div>
+                        ))}
                     </div>
-                  )}
-                  {notification.kind === "communication" && (
-                    <div className="mt-4 rounded-xl bg-muted/50 p-4 text-sm">
-                      <p className="font-semibold text-foreground">
-                        From: {details.sender || "VITO team"}
-                      </p>
-                      {details.audience && (
-                        <p className="mt-1 text-xs text-accent">Audience: {details.audience}</p>
-                      )}
-                      <p className="mt-3 whitespace-pre-wrap leading-relaxed">{details.message}</p>
-                    </div>
-                  )}
-                </article>
-              );
-            })}
+                  </details>
+                ))}
+              </section>
+            )}
+
+            {(filter === "all" || filter === "requests") && requests.length > 0 && (
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Bell className="size-5 text-primary" />
+                  <h2 className="font-bold">Consultation requests</h2>
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+                    {requests.length}
+                  </span>
+                </div>
+                {requests.map((notification) => (
+                  <RequestCard
+                    key={notification.id}
+                    notification={notification}
+                    markRead={markRead}
+                  />
+                ))}
+              </section>
+            )}
           </div>
         )}
       </div>
     </main>
+  );
+}
+
+function RequestCard({
+  notification,
+  markRead,
+}: {
+  notification: NotificationRow;
+  markRead: (id: string) => void;
+}) {
+  const details = notification.data ?? {};
+  return (
+    <article
+      className={`rounded-2xl border bg-card p-5 shadow-sm ${notification.read_at ? "opacity-75" : "border-primary/40"}`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+            <UserRound className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="font-bold">{notification.title}</h2>
+            <p className="text-sm text-muted-foreground">{notification.body}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {new Date(notification.created_at).toLocaleString()}
+            </p>
+          </div>
+        </div>
+        {!notification.read_at && (
+          <Button size="sm" variant="outline" onClick={() => markRead(notification.id)}>
+            <Check className="mr-1 size-4" />
+            Mark read
+          </Button>
+        )}
+      </div>
+      <div className="mt-4 grid gap-3 rounded-xl bg-muted/50 p-4 text-sm sm:grid-cols-2">
+        <Detail icon={UserRound} label="Sender" value={details.contact_name} />
+        <Detail icon={MessageSquareText} label="Contact type" value={details.organisation_type} />
+        <Detail icon={Mail} label="Email" value={details.email} />
+        <Detail icon={Phone} label="Phone" value={details.phone || "Not provided"} />
+        <div className="sm:col-span-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Message
+          </span>
+          <p className="mt-1 whitespace-pre-wrap leading-relaxed">{details.message}</p>
+        </div>
+      </div>
+    </article>
   );
 }
 

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PhotoAvatar } from "@/components/vito/Photo";
+import { Compose } from "@/components/vito/Communications";
 import { AthletePortal } from "@/components/athlete/Portal";
 import { CareRequests } from "@/components/vito/CareRequests";
 import logo from "@/assets/vito-logo.png";
@@ -142,6 +143,26 @@ function Dashboard() {
           <Button asChild size="lg" variant="outline" className="ml-0 w-full sm:ml-3 sm:w-auto">
             <Link to="/admin">Accounts & approvals</Link>
           </Button>
+        )}
+        {data.staff && (
+          <section className="rounded-2xl border bg-card p-5 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
+                  Staff communications
+                </p>
+                <h2 className="mt-1 text-xl font-bold">Send a direct message</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Choose one clinician or Vito admin. Only the sender and selected recipient can see
+                  the message.
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/notifications">Open inbox</Link>
+              </Button>
+            </div>
+            <Compose userId={user.id} staffOnly />
+          </section>
         )}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {data.stats.map((s) => (
