@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import logo from "@/assets/vito-logo.png";
+import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -266,6 +267,7 @@ function Index() {
             </p>
 
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+              <WhatsAppConsultationButton />
               <Button
                 asChild
                 size="lg"
