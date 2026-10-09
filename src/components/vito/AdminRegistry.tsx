@@ -21,7 +21,7 @@ export function JoinRequests({ userId }: { userId: string }) {
   });
   async function decide(id: string, approve: boolean) {
     const { error } = await supabase.from("org_join_requests").update({ status: approve ? "approved" : "declined", handled_by: userId }).eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success(approve ? "Approved — account linked" : "Declined");
     qc.invalidateQueries({ queryKey: ["join-requests"] });
   }
