@@ -35,7 +35,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { EditablePhoto, PhotoAvatar } from "@/components/vito/Photo";
 import { DEFAULT_QUICK_MENU_ITEMS, type QuickMenuItem } from "@/components/vito/QuickMenu";
-import logo from "@/assets/vito-logo.png";
+import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
 
 const STAFF = ["super_admin", "vito_admin", "clinical_professional", "clinical_supervisor"];
 const ADMIN = ["super_admin", "vito_admin"];
@@ -134,36 +134,24 @@ export function AppHeader({ user }: { user: User }) {
   return (
     <header className="sticky top-0 z-40 bg-foreground text-background shadow-sm print:hidden">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
-        <Link
-          to="/dashboard"
-          aria-label="VITO Physio home"
-          className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60"
-        >
-          <img
-            src={logo}
-            alt="VITO Physio"
-            className="size-10 rounded-lg bg-card object-contain p-0.5"
-          />
-        </Link>
+        <VitoInfoPanel />
 
         <HeaderSearch items={items} onPick={go} />
 
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-          {STAFF.includes(data?.role ?? "") && (
-            <Link
-              to="/notifications"
-              aria-label={`Notifications${unreadCount ? ` (${unreadCount} unread)` : ""}`}
-              title="Notifications"
-              className="relative inline-flex size-10 items-center justify-center rounded-full text-background/85 transition-colors hover:bg-background/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60"
-            >
-              <Bell className="size-5" />
-              {unreadCount > 0 && (
-                <span className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-foreground">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </Link>
-          )}
+          <Link
+            to="/notifications"
+            aria-label={`Notifications${unreadCount ? ` (${unreadCount} unread)` : ""}`}
+            title="Notifications"
+            className="relative inline-flex size-10 items-center justify-center rounded-full text-background/85 transition-colors hover:bg-background/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60"
+          >
+            <Bell className="size-5" />
+            {unreadCount > 0 && (
+              <span className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-foreground">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Link>
 
           <button
             type="button"
