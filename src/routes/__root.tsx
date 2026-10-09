@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { applyTheme, getStoredTheme } from "@/lib/theme";
 
 function NotFoundComponent() {
   return (
@@ -80,9 +81,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "VITO Physio" },
-      { name: "description", content: "Sports physiotherapy case management for schools, academies, clubs and athletes." },
+      {
+        name: "description",
+        content: "Sports physiotherapy case management for schools, academies, clubs and athletes.",
+      },
       { property: "og:title", content: "VITO Physio" },
-      { property: "og:description", content: "Sports physiotherapy case management for schools, academies, clubs and athletes." },
+      {
+        property: "og:description",
+        content: "Sports physiotherapy case management for schools, academies, clubs and athletes.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -116,6 +123,10 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    applyTheme(getStoredTheme());
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
