@@ -43,6 +43,16 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
+  async function extra(kind: "reset" | "resend") {
+    if (!identifier.includes("@")) { setMsg({ kind: "err", text: "Type your email address above first." }); return; }
+    setBusy(true); setMsg(null);
+    const { error } = kind === "reset"
+      ? await supabase.auth.resetPasswordForEmail(identifier.trim(), { redirectTo: `${window.location.origin}/reset-password` })
+      : await supabase.auth.resend({ type: "signup", email: identifier.trim(), options: { emailRedirectTo: `${window.location.origin}/dashboard` } });
+    setMsg(error ? { kind: "err", text: /rate|limit/i.test(error.message) ? "Too many emails sent. Please wait a few minutes and try again." : error.message } : { kind: "ok", text: kind === "reset" ? "Check your email for a link to set a new password." : "A new confirmation link was sent. Check your inbox and spam folder." });
+    setBusy(false);
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -59,7 +69,7 @@ function AuthPage() {
           data: { full_name: fullName, requested_role: role.split(":")[0], account_kind: role.includes(":club") ? "club_academy" : null, avatar_path },
         },
       });
-      setMsg(error ? { kind: "err", text: error.message } : { kind: "ok", text: role === "athlete" ? "Your athlete record will be created automatically. Check your email to verify your account, then sign in." : "Check your email and click the link to verify your account, then sign in." });
+      setMsg(error ? { kind: "err", text: /already registered/i.test(error.message) ? "This email already has an account. Sign in instead." : /rate|limit/i.test(error.message) ? "Too many sign-ups right now. Please wait a few minutes and try again." : error.message } : { kind: "ok", text: role === "athlete" ? "Your athlete record will be created automatically. Check your email to verify your account, then sign in." : "Check your email and click the link to verify your account, then sign in." });
     } else {
       try {
         const session = await signInWithIdentifier({ data: { identifier, password } });
@@ -118,8 +128,9 @@ function AuthPage() {
           </div>
           <div className="space-y-1">
             <Label htmlFor="pw">Password</Label>
-            <Input id="pw" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input id="pw" type="password" required minLength={mode === "signup" ? 8 : 1} value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
+          {mode === "signin" && <div className="flex flex-wrap justify-between gap-2 text-xs"><button type="button" className="text-primary underline" onClick={() => extra("reset")}>Forgot password?</button><button type="button" className="text-primary underline" onClick={() => extra("resend")}>Resend confirmation email</button></div>}
           {msg && <p className={msg.kind === "ok" ? "text-sm text-primary" : "text-sm text-destructive"}>{msg.text}</p>}
           <Button type="submit" className="w-full" disabled={busy}>
             {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
