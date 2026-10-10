@@ -7,14 +7,9 @@ import { ArrowLeft, CheckCircle2, Clock3, Mail, MessageCircle, XCircle } from "l
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PhotoAvatar } from "@/components/vito/Photo";
+import { supabase } from "@/integrations/supabase/client";
 import { JoinRequests, AthleteRegistry } from "@/components/vito/AdminRegistry";
-import {
-  listAccounts,
-  listDeliveryLogs,
-  sendAdminEmail,
-  approveAccount,
-  removeAccount,
-} from "@/lib/admin.functions";
+import { sendAdminEmail, approveAccount, removeAccount } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -163,6 +158,71 @@ function Metric({ label, value, tone }: { label: string; value: number; tone: st
 }
 
 type AdminRecipient = { id: string; full_name: string | null; email: string | null; role: string };
+
+type AccountRow = AdminRecipient & {
+  account_code: string;
+  requested_role: string | null;
+  avatar_path: string | null;
+  created_at: string;
+};
+
+async function loadAdminAccounts() {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user)
+    throw new Error("Please sign in again to open the admin dashboard.");
+
+  const [{ data: isSuper, error: superError }, { data: isVito, error: vitoError }] =
+    await Promise.all([
+      supabase.rpc("has_role", { _user_id: userData.user.id, _role: "super_admin" }),
+      supabase.rpc("has_role", { _user_id: userData.user.id, _role: "vito_admin" }),
+    ]);
+  if (superError || vitoError || (!isSuper && !isVito)) {
+    throw new Error("Only VITO admins can view this page.");
+  }
+
+  const [{ data: profiles, error: profilesError }, { data: roles, error: rolesError }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, account_code, full_name, email, requested_role, avatar_path, created_at")
+        .order("created_at", { ascending: false }),
+      supabase.from("user_roles").select("user_id, role"),
+    ]);
+  if (profilesError || rolesError)
+    throw new Error("Accounts could not be loaded. Please try again.");
+
+  return {
+    level: isSuper ? ("super" as const) : ("vito" as const),
+    me: userData.user.id,
+    accounts: (profiles ?? []).map((profile) => ({
+      ...profile,
+      role: roles?.find((role) => role.user_id === profile.id)?.role ?? "athlete",
+    })) as AccountRow[],
+  };
+}
+
+async function loadDeliveryLogs() {
+  const { data, error } = await supabase
+    .from("delivery_logs")
+    .select(
+      "id, consultation_request_id, channel, status, provider_message_id, error_message, created_at",
+    )
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  const logs = data ?? [];
+  return {
+    logs,
+    summary: {
+      total: logs.length,
+      sent: logs.filter((row) => row.status === "sent").length,
+      failed: logs.filter((row) => row.status === "failed").length,
+      skipped: logs.filter((row) => row.status === "skipped").length,
+      email: logs.filter((row) => row.channel === "email").length,
+      whatsapp: logs.filter((row) => row.channel === "whatsapp").length,
+    },
+  };
+}
 
 function AdminEmailComposer({
   accounts,
@@ -318,13 +378,19 @@ function AdminEmailComposer({
 
 function AdminPage() {
   const qc = useQueryClient();
-  const list = useServerFn(listAccounts),
-    deliveryList = useServerFn(listDeliveryLogs),
-    sendEmail = useServerFn(sendAdminEmail),
+  const sendEmail = useServerFn(sendAdminEmail),
     approve = useServerFn(approveAccount),
     remove = useServerFn(removeAccount);
-  const { data, error, isLoading } = useQuery({ queryKey: ["accounts"], queryFn: () => list() });
-  const delivery = useQuery({ queryKey: ["delivery-logs"], queryFn: () => deliveryList() });
+  const { data, error, isLoading } = useQuery({
+    queryKey: ["accounts"],
+    queryFn: loadAdminAccounts,
+    retry: false,
+  });
+  const delivery = useQuery({
+    queryKey: ["delivery-logs"],
+    queryFn: loadDeliveryLogs,
+    retry: false,
+  });
   const [q, setQ] = useState("");
   async function run(fn: () => Promise<unknown>, ok: string) {
     try {
