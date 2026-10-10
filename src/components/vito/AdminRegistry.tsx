@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PhotoAvatar } from "@/components/vito/Photo";
 
-/** Requests to join an already-registered school, club or academy. Approving links the account. */
+/** Pending requests to join an already-registered school, club or academy. Approval links the account or athlete record. */
 export function JoinRequests({ userId }: { userId: string }) {
   const qc = useQueryClient();
   const q = useQuery({
@@ -28,10 +28,10 @@ export function JoinRequests({ userId }: { userId: string }) {
   const rows = q.data ?? [];
   return (
     <section>
-      <h2 className="mb-3 text-lg font-bold">Requests to join a school, club or academy ({rows.length})</h2>
+      <h2 className="mb-3 text-lg font-bold">Pending school, club or academy requests ({rows.length})</h2>
       {rows.length ? <ul className="space-y-2">{rows.map((r) => (
         <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-l-4 border-accent bg-card p-3 text-sm">
-          <span className="flex items-center gap-3"><PhotoAvatar path={r.person?.avatar_path} name={r.person?.full_name ?? null} /><span><b>{r.person?.full_name ?? "—"}</b><br /><span className="text-xs text-muted-foreground">{r.person?.email} · wants to join <b>{r.schools?.name}</b> ({r.schools?.school_code}) as {r.role === "coach" ? "coach" : "admin"}</span></span></span>
+          <span className="flex items-center gap-3"><PhotoAvatar path={r.person?.avatar_path} name={r.person?.full_name ?? null} /><span><b>{r.person?.full_name ?? "—"}</b><br /><span className="text-xs text-muted-foreground">{r.person?.email} · wants to join <b>{r.schools?.name}</b> ({r.schools?.school_code}) as {r.role === "coach" ? "coach" : r.role === "athlete" ? "athlete" : "admin"}</span></span></span>
           <span className="flex gap-2"><Button size="sm" onClick={() => decide(r.id, true)}>Approve</Button><Button size="sm" variant="outline" onClick={() => decide(r.id, false)}>Decline</Button></span>
         </li>))}</ul> : <p className="text-sm text-muted-foreground">No pending join requests.</p>}
     </section>

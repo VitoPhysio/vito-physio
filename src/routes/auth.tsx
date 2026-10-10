@@ -90,6 +90,7 @@ function AuthPage() {
     setMsg(null);
     if (mode === "signup") {
       let avatar_path: string | null = null;
+      const email = identifier.trim().toLowerCase();
       const fd = new FormData(e.currentTarget as HTMLFormElement);
       const file = fd.get("photo") as File | null;
       const g = (k: string) => String(fd.get(k) ?? "").trim();
@@ -118,7 +119,7 @@ function AuthPage() {
             }
           : {};
       const { error } = await supabase.auth.signUp({
-        email: identifier,
+        email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/dashboard`,
@@ -146,18 +147,24 @@ function AuthPage() {
               kind: "ok",
               text:
                 role === "athlete"
-                  ? "Your athlete record will be created automatically. Check your email to verify your account, then sign in."
-                  : "Check your email and click the link to verify your account, then sign in.",
+                  ? "Your athlete record will be created automatically. Check your email and click the confirmation link to verify your account, then sign in. If you selected a school, your school link will remain pending until an administrator approves it."
+                  : "Check your email and click the confirmation link to verify your account, then sign in. Any school or organisation access remains pending until an administrator approves it.",
             },
       );
     } else {
       try {
-        const session = await signInWithIdentifier({ data: { identifier, password } });
+        const session = await signInWithIdentifier({ data: { identifier: identifier.trim(), password } });
         const { error } = await supabase.auth.setSession(session);
         if (error) throw error;
         navigate({ to: "/dashboard" });
       } catch (error) {
-        setMsg({ kind: "err", text: error instanceof Error ? error.message : "Sign-in failed." });
+        const text = error instanceof Error ? error.message : "Sign-in failed.";
+        setMsg({
+          kind: "err",
+          text: /not confirmed|email_not_confirmed/i.test(text)
+            ? 'Your email is not confirmed yet. Click the confirmation link we emailed you, or use "Resend confirmation email" below.'
+            : text,
+        });
       }
     }
     setBusy(false);
