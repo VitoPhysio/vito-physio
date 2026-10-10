@@ -96,7 +96,22 @@
   --sidebar-border: oklch(0.91 0.025 300);
   --sidebar-ring: oklch(0.45 0.22 295);
   --gradient-brand: linear-gradient(135deg, oklch(0.45 0.22 295), oklch(0.3 0.15 290));
-  --gradient-hero: radial-gradient(58% 46% at 50% 0%, color-mix(in oklab, var(--primary) 16%, transparent) 0%, transparent 72%), radial-gradient(34% 34% at 88% 22%, color-mix(in oklab, var(--accent) 15%, transparent) 0%, transparent 70%), radial-gradient(30% 30% at 10% 30%, color-mix(in oklab, var(--primary) 10%, transparent) 0%, transparent 70%);
+  --gradient-hero:
+    radial-gradient(
+      58% 46% at 50% 0%,
+      color-mix(in oklab, var(--primary) 16%, transparent) 0%,
+      transparent 72%
+    ),
+    radial-gradient(
+      34% 34% at 88% 22%,
+      color-mix(in oklab, var(--accent) 15%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      30% 30% at 10% 30%,
+      color-mix(in oklab, var(--primary) 10%, transparent) 0%,
+      transparent 70%
+    );
   --shadow-glow: 0 22px 55px -22px color-mix(in oklab, var(--primary) 60%, transparent);
   --shadow-card-lift: 0 26px 60px -30px color-mix(in oklab, var(--primary) 45%, transparent);
 }
@@ -117,43 +132,92 @@
   box-shadow: var(--shadow-card-lift);
 }
 
-
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --background: oklch(0.14 0.05 295);
+  --foreground: oklch(0.15 0.05 295);
+  --card: oklch(0.2 0.07 295);
+  --card-foreground: oklch(1 0 0);
+  --popover: oklch(0.2 0.07 295);
+  --popover-foreground: oklch(1 0 0);
+  --primary: oklch(0.48 0.22 295);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.28 0.08 295);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.25 0.07 295);
+  --muted-foreground: oklch(1 0 0);
+  --accent: oklch(0.68 0.2 45);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.58 0.2 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(1 0 0 / 18%);
+  --input: oklch(1 0 0 / 22%);
+  --ring: oklch(0.78 0.15 295);
+  --chart-1: oklch(0.65 0.22 295);
+  --chart-2: oklch(0.72 0.2 45);
+  --chart-3: oklch(0.76 0.16 295);
+  --chart-4: oklch(0.76 0.16 60);
+  --chart-5: oklch(0.72 0.18 330);
+  --sidebar: oklch(0.16 0.06 295);
+  --sidebar-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.48 0.22 295);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.28 0.08 295);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(1 0 0 / 18%);
+  --sidebar-ring: oklch(0.78 0.15 295);
+  --gradient-brand: linear-gradient(135deg, oklch(0.48 0.22 295), oklch(0.68 0.2 45));
+  --gradient-hero:
+    radial-gradient(
+      58% 46% at 50% 0%,
+      color-mix(in oklab, var(--primary) 24%, transparent) 0%,
+      transparent 72%
+    ),
+    radial-gradient(
+      34% 34% at 88% 22%,
+      color-mix(in oklab, var(--accent) 24%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      30% 30% at 10% 30%,
+      color-mix(in oklab, var(--primary) 20%, transparent) 0%,
+      transparent 70%
+    );
 }
 
 @layer base {
+  .dark body {
+    color: #fff;
+  }
+
+  .dark
+    :where(
+      .text-foreground,
+      .text-muted-foreground,
+      .text-card-foreground,
+      .text-popover-foreground,
+      .text-primary,
+      .text-secondary-foreground,
+      .text-accent,
+      .text-accent-foreground,
+      .text-background,
+      .text-destructive-foreground
+    ) {
+    color: #fff !important;
+  }
+
+  .dark :where(input, textarea, select, button) {
+    color: #fff;
+  }
+
+  .dark :where(input::placeholder, textarea::placeholder) {
+    color: rgb(255 255 255 / 82%) !important;
+    opacity: 1;
+  }
+
+  .dark * {
+    border-color: var(--color-border);
+  }
+
   * {
     border-color: var(--color-border);
   }
@@ -164,10 +228,31 @@
   }
 }
 
+@layer utilities {
+  .dark .bg-clip-text.text-transparent {
+    background-image: none !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff;
+  }
+}
+
 @media print {
-  body:has(.athlete-print-summary) * { visibility: hidden; }
+  body:has(.athlete-print-summary) * {
+    visibility: hidden;
+  }
   body:has(.athlete-print-summary) .athlete-print-summary,
-  body:has(.athlete-print-summary) .athlete-print-summary * { visibility: visible; }
-  body:has(.athlete-print-summary) .athlete-print-summary { position: fixed; inset: 0; overflow: visible; background: var(--card); color: var(--foreground); padding: 24px; }
-  body:has(.athlete-print-summary) .athlete-print-summary button { display: none; }
+  body:has(.athlete-print-summary) .athlete-print-summary * {
+    visibility: visible;
+  }
+  body:has(.athlete-print-summary) .athlete-print-summary {
+    position: fixed;
+    inset: 0;
+    overflow: visible;
+    background: var(--card);
+    color: var(--foreground);
+    padding: 24px;
+  }
+  body:has(.athlete-print-summary) .athlete-print-summary button {
+    display: none;
+  }
 }
