@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 export type ConsultationAlert = {
   id: string;
   contact_name: string;
@@ -60,20 +62,19 @@ async function recordDelivery({
   if (error) console.error(`[delivery] could not record ${channel} status`, error);
 }
 
-async function parseProviderResult(response: Response) {
-  let payload: { id?: string; message?: string; error?: { message?: string } } = {};
-  try {
-    payload = await response.json();
-  } catch {
-    /* provider returned no JSON */
-  }
-  return {
-    id: payload.id,
-    error: payload.message || payload.error?.message || `HTTP ${response.status}`,
-  };
+function createGmailTransport() {
+  const user = process.env.GMAIL_SMTP_USER || COMPANY_EMAIL;
+  const password = process.env.GMAIL_SMTP_APP_PASSWORD;
+  if (!password) return null;
+  return nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: { user, pass: password },
+  });
 }
 
-async function sendResendEmail({
+async function sendGmailEmail({
   to,
   subject,
   text,
@@ -86,40 +87,30 @@ async function sendResendEmail({
   recipientUserId?: string;
   source: DeliverySource;
 }) {
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) {
+  const transport = createGmailTransport();
+  if (!transport) {
     await recordDelivery({
       recipientUserId,
       source,
       channel: "email",
       subject,
       status: "skipped",
-      errorMessage: "RESEND_API_KEY is not configured",
+      errorMessage: "GMAIL_SMTP_APP_PASSWORD is not configured",
     });
     return { status: "skipped" as const };
   }
   try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL || "VITO Physio <onboarding@resend.dev>",
-        to: [to],
-        subject,
-        text,
-      }),
-    });
-    const result = await parseProviderResult(response);
+    const from = process.env.GMAIL_SMTP_USER || COMPANY_EMAIL;
+    const result = await transport.sendMail({ from: `VITO Physio <${from}>`, to, subject, text });
     await recordDelivery({
       recipientUserId,
       source,
       channel: "email",
       subject,
-      status: response.ok ? "sent" : "failed",
-      providerMessageId: result.id,
-      errorMessage: response.ok ? undefined : result.error,
+      status: "sent",
+      providerMessageId: result.messageId,
     });
-    return { status: response.ok ? ("sent" as const) : ("failed" as const) };
+    return { status: "sent" as const };
   } catch (error) {
     await recordDelivery({
       recipientUserId,
@@ -127,7 +118,7 @@ async function sendResendEmail({
       channel: "email",
       subject,
       status: "failed",
-      errorMessage: error instanceof Error ? error.message : "Email request failed",
+      errorMessage: error instanceof Error ? error.message : "Gmail SMTP request failed",
     });
     return { status: "failed" as const };
   }
@@ -136,7 +127,7 @@ async function sendResendEmail({
 export async function sendConsultationAlerts(alert: ConsultationAlert) {
   const message = formatAlert(alert);
   const [email, whatsapp] = await Promise.all([
-    sendResendEmail({
+    sendGmailEmail({
       to: COMPANY_EMAIL,
       subject: `New consultation / inquiry from ${alert.contact_name}`,
       text: message,
@@ -177,14 +168,16 @@ async function sendConsultationWhatsApp(alert: ConsultationAlert, message: strin
         }).toString(),
       },
     );
-    const result = await parseProviderResult(response);
+    const result = await response
+      .json()
+      .catch(() => ({}) as { sid?: string; message?: string; code?: string });
     await recordDelivery({
       consultationRequestId: alert.id,
       source: "consultation",
       channel: "whatsapp",
       status: response.ok ? "sent" : "failed",
-      providerMessageId: result.id,
-      errorMessage: response.ok ? undefined : result.error,
+      providerMessageId: result.sid,
+      errorMessage: response.ok ? undefined : result.message || `HTTP ${response.status}`,
     });
     return { status: response.ok ? ("sent" as const) : ("failed" as const) };
   } catch (error) {
@@ -210,7 +203,7 @@ export async function sendAdminEmails({
 }) {
   const results = await Promise.all(
     recipients.map((recipient) =>
-      sendResendEmail({
+      sendGmailEmail({
         to: recipient.email,
         subject,
         text: message,
