@@ -94,16 +94,17 @@ function RegisterPage() {
           throw new Error(
             "That organisation is already registered with VITO. Sign in, or ask the VITO team to link your account to it.",
           );
+        const email = get("email").toLowerCase();
         const { error: err } = await supabase.auth.signUp({
-          email: get("email"),
+          email,
           password: get("password"),
           options: { emailRedirectTo: `${window.location.origin}/dashboard`, data: meta },
         });
         if (err) throw err;
         setResult(
           joinId
-            ? `Almost done! Confirm your email using the link sent to ${get("email")}. Your request to join has been sent to the VITO team for approval.`
-            : `Almost done! We sent a confirmation link to ${get("email")}. Click it to activate your account — your VITO ${mode === "athlete" ? "athlete" : "organisation"} ID is created automatically and shown on your dashboard.`,
+            ? `Almost done! Confirm your email using the link sent to ${email}. Your request to join has been sent to the VITO team for approval.`
+            : `Almost done! We sent a confirmation link to ${email}. Click it to activate your account — your VITO ${mode === "athlete" ? "athlete" : "organisation"} ID is created automatically and shown on your dashboard.`,
         );
       } else {
         await requestConsultation({
