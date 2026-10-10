@@ -16,14 +16,17 @@ export const listAccounts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const level = await adminLevel(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: profiles }, { data: roles }] = await Promise.all([
-      supabaseAdmin
-        .from("profiles")
-        .select("id, account_code, full_name, email, requested_role, avatar_path, created_at")
-        .order("created_at", { ascending: false }),
-      supabaseAdmin.from("user_roles").select("user_id, role"),
-    ]);
+    const [{ data: profiles, error: profilesError }, { data: roles, error: rolesError }] =
+      await Promise.all([
+        context.supabase
+          .from("profiles")
+          .select("id, account_code, full_name, email, requested_role, avatar_path, created_at")
+          .order("created_at", { ascending: false }),
+        context.supabase.from("user_roles").select("user_id, role"),
+      ]);
+    if (profilesError || rolesError) {
+      throw new Error("Accounts could not be loaded. Please try again.");
+    }
     return {
       level,
       me: context.userId,
@@ -38,8 +41,7 @@ export const listDeliveryLogs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await adminLevel(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: logs, error } = await (supabaseAdmin as any)
+    const { data: logs, error } = await (context.supabase as any)
       .from("delivery_logs")
       .select(
         "id, consultation_request_id, channel, status, provider_message_id, error_message, created_at",
