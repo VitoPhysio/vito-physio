@@ -1,18 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Activity,
+  ArrowLeft,
   Bell,
   CalendarDays,
   Check,
-  ChevronDown,
+  CheckCheck,
   Dumbbell,
   FileText,
   HeartPulse,
   Mail,
   MessageCircle,
   MessageSquareText,
+  MoreVertical,
+  Paperclip,
   Phone,
+  Search,
+  Send,
+  Smile,
   UserRound,
+  Video,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
@@ -434,67 +441,215 @@ function ConversationSection({
 }: {
   groups: { sender: string; items: NotificationRow[] }[];
 }) {
+  const [selectedSender, setSelectedSender] = useState<string | null>(null);
+  const selected = groups.find((group) => group.sender === selectedSender) ?? null;
+  const totalMessages = groups.reduce((count, group) => count + group.items.length, 0);
+
   return (
-    <section className="space-y-3">
-      <div className="flex items-center gap-2">
-        <MessageCircle className="size-5 text-primary" />
-        <h2 className="font-bold">Messages</h2>
-        <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
-          {groups.reduce((count, group) => count + group.items.length, 0)}
+    <section className="overflow-hidden rounded-[1.75rem] border bg-card shadow-card-lift">
+      <div className="flex items-center justify-between border-b px-5 py-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">Your inbox</p>
+          <h2 className="mt-1 text-xl font-black tracking-tight">Messages</h2>
+        </div>
+        <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">
+          {totalMessages} total
         </span>
       </div>
-      {groups.map((group, index) => (
-        <details
-          key={group.sender}
-          open={index === 0}
-          className="group overflow-hidden rounded-2xl border bg-card shadow-sm"
+
+      <div className="grid min-h-[34rem] md:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.4fr)]">
+        <div
+          className={`${selected ? "hidden md:block" : "block"} border-r bg-[#fafafa] dark:bg-[#111b21]`}
         >
-          <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 [&::-webkit-details-marker]:hidden">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
-              <UserRound className="size-5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-bold">{group.sender}</span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {group.items.length} message{group.items.length === 1 ? "" : "s"} ·{" "}
-                {String(group.items[0].data.message ?? "").slice(0, 56)}
-                {String(group.items[0].data.message ?? "").length > 56 ? "…" : ""}
-              </span>
-            </span>
-            <ChevronDown className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="space-y-3 border-t bg-muted/20 p-4">
-            {group.items
-              .slice()
-              .reverse()
-              .map((message) => (
-                <div
-                  key={message.id}
-                  className={`rounded-2xl border p-4 ${message.data.is_mine ? "ml-8 border-red-200 bg-red-50 text-red-950" : "mr-8 bg-card"}`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span
-                      className={`text-xs font-bold uppercase tracking-wide ${message.data.is_mine ? "text-red-700" : "text-primary"}`}
-                    >
-                      {message.data.is_mine ? "You" : group.sender}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(message.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                  {message.data.subject && (
-                    <p className="mt-2 font-semibold">{message.data.subject}</p>
-                  )}
-                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">
-                    {message.data.message}
-                  </p>
-                </div>
-              ))}
+          <div className="border-b p-4">
+            <label className="flex items-center gap-3 rounded-full bg-muted px-4 py-2.5 text-sm text-muted-foreground">
+              <Search className="size-4" />
+              <input
+                aria-label="Search conversations"
+                placeholder="Search"
+                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+              />
+            </label>
           </div>
-        </details>
-      ))}
+          <div className="divide-y dark:divide-white/10">
+            {groups.map((group, index) => {
+              const latest = group.items[0];
+              const unread = group.items.some((item) => !item.data.is_mine);
+              return (
+                <button
+                  key={group.sender}
+                  type="button"
+                  onClick={() => setSelectedSender(group.sender)}
+                  className={`flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-muted/70 ${selectedSender === group.sender ? "bg-muted" : "bg-transparent"}`}
+                >
+                  <AvatarBubble name={group.sender} index={index} />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate font-bold">{group.sender}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {formatChatTime(latest.created_at)}
+                      </span>
+                    </span>
+                    <span className="mt-1 block truncate text-sm text-muted-foreground">
+                      {String(latest.data.message ?? "No message preview")}
+                    </span>
+                  </span>
+                  {unread && <span className="size-2.5 shrink-0 rounded-full bg-accent" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div
+          className={`${selected ? "block" : "hidden md:flex"} min-w-0 flex-col bg-[#0b141a] text-white`}
+        >
+          {selected ? (
+            <ChatDetail group={selected} onBack={() => setSelectedSender(null)} />
+          ) : (
+            <div className="m-auto max-w-xs px-8 text-center text-white/70">
+              <MessageCircle className="mx-auto mb-4 size-12 text-[#25d366]" />
+              <p className="font-semibold">Select a conversation</p>
+              <p className="mt-2 text-sm">Choose a message thread to read the conversation.</p>
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   );
+}
+
+function ChatDetail({
+  group,
+  onBack,
+}: {
+  group: { sender: string; items: NotificationRow[] };
+  onBack: () => void;
+}) {
+  return (
+    <div className="flex min-h-[34rem] flex-1 flex-col bg-[radial-gradient(circle_at_20%_20%,rgba(37,211,102,0.08),transparent_28%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.04),transparent_24%)]">
+      <header className="flex items-center gap-3 border-b border-white/10 bg-[#202c33] px-4 py-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-full p-1 hover:bg-white/10 md:hidden"
+          aria-label="Back to conversations"
+        >
+          <ArrowLeft className="size-5" />
+        </button>
+        <AvatarBubble name={group.sender} index={0} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold">{group.sender}</p>
+          <p className="text-xs text-white/60">VITO Physio conversation</p>
+        </div>
+        <button
+          type="button"
+          className="rounded-full p-2 hover:bg-white/10"
+          aria-label="Video call"
+        >
+          <Video className="size-5" />
+        </button>
+        <button
+          type="button"
+          className="rounded-full p-2 hover:bg-white/10"
+          aria-label="Voice call"
+        >
+          <Phone className="size-5" />
+        </button>
+        <button
+          type="button"
+          className="rounded-full p-2 hover:bg-white/10"
+          aria-label="More options"
+        >
+          <MoreVertical className="size-5" />
+        </button>
+      </header>
+
+      <div className="flex-1 space-y-3 overflow-y-auto bg-[#0b141a]/95 px-4 py-5">
+        <p className="mx-auto w-fit rounded-lg bg-[#182229] px-3 py-1 text-[11px] uppercase tracking-wide text-white/60">
+          Today
+        </p>
+        {group.items
+          .slice()
+          .reverse()
+          .map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${message.data.is_mine ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[82%] rounded-xl px-3 py-2 shadow-sm ${message.data.is_mine ? "rounded-tr-sm bg-[#005c4b]" : "rounded-tl-sm bg-[#202c33]"}`}
+              >
+                {message.data.subject && (
+                  <p className="mb-1 text-xs font-semibold text-[#8de6be]">
+                    {message.data.subject}
+                  </p>
+                )}
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-white/95">
+                  {message.data.message}
+                </p>
+                <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-white/55">
+                  {new Date(message.created_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  {message.data.is_mine && <CheckCheck className="size-3 text-[#53bdeb]" />}
+                </div>
+              </div>
+            </div>
+          ))}
+      </div>
+
+      <div className="flex items-center gap-2 bg-[#202c33] px-3 py-3">
+        <button
+          type="button"
+          className="rounded-full p-2 text-white/70 hover:bg-white/10"
+          aria-label="Add emoji"
+        >
+          <Smile className="size-5" />
+        </button>
+        <button
+          type="button"
+          className="rounded-full p-2 text-white/70 hover:bg-white/10"
+          aria-label="Attach file"
+        >
+          <Paperclip className="size-5" />
+        </button>
+        <input
+          placeholder="Type a message"
+          className="min-w-0 flex-1 rounded-full bg-[#2a3942] px-4 py-2.5 text-sm text-white outline-none placeholder:text-white/55"
+        />
+        <button
+          type="button"
+          className="rounded-full bg-[#00a884] p-2.5 text-white hover:bg-[#06b995]"
+          aria-label="Send message"
+        >
+          <Send className="size-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AvatarBubble({ name, index }: { name: string; index: number }) {
+  const colors = ["bg-[#2a8c71]", "bg-[#6d5c93]", "bg-[#c57a48]", "bg-[#416d8e]"];
+  const initials = name
+    .split(/\\s+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  return (
+    <span
+      className={`grid size-11 shrink-0 place-items-center rounded-full text-xs font-black text-white ring-2 ring-white/10 ${colors[index % colors.length]}`}
+    >
+      {initials || "V"}
+    </span>
+  );
+}
+
+function formatChatTime(value: string) {
+  return new Date(value).toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
 function RequestCard({
