@@ -41,7 +41,13 @@ const STAFF = ["super_admin", "vito_admin", "clinical_professional", "clinical_s
 const ADMIN = ["super_admin", "vito_admin"];
 
 /** Top bar shown on every signed-in page: logo · search · profile photo · menu. */
-export function AppHeader({ user }: { user: User }) {
+export function AppHeader({
+  user,
+  profileNavigatesHome = false,
+}: {
+  user: User;
+  profileNavigatesHome?: boolean;
+}) {
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -65,8 +71,7 @@ export function AppHeader({ user }: { user: User }) {
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ["notification-count", user.id],
     queryFn: async () => {
-      const client = supabase as any;
-      const { count, error } = await client
+      const { count, error } = await supabase
         .from("notifications")
         .select("id", { count: "exact", head: true })
         .is("read_at", null);
@@ -155,9 +160,11 @@ export function AppHeader({ user }: { user: User }) {
 
           <button
             type="button"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Profile and settings"
-            title={data?.name}
+            onClick={() =>
+              profileNavigatesHome ? navigate({ to: "/dashboard" }) : setSettingsOpen(true)
+            }
+            aria-label={profileNavigatesHome ? "Open home dashboard" : "Profile and settings"}
+            title={profileNavigatesHome ? "Open home dashboard" : data?.name}
             className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60"
           >
             <PhotoAvatar
