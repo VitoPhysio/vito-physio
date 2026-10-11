@@ -36,7 +36,12 @@ export const Route = createFileRoute("/_authenticated/messages")({
   component: MessagesPage,
 });
 
-type Profile = { id: string; full_name: string | null; avatar_path: string | null };
+type Profile = {
+  id: string;
+  full_name: string | null;
+  avatar_path: string | null;
+  role?: string | null;
+};
 type Message = {
   id: string;
   conversation_id: string;
@@ -63,6 +68,8 @@ type ConversationView = Conversation & {
   unread: number;
   displayName: string;
   avatarPath: string | null;
+  otherUserId: string | null;
+  otherRole: string | null;
 };
 
 type Filter = "all" | "unread" | "read";
@@ -180,48 +187,50 @@ function MessagesPage() {
 
   return (
     <div className="fixed inset-0 z-[100] flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-foreground">
-      <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-3 shadow-sm sm:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <button
-            type="button"
-            onClick={closeMessages}
-            aria-label="Back to previous page"
-            className="grid size-10 shrink-0 place-items-center rounded-full text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <ArrowLeft className="size-5" />
-          </button>
-          <PhotoAvatar
-            path={null}
-            name="Messages"
-            className="size-10 bg-primary text-primary-foreground"
-          />
-          <div className="min-w-0">
-            <h1 className="truncate text-xl font-black tracking-tight sm:text-2xl">Messages</h1>
-            <p className="hidden text-xs text-muted-foreground sm:block">
-              Conversations with your VITO Physio team
-            </p>
+      {!selected && (
+        <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-3 shadow-sm sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={closeMessages}
+              aria-label="Back to previous page"
+              className="grid size-10 shrink-0 place-items-center rounded-full text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <ArrowLeft className="size-5" />
+            </button>
+            <PhotoAvatar
+              path={null}
+              name="Messages"
+              className="size-10 bg-primary text-primary-foreground"
+            />
+            <div className="min-w-0">
+              <h1 className="truncate text-xl font-black tracking-tight sm:text-2xl">Messages</h1>
+              <p className="hidden text-xs text-muted-foreground sm:block">
+                Conversations with your VITO Physio team
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Filter className="size-4" />
-                <span className="hidden sm:inline">{filterLabel(filter)}</span>
-                <ChevronDown className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {(["all", "unread", "read"] as Filter[]).map((value) => (
-                <DropdownMenuItem key={value} onSelect={() => setFilter(value)}>
-                  {filterLabel(value)}
-                  {filter === value && <Check className="ml-auto size-4 text-primary" />}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
+          <div className="flex shrink-0 items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Filter className="size-4" />
+                  <span className="hidden sm:inline">{filterLabel(filter)}</span>
+                  <ChevronDown className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(["all", "unread", "read"] as Filter[]).map((value) => (
+                  <DropdownMenuItem key={value} onSelect={() => setFilter(value)}>
+                    {filterLabel(value)}
+                    {filter === value && <Check className="ml-auto size-4 text-primary" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+      )}
 
       <div className="grid min-h-0 flex-1 md:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]">
         <aside
@@ -279,6 +288,7 @@ function MessagesPage() {
               conversation={selected}
               userId={user.id}
               onBack={() => setSelectedId(null)}
+              onOpenProfile={(participantId) => window.location.assign(`/members/${participantId}`)}
               onSent={() => void queryClient.invalidateQueries({ queryKey: ["messages", user.id] })}
             />
           ) : (
@@ -473,11 +483,13 @@ function ChatView({
   conversation,
   userId,
   onBack,
+  onOpenProfile,
   onSent,
 }: {
   conversation: ConversationView;
   userId: string;
   onBack: () => void;
+  onOpenProfile: (participantId: string) => void;
   onSent: () => void;
 }) {
   const [body, setBody] = useState("");
@@ -524,14 +536,39 @@ function ChatView({
         >
           <ArrowLeft className="size-5" />
         </button>
-        <PhotoAvatar
-          path={conversation.avatarPath}
-          name={conversation.displayName}
-          className="size-11 shrink-0"
-        />
+        {conversation.otherUserId ? (
+          <button
+            type="button"
+            onClick={() => onOpenProfile(conversation.otherUserId!)}
+            aria-label={`Open ${conversation.displayName}'s profile`}
+            className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <PhotoAvatar
+              path={conversation.avatarPath}
+              name={conversation.displayName}
+              className="size-11"
+            />
+          </button>
+        ) : (
+          <PhotoAvatar
+            path={conversation.avatarPath}
+            name={conversation.displayName}
+            className="size-11 shrink-0"
+          />
+        )}
         <div className="min-w-0 flex-1">
-          <h2 className="truncate font-bold">{conversation.displayName}</h2>
-          <p className="text-xs text-muted-foreground">VITO Physio member</p>
+          {conversation.otherUserId ? (
+            <button
+              type="button"
+              onClick={() => onOpenProfile(conversation.otherUserId!)}
+              className="block max-w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <h2 className="truncate font-bold">{conversation.displayName}</h2>
+            </button>
+          ) : (
+            <h2 className="truncate font-bold">{conversation.displayName}</h2>
+          )}
+          <p className="text-xs text-muted-foreground">{roleLabel(conversation.otherRole)}</p>
         </div>
         <button
           type="button"
@@ -689,13 +726,22 @@ async function loadConversations(userId: string): Promise<ConversationView[]> {
   const participantIds = [
     ...new Set((allParticipants ?? []).map((row: Participant) => row.user_id)),
   ];
-  const { data: profiles, error: profilesError } = await supabase
-    .from("profiles")
-    .select("id,full_name,avatar_path")
-    .in("id", participantIds);
-  if (profilesError) throw profilesError;
+  const [
+    { data: profiles, error: profilesError },
+    { data: directoryUsers, error: directoryError },
+  ] = await Promise.all([
+    supabase.from("profiles").select("id,full_name,avatar_path").in("id", participantIds),
+    supabase.rpc("list_messaging_users", { _query: null }),
+  ]);
+  if (profilesError || directoryError) throw profilesError ?? directoryError;
+  const roleMap = new Map(
+    (directoryUsers ?? []).map((member) => [member.id, member.role] as const),
+  );
   const profileMap = new Map<string, Profile>(
-    (profiles ?? []).map((profile: Profile) => [profile.id, profile]),
+    (profiles ?? []).map((profile: Profile) => [
+      profile.id,
+      { ...profile, role: roleMap.get(profile.id) ?? null },
+    ]),
   );
   const messageMap = new Map<string, Message[]>();
   for (const message of (messages ?? []) as Message[]) {
@@ -731,6 +777,8 @@ async function loadConversations(userId: string): Promise<ConversationView[]> {
         otherProfiles.map((profile) => profile.full_name || "VITO Physio member").join(", ") ||
         "VITO Physio member",
       avatarPath: otherProfiles[0]?.avatar_path ?? null,
+      otherUserId: otherProfiles.length === 1 ? otherProfiles[0].id : null,
+      otherRole: otherProfiles.length === 1 ? (otherProfiles[0].role ?? null) : null,
     };
   });
 }
@@ -749,6 +797,22 @@ function userPickerErrorMessage(error: unknown) {
     return "The member directory is not connected yet. Apply the latest messaging migration, then try again.";
   }
   return "Unable to load registered users. Please try again.";
+}
+
+const ROLE_LABEL: Record<string, string> = {
+  super_admin: "Super admin",
+  vito_admin: "VITO admin",
+  clinical_professional: "Clinical professional",
+  clinical_supervisor: "Clinical supervisor",
+  school_admin: "School admin",
+  coach: "Coach",
+  athlete: "Athlete",
+  parent: "Parent / guardian",
+};
+
+function roleLabel(role: string | null | undefined) {
+  if (!role) return "VITO Physio member";
+  return ROLE_LABEL[role] ?? role.replaceAll("_", " ");
 }
 
 function messagingUserDisplayName(member: MessagingUser) {
