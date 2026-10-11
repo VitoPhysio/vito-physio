@@ -143,10 +143,16 @@ function MessagesPage() {
   });
   const filteredUsers = useMemo(() => {
     const needle = userSearch.trim().toLowerCase();
-    return (messagingUsers.data ?? []).filter((member) => {
-      if (!needle) return true;
-      return `${member.full_name ?? ""} ${member.role}`.toLowerCase().includes(needle);
-    });
+    return (messagingUsers.data ?? [])
+      .filter((member) => {
+        if (!needle) return true;
+        return `${member.full_name ?? ""} ${member.role}`.toLowerCase().includes(needle);
+      })
+      .sort((first, second) =>
+        messagingUserDisplayName(first).localeCompare(messagingUserDisplayName(second), undefined, {
+          sensitivity: "base",
+        }),
+      );
   }, [messagingUsers.data, userSearch]);
 
   async function startConversation(member: MessagingUser) {
@@ -203,17 +209,6 @@ function MessagesPage() {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            onClick={() => setNewConversationOpen(true)}
-            aria-label="Start a new conversation"
-            title="Start a new conversation"
-            className="rounded-full border-primary/20 text-primary shadow-sm hover:bg-secondary"
-          >
-            <MessageCirclePlus className="size-5" />
-          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
@@ -304,6 +299,18 @@ function MessagesPage() {
         </main>
       </div>
 
+      {!selected && (
+        <Button
+          type="button"
+          onClick={() => setNewConversationOpen(true)}
+          aria-label="Start a new conversation"
+          title="Start a new conversation"
+          className="fixed bottom-6 right-5 z-20 size-16 rounded-full bg-primary p-0 text-primary-foreground shadow-[0_10px_28px_rgba(80,35,168,0.32)] transition hover:scale-105 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 sm:bottom-8 sm:right-8 sm:size-[4.5rem]"
+        >
+          <MessageCirclePlus className="size-8" strokeWidth={2.25} />
+        </Button>
+      )}
+
       <Dialog
         open={newConversationOpen}
         onOpenChange={(open) => {
@@ -320,7 +327,7 @@ function MessagesPage() {
               Start a conversation
             </DialogTitle>
             <DialogDescription>
-              Search for a registered VITO Physio member or browse the available users below.
+              Search registered VITO Physio users by name or browse the alphabetical list below.
             </DialogDescription>
           </DialogHeader>
           <div className="flex min-h-0 flex-col px-5 pb-5">
@@ -330,8 +337,8 @@ function MessagesPage() {
                 autoFocus
                 value={userSearch}
                 onChange={(event) => setUserSearch(event.target.value)}
-                placeholder="Search by name"
-                aria-label="Search registered users by name"
+                placeholder="Search Vito users by name"
+                aria-label="Search Vito registered users by name"
                 className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
               />
             </label>
@@ -379,7 +386,7 @@ function MessagesPage() {
                       />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-semibold text-foreground">
-                          {member.full_name || "VITO Physio member"}
+                          {messagingUserDisplayName(member)}
                         </span>
                         <span className="mt-0.5 block truncate text-xs capitalize text-muted-foreground">
                           {member.role.replaceAll("_", " ")}
@@ -728,6 +735,10 @@ function userPickerErrorMessage(error: unknown) {
     return "The member directory is not connected yet. Apply the latest messaging migration, then try again.";
   }
   return "Unable to load registered users. Please try again.";
+}
+
+function messagingUserDisplayName(member: MessagingUser) {
+  return member.full_name?.trim() || "VITO Physio member";
 }
 
 function filterLabel(filter: Filter) {
