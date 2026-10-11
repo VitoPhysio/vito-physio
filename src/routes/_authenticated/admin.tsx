@@ -381,7 +381,7 @@ function AdminPage() {
   const sendEmail = useServerFn(sendAdminEmail),
     approve = useServerFn(approveAccount),
     remove = useServerFn(removeAccount);
-  const { data, error, isLoading } = useQuery({
+  const { data, error, isLoading, refetch } = useQuery({
     queryKey: ["accounts"],
     queryFn: loadAdminAccounts,
     retry: false,
@@ -401,7 +401,17 @@ function AdminPage() {
       toast.error(e instanceof Error ? e.message : "Failed");
     }
   }
-  if (error) return <p className="p-8 text-destructive">Only VITO admins can view this page.</p>;
+  if (error)
+    return (
+      <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-4 px-5 text-center">
+        <p className="text-destructive">
+          {error instanceof Error ? error.message : "Accounts could not be loaded."}
+        </p>
+        <Button variant="outline" onClick={() => refetch()}>
+          Try again
+        </Button>
+      </main>
+    );
   if (isLoading || !data) return <p className="p-8 text-muted-foreground">Loading…</p>;
   const pending = data.accounts.filter(
     (a) => a.requested_role === "vito_admin" || a.requested_role === "clinical_professional",
