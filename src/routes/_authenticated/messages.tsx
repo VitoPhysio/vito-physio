@@ -8,12 +8,15 @@ import {
   CheckCheck,
   ChevronDown,
   Filter,
+  LoaderCircle,
   MessageCircle,
+  MessageCirclePlus,
   MoreVertical,
   Paperclip,
   Search,
   Send,
   Smile,
+  UserPlus,
   UserRound,
   Video,
   Phone,
@@ -22,6 +25,13 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,6 +73,12 @@ type ConversationView = Conversation & {
 };
 
 type Filter = "all" | "unread" | "read";
+type MessagingUser = {
+  id: string;
+  full_name: string | null;
+  avatar_path: string | null;
+  role: string;
+};
 
 function MessagesPage() {
   const { user } = Route.useRouteContext();
@@ -70,6 +86,9 @@ function MessagesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [newConversationOpen, setNewConversationOpen] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [startingConversation, setStartingConversation] = useState(false);
 
   const conversations = useQuery({
     queryKey: ["messages", user.id],
@@ -116,6 +135,35 @@ function MessagesPage() {
 
   const selected =
     (conversations.data ?? []).find((conversation) => conversation.id === selectedId) ?? null;
+  const messagingUsers = useQuery({
+    queryKey: ["messaging-users", user.id],
+    queryFn: loadMessagingUsers,
+    enabled: newConversationOpen,
+    staleTime: 60_000,
+  });
+  const filteredUsers = useMemo(() => {
+    const needle = userSearch.trim().toLowerCase();
+    return (messagingUsers.data ?? []).filter((member) => {
+      if (!needle) return true;
+      return `${member.full_name ?? ""} ${member.role}`.toLowerCase().includes(needle);
+    });
+  }, [messagingUsers.data, userSearch]);
+
+  async function startConversation(member: MessagingUser) {
+    setStartingConversation(true);
+    const { data: conversationId, error } = await supabase.rpc("create_direct_conversation", {
+      _other_user: member.id,
+    });
+    setStartingConversation(false);
+    if (error || !conversationId) {
+      toast.error(error?.message ?? "Unable to start this conversation.");
+      return;
+    }
+    setNewConversationOpen(false);
+    setUserSearch("");
+    await queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+    setSelectedId(conversationId);
+  }
 
   async function openConversation(conversation: ConversationView) {
     setSelectedId(conversation.id);
@@ -154,23 +202,36 @@ function MessagesPage() {
             </p>
           </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Filter className="size-4" />
-              <span className="hidden sm:inline">{filterLabel(filter)}</span>
-              <ChevronDown className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {(["all", "unread", "read"] as Filter[]).map((value) => (
-              <DropdownMenuItem key={value} onSelect={() => setFilter(value)}>
-                {filterLabel(value)}
-                {filter === value && <Check className="ml-auto size-4 text-primary" />}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => setNewConversationOpen(true)}
+            aria-label="Start a new conversation"
+            title="Start a new conversation"
+            className="rounded-full border-primary/20 text-primary shadow-sm hover:bg-secondary"
+          >
+            <MessageCirclePlus className="size-5" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Filter className="size-4" />
+                <span className="hidden sm:inline">{filterLabel(filter)}</span>
+                <ChevronDown className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {(["all", "unread", "read"] as Filter[]).map((value) => (
+                <DropdownMenuItem key={value} onSelect={() => setFilter(value)}>
+                  {filterLabel(value)}
+                  {filter === value && <Check className="ml-auto size-4 text-primary" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </header>
 
       <div className="grid min-h-0 flex-1 md:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]">
@@ -195,8 +256,16 @@ function MessagesPage() {
                 Loading conversations…
               </div>
             ) : conversations.error ? (
-              <div className="p-6 text-center text-sm text-destructive">
-                Unable to load your conversations. Please try again.
+              <div className="flex flex-col items-center gap-3 p-6 text-center text-sm text-destructive">
+                <p>{conversationErrorMessage(conversations.error)}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void conversations.refetch()}
+                >
+                  Try again
+                </Button>
               </div>
             ) : filtered.length ? (
               filtered.map((conversation) => (
@@ -234,6 +303,101 @@ function MessagesPage() {
           )}
         </main>
       </div>
+
+      <Dialog
+        open={newConversationOpen}
+        onOpenChange={(open) => {
+          setNewConversationOpen(open);
+          if (!open) setUserSearch("");
+        }}
+      >
+        <DialogContent className="max-h-[min(38rem,calc(100dvh-2rem))] overflow-hidden p-0 sm:max-w-lg">
+          <DialogHeader className="border-b px-5 pb-4 pt-5">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <span className="grid size-9 place-items-center rounded-full bg-secondary text-primary">
+                <UserPlus className="size-5" />
+              </span>
+              Start a conversation
+            </DialogTitle>
+            <DialogDescription>
+              Search for a registered VITO Physio member or browse the available users below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex min-h-0 flex-col px-5 pb-5">
+            <label className="mt-4 flex items-center gap-3 rounded-xl border bg-background px-3 py-2.5 text-sm text-muted-foreground shadow-sm focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+              <Search className="size-4 shrink-0" />
+              <input
+                autoFocus
+                value={userSearch}
+                onChange={(event) => setUserSearch(event.target.value)}
+                placeholder="Search by name"
+                aria-label="Search registered users by name"
+                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+              />
+            </label>
+            <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-muted/20">
+              <div className="flex items-center justify-between border-b px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  {userSearch.trim() ? "Search results" : "Available VITO members"}
+                </p>
+                {!messagingUsers.isLoading && !messagingUsers.error && (
+                  <span className="text-xs text-muted-foreground">{filteredUsers.length}</span>
+                )}
+              </div>
+              <div className="min-h-0 overflow-y-auto">
+                {messagingUsers.isLoading ? (
+                  <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
+                    <LoaderCircle className="size-4 animate-spin" />
+                    Loading registered users…
+                  </div>
+                ) : messagingUsers.error ? (
+                  <div className="p-6 text-center text-sm text-destructive">
+                    <p>{userPickerErrorMessage(messagingUsers.error)}</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => void messagingUsers.refetch()}
+                    >
+                      Try again
+                    </Button>
+                  </div>
+                ) : filteredUsers.length ? (
+                  filteredUsers.map((member) => (
+                    <button
+                      key={member.id}
+                      type="button"
+                      disabled={startingConversation}
+                      onClick={() => void startConversation(member)}
+                      className="flex w-full items-center gap-3 border-b bg-card px-4 py-3 text-left transition hover:bg-secondary disabled:cursor-wait disabled:opacity-60"
+                    >
+                      <PhotoAvatar
+                        path={member.avatar_path}
+                        name={member.full_name}
+                        className="size-11 shrink-0"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold text-foreground">
+                          {member.full_name || "VITO Physio member"}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs capitalize text-muted-foreground">
+                          {member.role.replaceAll("_", " ")}
+                        </span>
+                      </span>
+                      <MessageCircle className="size-4 shrink-0 text-primary" />
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-sm text-muted-foreground">
+                    No registered users match “{userSearch}”.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -463,6 +627,12 @@ function ChatView({
   );
 }
 
+async function loadMessagingUsers(): Promise<MessagingUser[]> {
+  const { data, error } = await supabase.rpc("list_messaging_users");
+  if (error) throw error;
+  return data ?? [];
+}
+
 async function loadConversations(userId: string): Promise<ConversationView[]> {
   const { data: memberships, error: membershipError } = await supabase
     .from("conversation_participants")
@@ -542,6 +712,22 @@ async function loadConversations(userId: string): Promise<ConversationView[]> {
       avatarPath: otherProfiles[0]?.avatar_path ?? null,
     };
   });
+}
+
+function conversationErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/relation .* does not exist|schema cache|could not find|PGRST205/i.test(message)) {
+    return "Messaging storage is not connected yet. Apply the messaging migration, then try again.";
+  }
+  return "Unable to load your conversations. Please try again.";
+}
+
+function userPickerErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/function .*list_messaging_users|schema cache|PGRST202/i.test(message)) {
+    return "The member directory is not connected yet. Apply the latest messaging migration, then try again.";
+  }
+  return "Unable to load registered users. Please try again.";
 }
 
 function filterLabel(filter: Filter) {
