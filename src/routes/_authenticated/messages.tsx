@@ -26,13 +26,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -137,9 +130,10 @@ function MessagesPage() {
     (conversations.data ?? []).find((conversation) => conversation.id === selectedId) ?? null;
   const messagingUsers = useQuery({
     queryKey: ["messaging-users", user.id],
-    queryFn: loadMessagingUsers,
+    queryFn: () => loadMessagingUsers(),
     enabled: newConversationOpen,
     staleTime: 60_000,
+    retry: 1,
   });
   const filteredUsers = useMemo(() => {
     const needle = userSearch.trim().toLowerCase();
@@ -311,100 +305,120 @@ function MessagesPage() {
         </Button>
       )}
 
-      <Dialog
-        open={newConversationOpen}
-        onOpenChange={(open) => {
-          setNewConversationOpen(open);
-          if (!open) setUserSearch("");
-        }}
-      >
-        <DialogContent className="max-h-[min(38rem,calc(100dvh-2rem))] overflow-hidden p-0 sm:max-w-lg">
-          <DialogHeader className="border-b px-5 pb-4 pt-5">
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <span className="grid size-9 place-items-center rounded-full bg-secondary text-primary">
-                <UserPlus className="size-5" />
-              </span>
-              Start a conversation
-            </DialogTitle>
-            <DialogDescription>
-              Search registered VITO Physio users by name or browse the alphabetical list below.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex min-h-0 flex-col px-5 pb-5">
-            <label className="mt-4 flex items-center gap-3 rounded-xl border bg-background px-3 py-2.5 text-sm text-muted-foreground shadow-sm focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
-              <Search className="size-4 shrink-0" />
-              <input
-                autoFocus
-                value={userSearch}
-                onChange={(event) => setUserSearch(event.target.value)}
-                placeholder="Search Vito users by name"
-                aria-label="Search Vito registered users by name"
-                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
-              />
-            </label>
-            <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-muted/20">
-              <div className="flex items-center justify-between border-b px-4 py-3">
+      {newConversationOpen && (
+        <section
+          aria-label="Start a new conversation"
+          className="fixed inset-0 z-[130] flex h-[100dvh] min-h-0 flex-col bg-background text-foreground"
+        >
+          <header className="flex shrink-0 items-center gap-3 border-b bg-card px-4 py-3 shadow-sm sm:px-6">
+            <button
+              type="button"
+              onClick={() => {
+                setNewConversationOpen(false);
+                setUserSearch("");
+              }}
+              aria-label="Close registered users"
+              className="grid size-10 shrink-0 place-items-center rounded-full text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <ArrowLeft className="size-5" />
+            </button>
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-primary">
+              <UserPlus className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="truncate text-xl font-black tracking-tight sm:text-2xl">
+                New conversation
+              </h2>
+              <p className="truncate text-xs text-muted-foreground">
+                Choose a registered VITO Physio user
+              </p>
+            </div>
+          </header>
+
+          <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col">
+            <div className="shrink-0 border-b bg-background p-4 sm:p-5">
+              <label className="flex items-center gap-3 rounded-xl border bg-card px-3 py-3 text-sm text-muted-foreground shadow-sm focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+                <Search className="size-5 shrink-0 text-primary" />
+                <input
+                  autoFocus
+                  value={userSearch}
+                  onChange={(event) => setUserSearch(event.target.value)}
+                  placeholder="Search Vito users by name"
+                  aria-label="Search Vito registered users by name"
+                  className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+                />
+              </label>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20">
+              <div className="flex items-center justify-between border-b bg-background px-4 py-3 sm:px-5">
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                  {userSearch.trim() ? "Search results" : "Available VITO members"}
+                  {userSearch.trim() ? "Search results" : "All VITO Physio users"}
                 </p>
                 {!messagingUsers.isLoading && !messagingUsers.error && (
-                  <span className="text-xs text-muted-foreground">{filteredUsers.length}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {filteredUsers.length} users
+                  </span>
                 )}
               </div>
-              <div className="min-h-0 overflow-y-auto">
-                {messagingUsers.isLoading ? (
-                  <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
-                    <LoaderCircle className="size-4 animate-spin" />
-                    Loading registered users…
-                  </div>
-                ) : messagingUsers.error ? (
-                  <div className="p-6 text-center text-sm text-destructive">
-                    <p>{userPickerErrorMessage(messagingUsers.error)}</p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-3"
-                      onClick={() => void messagingUsers.refetch()}
-                    >
-                      Try again
-                    </Button>
-                  </div>
-                ) : filteredUsers.length ? (
-                  filteredUsers.map((member) => (
+
+              {messagingUsers.isLoading ? (
+                <div className="flex flex-col items-center justify-center gap-3 p-12 text-sm text-muted-foreground">
+                  <LoaderCircle className="size-6 animate-spin text-primary" />
+                  Loading registered users…
+                </div>
+              ) : messagingUsers.error ? (
+                <div className="flex flex-col items-center gap-3 p-8 text-center text-sm text-destructive">
+                  <p>{userPickerErrorMessage(messagingUsers.error)}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void messagingUsers.refetch()}
+                  >
+                    Try again
+                  </Button>
+                </div>
+              ) : filteredUsers.length ? (
+                <div className="divide-y">
+                  {filteredUsers.map((member) => (
                     <button
                       key={member.id}
                       type="button"
                       disabled={startingConversation}
                       onClick={() => void startConversation(member)}
-                      className="flex w-full items-center gap-3 border-b bg-card px-4 py-3 text-left transition hover:bg-secondary disabled:cursor-wait disabled:opacity-60"
+                      className="flex w-full items-center gap-3 bg-card px-4 py-4 text-left transition hover:bg-secondary disabled:cursor-wait disabled:opacity-60 sm:px-5"
                     >
                       <PhotoAvatar
                         path={member.avatar_path}
                         name={member.full_name}
-                        className="size-11 shrink-0"
+                        className="size-12 shrink-0"
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold text-foreground">
+                        <span className="block truncate text-base font-semibold text-foreground">
                           {messagingUserDisplayName(member)}
                         </span>
-                        <span className="mt-0.5 block truncate text-xs capitalize text-muted-foreground">
+                        <span className="mt-1 block truncate text-xs capitalize text-muted-foreground">
                           {member.role.replaceAll("_", " ")}
                         </span>
                       </span>
-                      <MessageCircle className="size-4 shrink-0 text-primary" />
+                      <MessageCircle className="size-5 shrink-0 text-primary" />
                     </button>
-                  ))
-                ) : (
-                  <div className="p-8 text-center text-sm text-muted-foreground">
-                    No registered users match “{userSearch}”.
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 p-12 text-center text-sm text-muted-foreground">
+                  <UserPlus className="size-8 text-primary/60" />
+                  <p>
+                    {userSearch.trim()
+                      ? `No VITO users match “${userSearch}”.`
+                      : "No registered VITO users found."}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </section>
+      )}
     </div>
   );
 }
@@ -635,7 +649,7 @@ function ChatView({
 }
 
 async function loadMessagingUsers(): Promise<MessagingUser[]> {
-  const { data, error } = await supabase.rpc("list_messaging_users");
+  const { data, error } = await supabase.rpc("list_messaging_users", { _query: null });
   if (error) throw error;
   return data ?? [];
 }
