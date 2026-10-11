@@ -131,7 +131,7 @@ function Index() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm">
+      <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm dark:bg-card dark:text-white">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
           <VitoInfoPanel />
           <form
@@ -142,7 +142,7 @@ function Index() {
               if (matches[0]) selectSearchItem(matches[0]);
             }}
           >
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-background/60" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-background/70 dark:text-white/85" />
             <input
               value={search}
               onChange={(event) => {
@@ -154,7 +154,7 @@ function Index() {
               type="search"
               placeholder="Search VITO Physio…"
               aria-label="Search VITO Physio"
-              className="h-10 w-full rounded-lg border border-background/10 bg-background/10 pl-10 pr-3 text-sm text-background placeholder:text-background/60 focus:border-background/30 focus:bg-background/15 focus:outline-none"
+              className="h-10 w-full rounded-lg border border-background/20 bg-background/10 pl-10 pr-3 text-sm text-background placeholder:text-background/70 focus:border-background/45 focus:bg-background/15 focus:outline-none dark:border-white/25 dark:bg-white/10 dark:text-white dark:placeholder:text-white/70 dark:focus:border-white/50 dark:focus:bg-white/15"
             />
             {searchOpen && search.trim() && (
               <ul className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg">
@@ -202,7 +202,7 @@ function Index() {
               <Link
                 to="/dashboard"
                 aria-label="Open dashboard"
-                className="inline-flex size-10 items-center justify-center rounded-full text-background/85 hover:bg-background/10"
+                className="inline-flex size-10 items-center justify-center rounded-full text-background/90 hover:bg-background/10 dark:text-white dark:hover:bg-white/15"
               >
                 <LayoutDashboard className="size-5" />
               </Link>
@@ -211,7 +211,7 @@ function Index() {
               <DropdownMenuTrigger
                 aria-label="Open menu"
                 title="Open menu"
-                className="inline-flex size-10 items-center justify-center rounded-md text-background/80 transition-colors hover:bg-background/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60"
+                className="inline-flex size-10 items-center justify-center rounded-md text-background/90 transition-colors hover:bg-background/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60 dark:text-white dark:hover:bg-white/15 dark:focus-visible:ring-white/70"
               >
                 <Menu className="size-7" />
               </DropdownMenuTrigger>

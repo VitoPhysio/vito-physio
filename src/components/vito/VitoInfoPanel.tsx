@@ -1,7 +1,8 @@
-import { ChevronDown, Mail, Moon, Phone, Sun } from "lucide-react";
+import { ChevronDown, Mail, Moon, Phone, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -66,9 +67,17 @@ export function VitoInfoPanel({
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="h-screen w-[min(92vw,760px)] max-w-none overflow-y-auto border-l border-primary/20 bg-background p-0 text-foreground shadow-2xl sm:w-[min(78vw,760px)] [&>button]:text-white"
+        className="h-screen w-[min(92vw,760px)] max-w-none overflow-y-auto border-l border-primary/20 bg-background p-0 text-foreground shadow-2xl sm:w-[min(78vw,760px)] [&>button]:hidden"
       >
         <div className="relative min-h-full overflow-hidden bg-background px-6 py-8 sm:px-10 sm:py-10">
+          <SheetClose
+            aria-label="Close VITO Physio information"
+            title="Close"
+            className="absolute right-5 top-5 z-20 inline-flex size-11 items-center justify-center rounded-full border border-white/35 bg-black/20 text-white shadow-lg backdrop-blur-sm transition hover:bg-black/35 focus:outline-none focus:ring-2 focus:ring-white/80 focus:ring-offset-2 focus:ring-offset-primary"
+          >
+            <X className="size-6" />
+            <span className="sr-only">Close</span>
+          </SheetClose>
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-brand-gradient opacity-95"
