@@ -1,0 +1,587 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
+import {
+  ArrowLeft,
+  Check,
+  CheckCheck,
+  ChevronDown,
+  Filter,
+  MessageCircle,
+  MoreVertical,
+  Paperclip,
+  Search,
+  Send,
+  Smile,
+  UserRound,
+  Video,
+  Phone,
+} from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { PhotoAvatar } from "@/components/vito/Photo";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+export const Route = createFileRoute("/_authenticated/messages")({
+  component: MessagesPage,
+});
+
+type Profile = { id: string; full_name: string | null; avatar_path: string | null };
+type Message = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+};
+type Participant = {
+  conversation_id: string;
+  user_id: string;
+  last_read_at: string | null;
+};
+type Conversation = {
+  id: string;
+  kind: "direct" | "group";
+  created_at: string;
+  last_message_at: string;
+};
+type ConversationView = Conversation & {
+  participants: Participant[];
+  messages: Message[];
+  otherProfiles: Profile[];
+  latest: Message | null;
+  unread: number;
+  displayName: string;
+  avatarPath: string | null;
+};
+
+type Filter = "all" | "unread" | "read";
+
+function MessagesPage() {
+  const { user } = Route.useRouteContext();
+  const queryClient = useQueryClient();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
+
+  const conversations = useQuery({
+    queryKey: ["messages", user.id],
+    queryFn: () => loadConversations(user.id),
+    staleTime: 5_000,
+  });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`messages-inbox-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+        void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+      })
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "conversation_participants",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => void queryClient.invalidateQueries({ queryKey: ["messages", user.id] }),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient, user.id]);
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return (conversations.data ?? []).filter((conversation) => {
+      const matchesFilter =
+        filter === "all" ||
+        (filter === "unread" ? conversation.unread > 0 : conversation.unread === 0);
+      const matchesQuery =
+        !needle ||
+        `${conversation.displayName} ${conversation.latest?.body ?? ""}`
+          .toLowerCase()
+          .includes(needle);
+      return matchesFilter && matchesQuery;
+    });
+  }, [conversations.data, filter, query]);
+
+  const selected =
+    (conversations.data ?? []).find((conversation) => conversation.id === selectedId) ?? null;
+
+  async function openConversation(conversation: ConversationView) {
+    setSelectedId(conversation.id);
+    const { error } = await supabase.rpc("mark_conversation_read", {
+      _conversation_id: conversation.id,
+    });
+    if (!error) void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+  }
+
+  function closeMessages() {
+    if (window.history.length > 1) window.history.back();
+    else window.location.assign("/dashboard");
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-foreground">
+      <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-3 shadow-sm sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={closeMessages}
+            aria-label="Back to previous page"
+            className="grid size-10 shrink-0 place-items-center rounded-full text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <ArrowLeft className="size-5" />
+          </button>
+          <PhotoAvatar
+            path={null}
+            name="Messages"
+            className="size-10 bg-primary text-primary-foreground"
+          />
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-black tracking-tight sm:text-2xl">Messages</h1>
+            <p className="hidden text-xs text-muted-foreground sm:block">
+              Conversations with your VITO Physio team
+            </p>
+          </div>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Filter className="size-4" />
+              <span className="hidden sm:inline">{filterLabel(filter)}</span>
+              <ChevronDown className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {(["all", "unread", "read"] as Filter[]).map((value) => (
+              <DropdownMenuItem key={value} onSelect={() => setFilter(value)}>
+                {filterLabel(value)}
+                {filter === value && <Check className="ml-auto size-4 text-primary" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </header>
+
+      <div className="grid min-h-0 flex-1 md:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]">
+        <aside
+          className={`${selected ? "hidden md:flex" : "flex"} min-h-0 flex-col border-r bg-muted/20`}
+        >
+          <div className="shrink-0 border-b p-4">
+            <label className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 text-sm text-muted-foreground shadow-sm focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+              <Search className="size-4 shrink-0" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search conversations"
+                aria-label="Search conversations"
+                className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+              />
+            </label>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {conversations.isLoading ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                Loading conversations…
+              </div>
+            ) : conversations.error ? (
+              <div className="p-6 text-center text-sm text-destructive">
+                Unable to load your conversations. Please try again.
+              </div>
+            ) : filtered.length ? (
+              filtered.map((conversation) => (
+                <ConversationRow
+                  key={conversation.id}
+                  conversation={conversation}
+                  selected={conversation.id === selectedId}
+                  onSelect={() => void openConversation(conversation)}
+                />
+              ))
+            ) : (
+              <EmptyInbox hasSearch={Boolean(query || filter !== "all")} />
+            )}
+          </div>
+        </aside>
+
+        <main
+          className={`${selected ? "flex" : "hidden md:flex"} min-h-0 min-w-0 flex-col bg-secondary/25`}
+        >
+          {selected ? (
+            <ChatView
+              conversation={selected}
+              userId={user.id}
+              onBack={() => setSelectedId(null)}
+              onSent={() => void queryClient.invalidateQueries({ queryKey: ["messages", user.id] })}
+            />
+          ) : (
+            <div className="m-auto max-w-sm px-8 text-center text-muted-foreground">
+              <MessageCircle className="mx-auto mb-4 size-14 text-primary/70" />
+              <h2 className="text-lg font-bold text-foreground">Select a conversation</h2>
+              <p className="mt-2 text-sm">
+                Choose a conversation to view messages and send a reply.
+              </p>
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function ConversationRow({
+  conversation,
+  selected,
+  onSelect,
+}: {
+  conversation: ConversationView;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`flex w-full items-center gap-3 border-b px-4 py-4 text-left transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${selected ? "bg-secondary" : "bg-card"}`}
+    >
+      <PhotoAvatar
+        path={conversation.avatarPath}
+        name={conversation.displayName}
+        className="size-12 shrink-0"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center justify-between gap-2">
+          <span className="truncate font-bold">{conversation.displayName}</span>
+          <span
+            className={`shrink-0 text-xs ${conversation.unread ? "font-bold text-primary" : "text-muted-foreground"}`}
+          >
+            {formatChatTime(conversation.last_message_at)}
+          </span>
+        </span>
+        <span className="mt-1 flex items-center gap-2">
+          <span
+            className={`min-w-0 flex-1 truncate text-sm ${conversation.unread ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+          >
+            {conversation.latest?.body ?? "No messages yet"}
+          </span>
+          {conversation.unread > 0 && (
+            <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+              {conversation.unread > 99 ? "99+" : conversation.unread}
+            </span>
+          )}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function ChatView({
+  conversation,
+  userId,
+  onBack,
+  onSent,
+}: {
+  conversation: ConversationView;
+  userId: string;
+  onBack: () => void;
+  onSent: () => void;
+}) {
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const historyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    historyRef.current?.scrollTo({ top: historyRef.current.scrollHeight });
+  }, [conversation.messages.length, conversation.id]);
+
+  async function sendMessage() {
+    const text = body.trim();
+    if (!text || sending) return;
+    setSending(true);
+    const { error } = await supabase.from("messages").insert({
+      conversation_id: conversation.id,
+      sender_id: userId,
+      body: text,
+    });
+    setSending(false);
+    if (error) {
+      toast.error("Your message could not be sent. Please try again.");
+      return;
+    }
+    setBody("");
+    onSent();
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void sendMessage();
+    }
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex shrink-0 items-center gap-3 border-b bg-card px-4 py-3 shadow-sm sm:px-5">
+        <button
+          type="button"
+          onClick={onBack}
+          className="grid size-9 place-items-center rounded-full text-primary hover:bg-secondary md:hidden"
+          aria-label="Back to messages"
+        >
+          <ArrowLeft className="size-5" />
+        </button>
+        <PhotoAvatar
+          path={conversation.avatarPath}
+          name={conversation.displayName}
+          className="size-11 shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate font-bold">{conversation.displayName}</h2>
+          <p className="text-xs text-muted-foreground">VITO Physio member</p>
+        </div>
+        <button
+          type="button"
+          disabled
+          title="Voice calls are coming soon"
+          aria-label="Voice calls are not available"
+          className="hidden rounded-full p-2 text-muted-foreground opacity-50 sm:inline-flex"
+        >
+          <Phone className="size-5" />
+        </button>
+        <button
+          type="button"
+          disabled
+          title="Video calls are coming soon"
+          aria-label="Video calls are not available"
+          className="hidden rounded-full p-2 text-muted-foreground opacity-50 sm:inline-flex"
+        >
+          <Video className="size-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Conversation options"
+          className="rounded-full p-2 text-muted-foreground hover:bg-secondary"
+        >
+          <MoreVertical className="size-5" />
+        </button>
+      </header>
+
+      <div
+        ref={historyRef}
+        className="min-h-0 flex-1 overflow-y-auto bg-background px-4 py-5 sm:px-8"
+      >
+        <div className="mx-auto flex max-w-3xl flex-col gap-3">
+          {conversation.messages.length ? (
+            conversation.messages.map((message, index) => {
+              const mine = message.sender_id === userId;
+              const previous = conversation.messages[index - 1];
+              const showDate = !previous || !sameDay(previous.created_at, message.created_at);
+              return (
+                <div key={message.id}>
+                  {showDate && (
+                    <p className="mx-auto mb-3 w-fit rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+                      {formatDate(message.created_at)}
+                    </p>
+                  )}
+                  <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-4 py-2.5 shadow-sm sm:max-w-[70%] ${mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border bg-card"}`}
+                    >
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.body}</p>
+                      <div
+                        className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-foreground/75" : "text-muted-foreground"}`}
+                      >
+                        {formatMessageTime(message.created_at)}
+                        {mine && <CheckCheck className="size-3" />}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="m-auto py-20 text-center text-sm text-muted-foreground">
+              Start the conversation with a message.
+            </div>
+          )}
+        </div>
+      </div>
+
+      <form
+        className="flex shrink-0 items-center gap-2 border-t bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void sendMessage();
+        }}
+      >
+        <button
+          type="button"
+          disabled
+          title="Attachments are coming soon"
+          aria-label="Attachments are not available"
+          className="hidden rounded-full p-2 text-muted-foreground opacity-50 sm:inline-flex"
+        >
+          <Paperclip className="size-5" />
+        </button>
+        <button
+          type="button"
+          disabled
+          title="Emoji picker is coming soon"
+          aria-label="Emoji picker is not available"
+          className="hidden rounded-full p-2 text-muted-foreground opacity-50 sm:inline-flex"
+        >
+          <Smile className="size-5" />
+        </button>
+        <input
+          value={body}
+          onChange={(event) => setBody(event.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={sending}
+          placeholder="Write a message…"
+          aria-label="Message"
+          className="min-w-0 flex-1 rounded-full border bg-background px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+        />
+        <button
+          type="submit"
+          disabled={sending || !body.trim()}
+          aria-label="Send message"
+          className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Send className="size-4" />
+        </button>
+      </form>
+    </div>
+  );
+}
+
+async function loadConversations(userId: string): Promise<ConversationView[]> {
+  const { data: memberships, error: membershipError } = await supabase
+    .from("conversation_participants")
+    .select("conversation_id,user_id,last_read_at")
+    .eq("user_id", userId);
+  if (membershipError) throw membershipError;
+  const ids = (memberships ?? []).map((row: Participant) => row.conversation_id);
+  if (!ids.length) return [];
+
+  const [
+    { data: conversations, error: conversationError },
+    { data: allParticipants, error: participantError },
+    { data: messages, error: messageError },
+  ] = await Promise.all([
+    supabase
+      .from("conversations")
+      .select("id,kind,created_at,last_message_at")
+      .in("id", ids)
+      .order("last_message_at", { ascending: false }),
+    supabase
+      .from("conversation_participants")
+      .select("conversation_id,user_id,last_read_at")
+      .in("conversation_id", ids),
+    supabase
+      .from("messages")
+      .select("id,conversation_id,sender_id,body,created_at")
+      .in("conversation_id", ids)
+      .order("created_at", { ascending: true }),
+  ]);
+  if (conversationError || participantError || messageError)
+    throw conversationError ?? participantError ?? messageError;
+
+  const participantIds = [
+    ...new Set((allParticipants ?? []).map((row: Participant) => row.user_id)),
+  ];
+  const { data: profiles, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id,full_name,avatar_path")
+    .in("id", participantIds);
+  if (profilesError) throw profilesError;
+  const profileMap = new Map<string, Profile>(
+    (profiles ?? []).map((profile: Profile) => [profile.id, profile]),
+  );
+  const messageMap = new Map<string, Message[]>();
+  for (const message of (messages ?? []) as Message[]) {
+    const existing = messageMap.get(message.conversation_id) ?? [];
+    existing.push(message);
+    messageMap.set(message.conversation_id, existing);
+  }
+
+  return ((conversations ?? []) as Conversation[]).map((conversation) => {
+    const participants = ((allParticipants ?? []) as Participant[]).filter(
+      (row) => row.conversation_id === conversation.id,
+    );
+    const otherProfiles = participants
+      .filter((row) => row.user_id !== userId)
+      .map((row) => profileMap.get(row.user_id))
+      .filter(Boolean) as Profile[];
+    const conversationMessages = messageMap.get(conversation.id) ?? [];
+    const latest = conversationMessages.at(-1) ?? null;
+    const ownMembership = participants.find((row) => row.user_id === userId);
+    const unread = conversationMessages.filter(
+      (message) =>
+        message.sender_id !== userId &&
+        (!ownMembership?.last_read_at || message.created_at > ownMembership.last_read_at),
+    ).length;
+    return {
+      ...conversation,
+      participants,
+      messages: conversationMessages,
+      otherProfiles,
+      latest,
+      unread,
+      displayName:
+        otherProfiles.map((profile) => profile.full_name || "VITO Physio member").join(", ") ||
+        "VITO Physio member",
+      avatarPath: otherProfiles[0]?.avatar_path ?? null,
+    };
+  });
+}
+
+function filterLabel(filter: Filter) {
+  return filter[0].toUpperCase() + filter.slice(1);
+}
+
+function formatChatTime(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  return date.toDateString() === now.toDateString()
+    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function formatMessageTime(value: string) {
+  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+}
+
+function sameDay(left: string, right: string) {
+  return new Date(left).toDateString() === new Date(right).toDateString();
+}
+
+function EmptyInbox({ hasSearch }: { hasSearch: boolean }) {
+  return (
+    <div className="flex h-full min-h-72 flex-col items-center justify-center px-8 text-center">
+      <span className="grid size-14 place-items-center rounded-2xl bg-secondary text-primary">
+        <UserRound className="size-7" />
+      </span>
+      <h2 className="mt-4 font-bold">
+        {hasSearch ? "No matching conversations" : "No conversations yet"}
+      </h2>
+      <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+        {hasSearch
+          ? "Try a different search or filter."
+          : "Your messages with athletes, clinicians, coaches, and other VITO Physio members will appear here."}
+      </p>
+    </div>
+  );
+}

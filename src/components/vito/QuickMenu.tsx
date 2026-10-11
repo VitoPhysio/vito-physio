@@ -25,7 +25,13 @@ export type QuickMenuItem = {
 
 /** Placeholder entries — set `to` (or `onSelect`) as each feature ships. */
 export const DEFAULT_QUICK_MENU_ITEMS: QuickMenuItem[] = [
-  { key: "messages", label: "Messages", description: "Conversations with your team", icon: MessageSquare },
+  {
+    key: "messages",
+    label: "Messages",
+    description: "Conversations with your team",
+    icon: MessageSquare,
+    to: "/messages",
+  },
   { key: "blogs", label: "Blogs", description: "News and articles", icon: BookOpen },
   { key: "notifications", label: "Notifications", description: "Updates and alerts", icon: Bell },
   { key: "resources", label: "Resources", description: "Guides and documents", icon: FolderOpen },

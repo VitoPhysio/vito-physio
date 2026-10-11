@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      conversations: {
+        Row: {
+          id: string
+          kind: string
+          created_at: string
+          last_message_at: string
+        }
+        Insert: {
+          id?: string
+          kind?: string
+          created_at?: string
+          last_message_at?: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          created_at?: string
+          last_message_at?: string
+        }
+        Relationships: []
+      }
+      conversation_participants: {
+        Row: {
+          conversation_id: string
+          user_id: string
+          joined_at: string
+          last_read_at: string | null
+        }
+        Insert: {
+          conversation_id: string
+          user_id: string
+          joined_at?: string
+          last_read_at?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          user_id?: string
+          joined_at?: string
+          last_read_at?: string | null
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          id: string
+          conversation_id: string
+          sender_id: string
+          body: string
+          created_at: string
+          edited_at: string | null
+        }
+        Insert: {
+          id?: string
+          conversation_id: string
+          sender_id: string
+          body: string
+          created_at?: string
+          edited_at?: string | null
+        }
+        Update: {
+          id?: string
+          conversation_id?: string
+          sender_id?: string
+          body?: string
+          created_at?: string
+          edited_at?: string | null
+        }
+        Relationships: []
+      }
       appointments: {
         Row: {
           appointment_code: string
@@ -1368,6 +1437,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_direct_conversation: {
+        Args: { _other_user: string }
+        Returns: string
+      }
+      is_conversation_participant: {
+        Args: { _conversation_id: string; _user_id?: string }
+        Returns: boolean
+      }
+      mark_conversation_read: {
+        Args: { _conversation_id: string }
+        Returns: undefined
+      }
+      list_messaging_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          full_name: string | null
+          avatar_path: string | null
+          role: string
+        }[]
+      }
       can_read_communication: {
         Args: {
           _c: Database["public"]["Tables"]["communications"]["Row"]
