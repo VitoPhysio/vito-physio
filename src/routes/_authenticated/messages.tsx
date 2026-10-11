@@ -82,6 +82,7 @@ type MessagingUser = {
 
 function MessagesPage() {
   const { user } = Route.useRouteContext();
+  const navigate = Route.useNavigate();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -181,8 +182,7 @@ function MessagesPage() {
   }
 
   function closeMessages() {
-    if (window.history.length > 1) window.history.back();
-    else window.location.assign("/dashboard");
+    void navigate({ to: "/dashboard" });
   }
 
   return (
@@ -193,7 +193,7 @@ function MessagesPage() {
             <button
               type="button"
               onClick={closeMessages}
-              aria-label="Back to previous page"
+              aria-label="Back to home dashboard"
               className="grid size-10 shrink-0 place-items-center rounded-full text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <ArrowLeft className="size-5" />

@@ -1,21 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowRight,
   ClipboardList,
   Activity,
   Dumbbell,
   CalendarCheck2,
   HeartPulse,
-  Stethoscope,
   UserRound,
-  LockKeyhole,
   LogIn,
   LayoutDashboard,
   Menu,
   Search,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -27,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import logo from "@/assets/vito-logo.png";
 import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
+import { AppHeader } from "@/components/vito/AppHeader";
 import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
 
 export const Route = createFileRoute("/")({
@@ -103,7 +102,7 @@ const publicSearchItems = [
 
 function Index() {
   const navigate = useNavigate();
-  const [signedIn, setSignedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const matches = publicSearchItems.filter((item) =>
@@ -113,7 +112,7 @@ function Index() {
   function selectSearchItem(item: (typeof publicSearchItems)[number]) {
     setSearch("");
     setSearchOpen(false);
-    if (item.requiresLogin && !signedIn) {
+    if (item.requiresLogin && !currentUser) {
       toast("Please sign in to open this area.");
       navigate({ to: "/auth" });
       return;
@@ -122,122 +121,126 @@ function Index() {
   }
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setSignedIn(Boolean(data.user)));
+    supabase.auth.getUser().then(({ data }) => setCurrentUser(data.user ?? null));
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session)));
+    } = supabase.auth.onAuthStateChange((_event, session) => setCurrentUser(session?.user ?? null));
     return () => subscription.unsubscribe();
   }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm dark:bg-card dark:text-white">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
-          <VitoInfoPanel />
-          <form
-            role="search"
-            className="relative mx-auto min-w-0 flex-1 sm:max-w-2xl"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (matches[0]) selectSearchItem(matches[0]);
-            }}
-          >
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-background/70 dark:text-white/85" />
-            <input
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setSearchOpen(true);
+      {currentUser ? (
+        <AppHeader user={currentUser} profileNavigatesHome />
+      ) : (
+        <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm dark:bg-card dark:text-white">
+          <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
+            <VitoInfoPanel />
+            <form
+              role="search"
+              className="relative mx-auto min-w-0 flex-1 sm:max-w-2xl"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (matches[0]) selectSearchItem(matches[0]);
               }}
-              onFocus={() => setSearchOpen(true)}
-              onBlur={() => setTimeout(() => setSearchOpen(false), 120)}
-              type="search"
-              placeholder="Search VITO Physio…"
-              aria-label="Search VITO Physio"
-              className="h-10 w-full rounded-lg border border-background/20 bg-background/10 pl-10 pr-3 text-sm text-background placeholder:text-background/70 focus:border-background/45 focus:bg-background/15 focus:outline-none dark:border-white/25 dark:bg-white/10 dark:text-white dark:placeholder:text-white/70 dark:focus:border-white/50 dark:focus:bg-white/15"
-            />
-            {searchOpen && search.trim() && (
-              <ul className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg">
-                {matches.length ? (
-                  matches.map((item) => (
-                    <li key={item.to}>
-                      <button
-                        type="button"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => selectSearchItem(item)}
-                        className="flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent/10"
-                      >
-                        <Search className="mt-0.5 size-4 shrink-0 text-primary" />
-                        <span>
-                          <span className="block font-medium">{item.label}</span>
-                          <span className="block text-xs text-muted-foreground">
-                            {item.description}
-                            {item.requiresLogin && " · Sign in required"}
+            >
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-background/70 dark:text-white/85" />
+              <input
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setSearchOpen(true);
+                }}
+                onFocus={() => setSearchOpen(true)}
+                onBlur={() => setTimeout(() => setSearchOpen(false), 120)}
+                type="search"
+                placeholder="Search VITO Physio…"
+                aria-label="Search VITO Physio"
+                className="h-10 w-full rounded-lg border border-background/20 bg-background/10 pl-10 pr-3 text-sm text-background placeholder:text-background/70 focus:border-background/45 focus:bg-background/15 focus:outline-none dark:border-white/25 dark:bg-white/10 dark:text-white dark:placeholder:text-white/70 dark:focus:border-white/50 dark:focus:bg-white/15"
+              />
+              {searchOpen && search.trim() && (
+                <ul className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg">
+                  {matches.length ? (
+                    matches.map((item) => (
+                      <li key={item.to}>
+                        <button
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => selectSearchItem(item)}
+                          className="flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent/10"
+                        >
+                          <Search className="mt-0.5 size-4 shrink-0 text-primary" />
+                          <span>
+                            <span className="block font-medium">{item.label}</span>
+                            <span className="block text-xs text-muted-foreground">
+                              {item.description}
+                              {item.requiresLogin && " · Sign in required"}
+                            </span>
                           </span>
-                        </span>
-                      </button>
+                        </button>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="px-3 py-2 text-sm text-muted-foreground">
+                      No VITO Physio results.
                     </li>
-                  ))
-                ) : (
-                  <li className="px-3 py-2 text-sm text-muted-foreground">
-                    No VITO Physio results.
-                  </li>
-                )}
-              </ul>
-            )}
-          </form>
-          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-            {!signedIn && (
-              <Link
-                to="/auth"
-                aria-label="Log in"
-                title="Log in to your account"
-                className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition hover:brightness-105"
-              >
-                <LogIn className="size-4" />
-                Log in
-              </Link>
-            )}
-            {signedIn && (
-              <Link
-                to="/dashboard"
-                aria-label="Open dashboard"
-                className="inline-flex size-10 items-center justify-center rounded-full text-background/90 hover:bg-background/10 dark:text-white dark:hover:bg-white/15"
-              >
-                <LayoutDashboard className="size-5" />
-              </Link>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                aria-label="Open menu"
-                title="Open menu"
-                className="inline-flex size-10 items-center justify-center rounded-md text-background/90 transition-colors hover:bg-background/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60 dark:text-white dark:hover:bg-white/15 dark:focus-visible:ring-white/70"
-              >
-                <Menu className="size-7" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 rounded-xl p-2">
-                <DropdownMenuLabel>
-                  {signedIn ? "Quick menu" : "Sign in required"}
-                </DropdownMenuLabel>
-                {!signedIn && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/auth" className="cursor-pointer">
-                      Sign in to open your menu
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-                {signedIn && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/dashboard" className="cursor-pointer">
-                      Open dashboard
-                    </Link>
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  )}
+                </ul>
+              )}
+            </form>
+            <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+              {!currentUser && (
+                <Link
+                  to="/auth"
+                  aria-label="Log in"
+                  title="Log in to your account"
+                  className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition hover:brightness-105"
+                >
+                  <LogIn className="size-4" />
+                  Log in
+                </Link>
+              )}
+              {currentUser && (
+                <Link
+                  to="/dashboard"
+                  aria-label="Open dashboard"
+                  className="inline-flex size-10 items-center justify-center rounded-full text-background/90 hover:bg-background/10 dark:text-white dark:hover:bg-white/15"
+                >
+                  <LayoutDashboard className="size-5" />
+                </Link>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  aria-label="Open menu"
+                  title="Open menu"
+                  className="inline-flex size-10 items-center justify-center rounded-md text-background/90 transition-colors hover:bg-background/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60 dark:text-white dark:hover:bg-white/15 dark:focus-visible:ring-white/70"
+                >
+                  <Menu className="size-7" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 rounded-xl p-2">
+                  <DropdownMenuLabel>
+                    {currentUser ? "Quick menu" : "Sign in required"}
+                  </DropdownMenuLabel>
+                  {!currentUser && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/auth" className="cursor-pointer">
+                        Sign in to open your menu
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {currentUser && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/dashboard" className="cursor-pointer">
+                        Open dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <main>
         <section className="bg-hero-glow relative overflow-hidden">
@@ -259,22 +262,25 @@ function Index() {
 
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
               <WhatsAppConsultationButton />
-              <Button
-                asChild
-                size="lg"
-                className="bg-brand-gradient rounded-full px-7 text-base shadow-glow ring-1 ring-primary/25 transition-transform hover:-translate-y-0.5"
-              >
-                <Link to="/register">
-                  <Stethoscope className="mr-2 size-4" />
-                  Consult or register
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="rounded-full px-7 text-base">
-                <Link to="/portal">
-                  <LockKeyhole className="mr-2 size-4" />
-                  Parent portal
-                </Link>
-              </Button>
+              {currentUser ? (
+                <Button
+                  asChild
+                  size="lg"
+                  className="bg-brand-gradient rounded-full px-7 text-base shadow-glow ring-1 ring-primary/25 transition-transform hover:-translate-y-0.5"
+                >
+                  <Link to="/dashboard">
+                    <LayoutDashboard className="mr-2 size-4" />
+                    Get Into Working Space
+                  </Link>
+                </Button>
+              ) : (
+                <Button asChild size="lg" variant="outline" className="rounded-full px-7 text-base">
+                  <Link to="/auth">
+                    <LogIn className="mr-2 size-4" />
+                    Sign in to get working
+                  </Link>
+                </Button>
+              )}
             </div>
 
             <ul className="mt-12 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
