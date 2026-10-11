@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
 
 const name = z.string().trim().min(2).max(120);
 const email = z.string().trim().email().max(255);
@@ -170,21 +171,18 @@ export const requestConsent = createServerFn({ method: "POST" })
       .ilike("surname", data.surname)
       .maybeSingle();
     if (!athlete) return { ok: false };
-    const { error } = await supabaseAdmin
-      .from("consent_requests")
-      .insert({
-        athlete_id: athlete.id,
-        requester_name: data.requester_name,
-        requester_email: data.requester_email,
-      });
+    const { error } = await supabaseAdmin.from("consent_requests").insert({
+      athlete_id: athlete.id,
+      requester_name: data.requester_name,
+      requester_email: data.requester_email,
+    });
     if (error) throw new Error("Could not submit the request.");
     return { ok: true };
   });
 
 // Public list of registered organisations (names and types only) for sign-up pickers.
-export const listOrganisations = createServerFn({ method: 'GET' })
-  .handler(async () => {
-    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
-    const { data } = await supabaseAdmin.from('schools').select('id, name, school_type').order('name').limit(500);
-    return data ?? [];
-  });
+export const listOrganisations = createServerFn({ method: "GET" }).handler(async () => {
+  const { data, error } = await supabase.rpc("list_public_organisations");
+  if (error) throw new Error("Organisations could not be loaded.");
+  return data ?? [];
+});
