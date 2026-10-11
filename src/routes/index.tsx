@@ -3,13 +3,18 @@ import { Button } from "@/components/ui/button";
 import {
   ClipboardList,
   Activity,
+  Bell,
+  Compass,
   Dumbbell,
   CalendarCheck2,
   HeartPulse,
   UserRound,
   LogIn,
   LayoutDashboard,
+  LogOut,
+  MessageCircle,
   Menu,
+  ShieldCheck,
   Search,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -21,12 +26,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import logo from "@/assets/vito-logo.png";
 import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
-import { AppHeader } from "@/components/vito/AppHeader";
 import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
+import { PhotoAvatar } from "@/components/vito/Photo";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -131,7 +137,7 @@ function Index() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {currentUser ? (
-        <AppHeader user={currentUser} profileNavigatesHome />
+        <SignedInHomeHeader user={currentUser} />
       ) : (
         <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm dark:bg-card dark:text-white">
           <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
@@ -345,5 +351,156 @@ function Index() {
         </section>
       </main>
     </div>
+  );
+}
+
+const HOME_STAFF_ROLES = [
+  "super_admin",
+  "vito_admin",
+  "clinical_professional",
+  "clinical_supervisor",
+];
+const HOME_ADMIN_ROLES = ["super_admin", "vito_admin"];
+
+function SignedInHomeHeader({ user }: { user: User }) {
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<{
+    full_name: string | null;
+    avatar_path: string | null;
+    role: string;
+  }>({ full_name: user.email ?? "VITO Physio member", avatar_path: null, role: "athlete" });
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      supabase.from("profiles").select("full_name, avatar_path").eq("id", user.id).maybeSingle(),
+      supabase.from("user_roles").select("role").eq("user_id", user.id).limit(1),
+    ]).then(([profileResult, roleResult]) => {
+      if (!active) return;
+      setProfile({
+        full_name: profileResult.data?.full_name ?? user.email ?? "VITO Physio member",
+        avatar_path: profileResult.data?.avatar_path ?? null,
+        role: roleResult.data?.[0]?.role ?? "athlete",
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, [user.email, user.id]);
+
+  const staff = HOME_STAFF_ROLES.includes(profile.role);
+  const admin = HOME_ADMIN_ROLES.includes(profile.role);
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    navigate({ to: "/" });
+  }
+
+  return (
+    <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm dark:bg-card dark:text-white">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
+        <VitoInfoPanel />
+        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/dashboard" })}
+            aria-label="Open home dashboard"
+            title="Open home dashboard"
+            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60"
+          >
+            <PhotoAvatar
+              path={profile.avatar_path}
+              name={profile.full_name}
+              className="size-10 border-2 border-background/20 text-sm"
+            />
+          </button>
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+              aria-label="Open signed-in menu"
+              title="Open signed-in menu"
+              className="inline-flex size-10 items-center justify-center rounded-md text-background/80 transition-colors hover:bg-background/10 hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60 data-[state=open]:bg-background/15"
+            >
+              <Menu className="size-7" strokeWidth={2.25} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={10} className="w-64 rounded-xl p-1.5">
+              <DropdownMenuLabel className="flex items-center gap-2 px-2 py-2">
+                <PhotoAvatar
+                  path={profile.avatar_path}
+                  name={profile.full_name}
+                  className="size-8"
+                />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">{profile.full_name}</span>
+                  <span className="block truncate text-xs font-normal text-muted-foreground">
+                    {profile.role.replaceAll("_", " ")}
+                  </span>
+                </span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2 py-2">
+                <Link to="/dashboard">
+                  <LayoutDashboard className="size-4 text-primary" />
+                  Dashboard
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2 py-2">
+                <Link to="/messages">
+                  <MessageCircle className="size-4 text-primary" />
+                  Messages
+                </Link>
+              </DropdownMenuItem>
+              {(profile.role === "athlete" || profile.role === "parent") && (
+                <>
+                  <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2 py-2">
+                    <Link to="/discover">
+                      <Compass className="size-4 text-primary" />
+                      Discover
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2 py-2">
+                    <Link to="/profile">
+                      <UserRound className="size-4 text-primary" />
+                      Athlete profile
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+              {staff && (
+                <>
+                  <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2 py-2">
+                    <Link to="/cases">
+                      <ClipboardList className="size-4 text-primary" />
+                      Case workspace
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2 py-2">
+                    <Link to="/notifications">
+                      <Bell className="size-4 text-primary" />
+                      Notifications
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+              {admin && (
+                <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2 py-2">
+                  <Link to="/admin">
+                    <ShieldCheck className="size-4 text-primary" />
+                    Accounts & approvals
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => void signOut()}
+                className="cursor-pointer gap-3 rounded-lg px-2 py-2"
+              >
+                <LogOut className="size-4 text-primary" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </header>
   );
 }
