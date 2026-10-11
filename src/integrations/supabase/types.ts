@@ -1507,6 +1507,24 @@ export type Database = {
           visibility: string
         }[]
       }
+      get_messaging_member_profile: {
+        Args: { _user_id: string }
+        Returns: {
+          avatar_path: string | null
+          cover_path: string | null
+          full_name: string | null
+          headline: string | null
+          id: string
+          position: string | null
+          role: string | null
+          school: string | null
+          school_id: string | null
+          school_verified: boolean
+          sport: string | null
+          team: string | null
+          visibility: string | null
+        }[]
+      }
       get_sender_names: {
         Args: { _ids: string[] }
         Returns: {
