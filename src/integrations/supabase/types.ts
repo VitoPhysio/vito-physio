@@ -1450,7 +1450,7 @@ export type Database = {
         Returns: undefined
       }
       list_messaging_users: {
-        Args: Record<PropertyKey, never>
+        Args: { _query?: string | null }
         Returns: {
           id: string
           full_name: string | null
