@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/vito/AppHeader";
 
@@ -14,9 +14,12 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthenticatedLayout() {
   const { user } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isMessages = pathname === "/messages";
+
   return (
     <>
-      <AppHeader user={user} />
+      {!isMessages && <AppHeader user={user} />}
       <Outlet />
     </>
   );
