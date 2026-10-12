@@ -29,11 +29,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import logo from "@/assets/vito-logo.png";
 import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
 import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { AppHeader } from "@/components/vito/AppHeader";
+import { VitoBrandLockup } from "@/components/vito/VitoBrandLockup";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -302,13 +302,8 @@ function Index() {
             </ul>
           </div>
 
-          <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 border-t px-5 py-10 text-center">
-            <img
-              src={logo}
-              alt="VITO Physio logo"
-              className="h-24 w-24 object-contain sm:h-28 sm:w-28"
-            />
-            <p className="text-base font-bold text-primary">Care that moves with you</p>
+          <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 border-t px-5 py-10 text-center">
+            <VitoBrandLockup className="justify-center" />
             <p className="max-w-md text-sm text-muted-foreground">
               One record per athlete: injuries, assessments, rehab plans, follow-ups and recovery
               progress, shared only with the people who need to see them.
