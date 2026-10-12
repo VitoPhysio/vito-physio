@@ -153,10 +153,12 @@ function AuthPage() {
       );
     } else {
       try {
-        const session = await signInWithIdentifier({ data: { identifier: identifier.trim(), password } });
+        const session = await signInWithIdentifier({
+          data: { identifier: identifier.trim(), password },
+        });
         const { error } = await supabase.auth.setSession(session);
         if (error) throw error;
-        navigate({ to: "/dashboard" });
+        navigate({ to: "/" });
       } catch (error) {
         const text = error instanceof Error ? error.message : "Sign-in failed.";
         setMsg({

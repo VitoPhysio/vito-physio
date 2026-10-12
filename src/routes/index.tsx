@@ -33,6 +33,7 @@ import logo from "@/assets/vito-logo.png";
 import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
 import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
 import { PhotoAvatar } from "@/components/vito/Photo";
+import { AppHeader } from "@/components/vito/AppHeader";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -137,7 +138,7 @@ function Index() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {currentUser ? (
-        <SignedInHomeHeader user={currentUser} />
+        <AppHeader user={currentUser} />
       ) : (
         <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm dark:bg-card dark:text-white">
           <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">

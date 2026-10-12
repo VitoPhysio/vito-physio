@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Bell,
   ClipboardList,
+  Home,
   Compass,
   UserRound,
   LayoutDashboard,
@@ -197,6 +198,7 @@ export function AppHeader({
                 </span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <MenuRow icon={Home} label="Home" onSelect={() => navigate({ to: "/" })} />
               {items.map((item) => (
                 <MenuRow
                   key={item.key}
