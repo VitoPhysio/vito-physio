@@ -137,9 +137,9 @@ export function AppHeader({
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-foreground text-background shadow-sm print:hidden">
+    <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-sm print:hidden">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
-        <VitoInfoPanel />
+        <VitoInfoPanel triggerClassName="focus-visible:ring-primary-foreground/70" />
 
         <HeaderSearch items={items} onPick={go} />
 
@@ -148,7 +148,7 @@ export function AppHeader({
             to="/notifications"
             aria-label={`Notifications${unreadCount ? ` (${unreadCount} unread)` : ""}`}
             title="Notifications"
-            className="relative inline-flex size-10 items-center justify-center rounded-full text-background/85 transition-colors hover:bg-background/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60"
+            className="relative inline-flex size-10 items-center justify-center rounded-full text-primary-foreground/90 transition-colors hover:bg-primary-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70"
           >
             <Bell className="size-5" />
             {unreadCount > 0 && (
@@ -165,19 +165,19 @@ export function AppHeader({
             }
             aria-label={profileNavigatesHome ? "Open home dashboard" : "Profile and settings"}
             title={profileNavigatesHome ? "Open home dashboard" : data?.name}
-            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60"
+            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70"
           >
             <PhotoAvatar
               path={data?.avatar}
               name={data?.name}
-              className="size-10 border-2 border-background/20 text-sm"
+              className="size-10 border-2 border-primary-foreground/25 text-sm"
             />
           </button>
 
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
               aria-label="Open menu"
-              className="inline-flex size-10 items-center justify-center rounded-md text-background/80 transition-colors hover:bg-background/10 hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60 data-[state=open]:bg-background/15"
+              className="inline-flex size-10 items-center justify-center rounded-md text-primary-foreground/90 transition-colors hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70 data-[state=open]:bg-primary-foreground/15"
             >
               <Menu className="size-7" strokeWidth={2.25} />
             </DropdownMenuTrigger>
@@ -305,7 +305,7 @@ function HeaderSearch({
         if (matches[0]) pick(matches[0]);
       }}
     >
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-background/60" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-primary-foreground/70" />
       <input
         ref={inputRef}
         type="search"
@@ -324,7 +324,7 @@ function HeaderSearch({
         }}
         placeholder="Search VitoPhysio…"
         aria-label="Search VitoPhysio"
-        className="h-10 w-full rounded-lg border border-background/10 bg-background/10 pl-10 pr-3 text-sm text-background placeholder:text-background/60 focus:border-background/30 focus:bg-background/15 focus:outline-none"
+        className="h-10 w-full rounded-lg border border-primary-foreground/20 bg-primary-foreground/10 pl-10 pr-3 text-sm text-primary-foreground placeholder:text-primary-foreground/70 focus:border-primary-foreground/50 focus:bg-primary-foreground/15 focus:outline-none"
       />
       {open && (
         <ul className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-auto rounded-xl border bg-popover p-1.5 text-popover-foreground shadow-lg">

@@ -397,28 +397,28 @@ function SignedInHomeHeader({ user }: { user: User }) {
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm dark:bg-card dark:text-white">
+    <header className="sticky top-0 z-50 bg-primary text-primary-foreground shadow-sm">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
-        <VitoInfoPanel />
+        <VitoInfoPanel triggerClassName="focus-visible:ring-primary-foreground/70" />
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => navigate({ to: "/dashboard" })}
             aria-label="Open home dashboard"
             title="Open home dashboard"
-            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60"
+            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70"
           >
             <PhotoAvatar
               path={profile.avatar_path}
               name={profile.full_name}
-              className="size-10 border-2 border-background/20 text-sm"
+              className="size-10 border-2 border-primary-foreground/25 text-sm"
             />
           </button>
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger
               aria-label="Open signed-in menu"
               title="Open signed-in menu"
-              className="inline-flex size-10 items-center justify-center rounded-md text-background/80 transition-colors hover:bg-background/10 hover:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-background/60 data-[state=open]:bg-background/15"
+              className="inline-flex size-10 items-center justify-center rounded-md text-primary-foreground/90 transition-colors hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/70 data-[state=open]:bg-primary-foreground/15"
             >
               <Menu className="size-7" strokeWidth={2.25} />
             </DropdownMenuTrigger>
