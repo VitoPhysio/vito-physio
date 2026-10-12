@@ -121,7 +121,9 @@ function DeliveryStatusPanel({
                           </span>
                         </td>
                         <td className="px-2 py-3 font-mono text-xs">
-                          {log.consultation_request_id.slice(0, 8)}…
+                          {log.consultation_request_id
+                            ? `${log.consultation_request_id.slice(0, 8)}…`
+                            : "Admin email"}
                         </td>
                         <td className="px-2 py-3 whitespace-nowrap text-muted-foreground">
                           {new Date(log.created_at).toLocaleString()}
