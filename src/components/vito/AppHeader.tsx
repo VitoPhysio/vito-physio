@@ -4,8 +4,6 @@ import {
   Bell,
   ClipboardList,
   Home,
-  Compass,
-  UserRound,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -93,11 +91,7 @@ export function AppHeader({
         to: "/dashboard",
       },
     ];
-    if (role === "athlete" || role === "parent")
-      nav.push(
-        { key: "discover", label: "Community directory", icon: Compass, to: "/discover" },
-        { key: "profile", label: "Athlete profile", icon: UserRound, to: "/profile" },
-      );
+
     if (STAFF.includes(role))
       nav.push(
         {

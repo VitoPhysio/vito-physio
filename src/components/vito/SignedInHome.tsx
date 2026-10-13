@@ -49,13 +49,7 @@ const homeTabs: HomeTab[] = [
 ];
 
 /** Compact care highlights on the signed-in Home, navigable by arrows, touch, or trackpad. */
-export function SignedInHomeHighlights({
-  steps,
-  audience,
-}: {
-  steps: PathwayStep[];
-  audience: string[];
-}) {
+export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
 
   function move(direction: -1 | 1) {
@@ -71,30 +65,8 @@ export function SignedInHomeHighlights({
   return (
     <section
       aria-label="Care highlights"
-      className="mx-auto max-w-6xl px-4 pb-1 pt-2 sm:px-5 sm:pt-3"
+      className="relative mx-auto max-w-6xl px-4 pb-1 pt-0 sm:px-5"
     >
-      <div className="mb-2 flex justify-end gap-1.5">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label="Previous care highlight"
-          onClick={() => move(-1)}
-          className="size-8 rounded-full"
-        >
-          <ArrowLeft aria-hidden="true" className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label="Next care highlight"
-          onClick={() => move(1)}
-          className="size-8 rounded-full"
-        >
-          <ArrowRight aria-hidden="true" className="size-4" />
-        </Button>
-      </div>
       <div
         ref={trackRef}
         className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -104,33 +76,26 @@ export function SignedInHomeHighlights({
           data-highlight-card
           className="flex h-56 min-h-56 min-w-[min(88vw,40rem)] snap-start flex-col justify-center gap-2 rounded-2xl border bg-card p-4 shadow-sm sm:min-w-[40rem] sm:p-5"
         >
-          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/15 bg-background px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
-            <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />
-            Sports physiotherapy
-          </span>
           <h1 className="text-3xl font-black leading-none tracking-tight sm:text-4xl">
             <span className="bg-brand-gradient bg-clip-text text-transparent">VITO</span>{" "}
             <span className="text-foreground">Physio</span>
           </h1>
-          <p className="max-w-xl text-xs leading-5 text-muted-foreground sm:text-sm">
-            Connected care from injury report to rehabilitation and confident return to sport.
+          <p className="max-w-xl text-[11px] leading-4 text-muted-foreground sm:text-sm">
+            Sports injury care through rehabilitation and return to play.
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <WhatsAppConsultationButton compact />
             <Button
               asChild
-              size="sm"
-              className="rounded-full bg-brand-gradient px-4 text-sm shadow-glow ring-1 ring-primary/25"
+              size="lg"
+              className="h-11 rounded-full bg-brand-gradient px-5 text-sm font-bold shadow-glow ring-2 ring-primary/25 transition-transform hover:-translate-y-0.5 sm:text-base"
             >
               <Link to="/dashboard">
                 <LayoutDashboard aria-hidden="true" className="mr-2 size-4" />
-                Workspace
+                Go to Your Workspace
               </Link>
             </Button>
+            <WhatsAppConsultationButton compact />
           </div>
-          <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            {audience.join(" · ")}
-          </p>
         </article>
         <article
           data-highlight-card
@@ -183,6 +148,28 @@ export function SignedInHomeHighlights({
           </ol>
         </article>
       </div>
+      <div className="pointer-events-none absolute inset-y-0 right-2 z-10 flex items-center gap-1 sm:right-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label="Previous Home card"
+          onClick={() => move(-1)}
+          className="pointer-events-auto size-7 rounded-full border bg-background/95 shadow-sm"
+        >
+          <ArrowLeft aria-hidden="true" className="size-3.5" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label="Next Home card"
+          onClick={() => move(1)}
+          className="pointer-events-auto size-7 rounded-full border bg-background/95 shadow-sm"
+        >
+          <ArrowRight aria-hidden="true" className="size-3.5" />
+        </Button>
+      </div>
     </section>
   );
 }
@@ -216,15 +203,8 @@ export function SignedInHomeTabs() {
             icon={Users}
             eyebrow="Community feed"
             title="Your For You feed is ready to grow"
-            description="Community posts, recommendations, and shared sports updates will appear here when the community publishing features are connected. No sample accounts or posts are shown."
-          >
-            <Button asChild variant="outline" className="mt-5">
-              <Link to="/discover">
-                <Compass className="size-4" />
-                Browse the current directory
-              </Link>
-            </Button>
-          </EmptyCommunityPanel>
+            description="Community posts, recommendations, and shared sports updates will appear here once those community features are available. No sample accounts or posts are shown."
+          />
         </TabsContent>
 
         <TabsContent value="learn" className="mt-5 sm:mt-6">

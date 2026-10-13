@@ -4,7 +4,6 @@ import {
   ClipboardList,
   Activity,
   Bell,
-  Compass,
   Dumbbell,
   CalendarCheck2,
   HeartPulse,
@@ -102,12 +101,6 @@ const publicSearchItems = [
     label: "Notifications",
     description: "View staff alerts and consultation requests.",
     to: "/notifications",
-    requiresLogin: true,
-  },
-  {
-    label: "Athlete profile",
-    description: "View and update your athlete profile.",
-    to: "/profile",
     requiresLogin: true,
   },
 ];
@@ -349,7 +342,7 @@ function Index() {
           </section>
         )}
 
-        {currentUser && <SignedInHomeHighlights steps={cycle} audience={audience} />}
+        {currentUser && <SignedInHomeHighlights steps={cycle} />}
         {currentUser && <SignedInHomeTabs />}
 
         {!currentUser && (
@@ -489,22 +482,6 @@ function SignedInHomeHeader({ user }: { user: User }) {
                   Messages
                 </Link>
               </DropdownMenuItem>
-              {(profile.role === "athlete" || profile.role === "parent") && (
-                <>
-                  <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2 py-2">
-                    <Link to="/discover">
-                      <Compass className="size-4 text-primary" />
-                      Discover
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2 py-2">
-                    <Link to="/profile">
-                      <UserRound className="size-4 text-primary" />
-                      Athlete profile
-                    </Link>
-                  </DropdownMenuItem>
-                </>
-              )}
               {staff && (
                 <>
                   <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2 py-2">

@@ -18,7 +18,6 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedCasesRouteImport } from './routes/_authenticated/cases'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
 import { Route as AuthenticatedLinkAccountRouteImport } from './routes/_authenticated/link-account'
 import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticated/messages'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
@@ -69,11 +68,6 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedDiscoverRoute = AuthenticatedDiscoverRouteImport.update({
-  id: '/discover',
-  path: '/discover',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedLinkAccountRoute =
   AuthenticatedLinkAccountRouteImport.update({
     id: '/link-account',
@@ -112,7 +106,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/cases': typeof AuthenticatedCasesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/discover': typeof AuthenticatedDiscoverRoute
   '/link-account': typeof AuthenticatedLinkAccountRoute
   '/messages': typeof AuthenticatedMessagesRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
@@ -128,7 +121,6 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/cases': typeof AuthenticatedCasesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/discover': typeof AuthenticatedDiscoverRoute
   '/link-account': typeof AuthenticatedLinkAccountRoute
   '/messages': typeof AuthenticatedMessagesRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
@@ -146,7 +138,6 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/cases': typeof AuthenticatedCasesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
   '/_authenticated/link-account': typeof AuthenticatedLinkAccountRoute
   '/_authenticated/messages': typeof AuthenticatedMessagesRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
@@ -164,7 +155,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cases'
     | '/dashboard'
-    | '/discover'
     | '/link-account'
     | '/messages'
     | '/notifications'
@@ -180,7 +170,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cases'
     | '/dashboard'
-    | '/discover'
     | '/link-account'
     | '/messages'
     | '/notifications'
@@ -197,7 +186,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/cases'
     | '/_authenticated/dashboard'
-    | '/_authenticated/discover'
     | '/_authenticated/link-account'
     | '/_authenticated/messages'
     | '/_authenticated/notifications'
@@ -279,13 +267,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/discover': {
-      id: '/_authenticated/discover'
-      path: '/discover'
-      fullPath: '/discover'
-      preLoaderRoute: typeof AuthenticatedDiscoverRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/link-account': {
       id: '/_authenticated/link-account'
       path: '/link-account'
@@ -328,7 +309,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedCasesRoute: typeof AuthenticatedCasesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
   AuthenticatedLinkAccountRoute: typeof AuthenticatedLinkAccountRoute
   AuthenticatedMessagesRoute: typeof AuthenticatedMessagesRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
@@ -340,7 +320,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedCasesRoute: AuthenticatedCasesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
   AuthenticatedLinkAccountRoute: AuthenticatedLinkAccountRoute,
   AuthenticatedMessagesRoute: AuthenticatedMessagesRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
