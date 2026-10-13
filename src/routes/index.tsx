@@ -34,7 +34,11 @@ import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { AppHeader } from "@/components/vito/AppHeader";
 import { VitoBrandLockup } from "@/components/vito/VitoBrandLockup";
-import { SignedInBottomNavigation, SignedInHomeTabs } from "@/components/vito/SignedInHome";
+import {
+  SignedInBottomNavigation,
+  SignedInHomeHighlights,
+  SignedInHomeTabs,
+} from "@/components/vito/SignedInHome";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -258,7 +262,7 @@ function Index() {
         <section className="bg-hero-glow relative overflow-hidden">
           <div
             className={`mx-auto max-w-3xl px-5 text-center ${
-              currentUser ? "pb-8 pt-9 sm:pb-10 sm:pt-12" : "pb-14 pt-16 sm:pt-24"
+              currentUser ? "pb-4 pt-5 sm:pb-5 sm:pt-7" : "pb-14 pt-16 sm:pt-24"
             }`}
           >
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-card px-4 py-1.5 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-primary shadow-sm">
@@ -267,8 +271,8 @@ function Index() {
             </span>
 
             <h1
-              className={`mt-5 font-black leading-[1.03] tracking-tight ${
-                currentUser ? "text-4xl sm:text-6xl" : "mt-7 text-5xl sm:text-7xl"
+              className={`font-black leading-[1.03] tracking-tight ${
+                currentUser ? "mt-3 text-3xl sm:text-4xl" : "mt-7 text-5xl sm:text-7xl"
               }`}
             >
               <span className="bg-brand-gradient bg-clip-text text-transparent">VITO</span>{" "}
@@ -277,7 +281,7 @@ function Index() {
 
             <p
               className={`mx-auto max-w-xl leading-relaxed text-muted-foreground ${
-                currentUser ? "mt-4 text-base sm:text-lg" : "mt-6 text-lg sm:text-xl"
+                currentUser ? "mt-2 text-sm sm:text-base" : "mt-6 text-lg sm:text-xl"
               }`}
             >
               From the first injury report to a confident return to sport. Connected care for
@@ -285,20 +289,20 @@ function Index() {
             </p>
 
             <div
-              className={`mt-6 flex flex-wrap items-center justify-center gap-3 ${
-                currentUser ? "sm:mt-7" : "sm:mt-9"
+              className={`flex flex-wrap items-center justify-center gap-2 ${
+                currentUser ? "mt-3" : "mt-6 sm:mt-9"
               }`}
             >
-              <WhatsAppConsultationButton />
+              <WhatsAppConsultationButton compact={Boolean(currentUser)} />
               {currentUser ? (
                 <Button
                   asChild
-                  size="lg"
-                  className="bg-brand-gradient rounded-full px-7 text-base shadow-glow ring-1 ring-primary/25 transition-transform hover:-translate-y-0.5"
+                  size="sm"
+                  className="rounded-full bg-brand-gradient px-4 text-sm shadow-glow ring-1 ring-primary/25 transition-transform hover:-translate-y-0.5"
                 >
                   <Link to="/dashboard">
                     <LayoutDashboard className="mr-2 size-4" />
-                    Get Into Working Space
+                    Workspace
                   </Link>
                 </Button>
               ) : (
@@ -313,7 +317,7 @@ function Index() {
 
             <ul
               className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground ${
-                currentUser ? "mt-7" : "mt-12"
+                currentUser ? "mt-3" : "mt-12"
               }`}
             >
               {audience.map((name, i) => (
@@ -327,55 +331,60 @@ function Index() {
             </ul>
           </div>
 
-          <div
-            className={`mx-auto flex max-w-3xl flex-col items-center gap-5 border-t px-5 text-center ${
-              currentUser ? "py-6 sm:py-8" : "py-10"
-            }`}
-          >
-            <VitoBrandLockup className="justify-center" />
-            <p className="max-w-md text-sm text-muted-foreground">
-              One record per athlete: injuries, assessments, rehab plans, follow-ups and recovery
-              progress, shared only with the people who need to see them.
-            </p>
-          </div>
-        </section>
-
-        {currentUser && <SignedInHomeTabs />}
-
-        <section className="border-t bg-card">
-          <div className="mx-auto max-w-6xl px-5 py-16">
-            <div className="mx-auto mb-12 max-w-2xl text-center">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
-                The care pathway
-              </p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
-                From injury to return
-              </h2>
-              <p className="mt-4 text-muted-foreground">
-                Every case follows the same six steps, so nothing gets lost between the first report
-                and the final clearance.
+          {!currentUser && (
+            <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 border-t px-5 py-10 text-center">
+              <VitoBrandLockup className="justify-center" />
+              <p className="max-w-md text-sm text-muted-foreground">
+                One record per athlete: injuries, assessments, rehab plans, follow-ups and recovery
+                progress, shared only with the people who need to see them.
               </p>
             </div>
-
-            <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {cycle.map(({ icon: Icon, title, detail }, i) => (
-                <li
-                  key={title}
-                  className="group relative rounded-2xl border bg-background p-6 text-center transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-card-lift"
-                >
-                  <span className="absolute right-5 top-5 text-xs font-black tracking-widest text-accent/70">
-                    0{i + 1}
-                  </span>
-                  <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-secondary text-primary transition group-hover:bg-brand-gradient group-hover:text-primary-foreground">
-                    <Icon className="size-7" aria-hidden="true" />
-                  </div>
-                  <h3 className="mt-5 text-lg font-bold">{title}</h3>
-                  <p className="mt-1.5 text-sm text-muted-foreground">{detail}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
+          )}
         </section>
+
+        {currentUser && (
+          <>
+            <SignedInHomeHighlights steps={cycle} />
+            <SignedInHomeTabs />
+          </>
+        )}
+
+        {!currentUser && (
+          <section className="border-t bg-card">
+            <div className="mx-auto max-w-6xl px-5 py-16">
+              <div className="mx-auto mb-12 max-w-2xl text-center">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent">
+                  The care pathway
+                </p>
+                <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
+                  From injury to return
+                </h2>
+                <p className="mt-4 text-muted-foreground">
+                  Every case follows the same six steps, so nothing gets lost between the first
+                  report and the final clearance.
+                </p>
+              </div>
+
+              <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {cycle.map(({ icon: Icon, title, detail }, i) => (
+                  <li
+                    key={title}
+                    className="group relative rounded-2xl border bg-background p-6 text-center transition duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-card-lift"
+                  >
+                    <span className="absolute right-5 top-5 text-xs font-black tracking-widest text-accent/70">
+                      0{i + 1}
+                    </span>
+                    <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-secondary text-primary transition group-hover:bg-brand-gradient group-hover:text-primary-foreground">
+                      <Icon className="size-7" aria-hidden="true" />
+                    </div>
+                    <h3 className="mt-5 text-lg font-bold">{title}</h3>
+                    <p className="mt-1.5 text-sm text-muted-foreground">{detail}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </section>
+        )}
       </main>
       {currentUser && <SignedInBottomNavigation />}
     </div>
