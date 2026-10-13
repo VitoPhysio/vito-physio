@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
+  ArrowLeft,
+  ArrowRight,
   BookOpen,
   Compass,
   Home,
@@ -23,11 +25,18 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { VitoBrandLockup } from "@/components/vito/VitoBrandLockup";
 
 type HomeTab = {
   value: "for-you" | "learn" | "updates" | "sports-hub";
   label: string;
   icon: LucideIcon;
+};
+
+type PathwayStep = {
+  icon: LucideIcon;
+  title: string;
+  detail: string;
 };
 
 const homeTabs: HomeTab[] = [
@@ -37,26 +46,114 @@ const homeTabs: HomeTab[] = [
   { value: "sports-hub", label: "Sports Hub", icon: Trophy },
 ];
 
+/** Compact care highlights on the signed-in Home, navigable by arrows, touch, or trackpad. */
+export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  function move(direction: -1 | 1) {
+    const track = trackRef.current;
+    if (!track) return;
+    const card = track.querySelector<HTMLElement>("[data-highlight-card]");
+    track.scrollBy({
+      left: direction * (card ? card.offsetWidth + 16 : track.clientWidth),
+      behavior: "smooth",
+    });
+  }
+
+  return (
+    <section
+      aria-label="Care highlights"
+      className="mx-auto max-w-6xl px-4 pb-1 pt-2 sm:px-5 sm:pt-3"
+    >
+      <div className="mb-2 flex justify-end gap-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label="Previous care highlight"
+          onClick={() => move(-1)}
+          className="size-8 rounded-full"
+        >
+          <ArrowLeft aria-hidden="true" className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label="Next care highlight"
+          onClick={() => move(1)}
+          className="size-8 rounded-full"
+        >
+          <ArrowRight aria-hidden="true" className="size-4" />
+        </Button>
+      </div>
+      <div
+        ref={trackRef}
+        className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Care highlight carousel"
+      >
+        <article
+          data-highlight-card
+          className="flex min-h-32 min-w-[min(88vw,40rem)] snap-start items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm sm:min-h-36 sm:min-w-[40rem] sm:gap-4 sm:p-4"
+        >
+          <VitoBrandLockup compact showTagline={false} className="shrink-0" imageClassName="p-1" />
+          <div className="min-w-0 border-l pl-3 sm:pl-4">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-accent">
+              Care that moves with you
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm">
+              One connected record for injury care, rehabilitation, follow-ups, and recovery
+              progress.
+            </p>
+          </div>
+        </article>
+        <article
+          data-highlight-card
+          className="min-h-32 min-w-[min(88vw,40rem)] snap-start rounded-2xl border bg-card p-3 shadow-sm sm:min-h-36 sm:min-w-[40rem] sm:p-4"
+        >
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-accent">
+                The care pathway
+              </p>
+              <h2 className="mt-0.5 text-base font-bold sm:text-lg">From injury to return</h2>
+            </div>
+            <span className="shrink-0 text-[10px] text-muted-foreground sm:text-xs">
+              Six connected steps
+            </span>
+          </div>
+          <ol
+            aria-label="Care pathway steps"
+            tabIndex={0}
+            className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {steps.map(({ icon: Icon, title, detail }, index) => (
+              <li
+                key={title}
+                className="flex min-w-[4.5rem] flex-1 flex-col items-center gap-1 rounded-xl bg-secondary/70 px-1.5 py-1.5 text-center sm:min-w-[4.75rem]"
+                title={detail}
+              >
+                <span className="grid size-6 place-items-center rounded-full bg-primary/10 text-primary">
+                  <Icon aria-hidden="true" className="size-3.5" />
+                </span>
+                <span className="text-[9px] font-bold text-accent">0{index + 1}</span>
+                <span className="text-[10px] font-semibold leading-tight">{title}</span>
+              </li>
+            ))}
+          </ol>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 /** Home-only content sections. These tabs are deliberately nested inside Home, not app navigation. */
 export function SignedInHomeTabs() {
   return (
     <section
       aria-label="Home community sections"
-      className="mx-auto w-full max-w-6xl px-4 pb-10 pt-7 sm:px-5 sm:pt-9"
+      className="mx-auto w-full max-w-6xl px-4 pb-10 pt-0 sm:px-5"
     >
-      <div className="mb-5 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
-            VITO community
-          </p>
-          <h2 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">Your sports space</h2>
-        </div>
-        <p className="max-w-xl text-sm leading-6 text-muted-foreground">
-          Explore sports-health learning, community updates, and activities alongside your existing
-          VITO care workspace.
-        </p>
-      </div>
-
       <Tabs defaultValue="for-you" className="w-full">
         <TabsList
           aria-label="Home sections"
