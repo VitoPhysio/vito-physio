@@ -17,14 +17,17 @@ function AuthenticatedLayout() {
   const { user } = Route.useRouteContext();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const isMessages = pathname === "/messages";
+  const isWorkspace = pathname === "/dashboard";
 
   return (
     <>
       {!isMessages && <AppHeader user={user} />}
-      <div className={isMessages ? "" : "pb-[calc(5rem+env(safe-area-inset-bottom))]"}>
+      <div
+        className={isMessages || isWorkspace ? "" : "pb-[calc(5rem+env(safe-area-inset-bottom))]"}
+      >
         <Outlet />
       </div>
-      <SignedInBottomNavigation />
+      {!isWorkspace && <SignedInBottomNavigation />}
     </>
   );
 }

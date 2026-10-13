@@ -7,9 +7,18 @@ import { routeTree } from "@/routeTree.gen";
 // Match routes without running loaders or rendering: loaders may need a server or
 // network the test run lacks, and jsdom never loads the stylesheets React waits on.
 describe("App routing", () => {
-  it.each(["/dashboard", "/discover", "/profile", "/cases", "/admin", "/link-account"])("preserves %s", (path) => {
+  it.each(["/dashboard", "/profile", "/cases", "/admin", "/link-account"])(
+    "preserves %s",
+    (path) => {
+      const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+      expect(router.matchRoutes(path).at(-1)?.routeId).not.toBe(rootRouteId);
+    },
+  );
+  it("does not register the removed Discover route", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
-    expect(router.matchRoutes(path).at(-1)?.routeId).not.toBe(rootRouteId);
+    expect(
+      router.matchRoutes("/discover").some((match) => match.routeId === "/_authenticated/discover"),
+    ).toBe(false);
   });
   it("matches a page for / instead of falling back to not found", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
