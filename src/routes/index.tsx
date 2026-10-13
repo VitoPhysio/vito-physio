@@ -259,95 +259,98 @@ function Index() {
       )}
 
       <main>
-        <section className="bg-hero-glow relative overflow-hidden">
-          <div
-            className={`mx-auto max-w-3xl px-5 text-center ${
-              currentUser ? "pb-4 pt-5 sm:pb-5 sm:pt-7" : "pb-14 pt-16 sm:pt-24"
-            }`}
-          >
-            <span className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-card px-4 py-1.5 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-primary shadow-sm">
-              <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />
-              Sports physiotherapy
-            </span>
-
-            <h1
-              className={`font-black leading-[1.03] tracking-tight ${
-                currentUser ? "mt-3 text-3xl sm:text-4xl" : "mt-7 text-5xl sm:text-7xl"
-              }`}
-            >
-              <span className="bg-brand-gradient bg-clip-text text-transparent">VITO</span>{" "}
-              <span className="text-foreground">Physio</span>
-            </h1>
-
-            <p
-              className={`mx-auto max-w-xl leading-relaxed text-muted-foreground ${
-                currentUser ? "mt-2 text-sm sm:text-base" : "mt-6 text-lg sm:text-xl"
-              }`}
-            >
-              From the first injury report to a confident return to sport. Connected care for
-              athletes, schools, academies and clubs.
-            </p>
-
+        {!currentUser && (
+          <section className="bg-hero-glow relative overflow-hidden">
             <div
-              className={`flex flex-wrap items-center justify-center gap-2 ${
-                currentUser ? "mt-3" : "mt-6 sm:mt-9"
+              className={`mx-auto max-w-3xl px-5 text-center ${
+                currentUser ? "pb-4 pt-5 sm:pb-5 sm:pt-7" : "pb-14 pt-16 sm:pt-24"
               }`}
             >
-              <WhatsAppConsultationButton compact={Boolean(currentUser)} />
-              {currentUser ? (
-                <Button
-                  asChild
-                  size="sm"
-                  className="rounded-full bg-brand-gradient px-4 text-sm shadow-glow ring-1 ring-primary/25 transition-transform hover:-translate-y-0.5"
-                >
-                  <Link to="/dashboard">
-                    <LayoutDashboard className="mr-2 size-4" />
-                    Workspace
-                  </Link>
-                </Button>
-              ) : (
-                <Button asChild size="lg" variant="outline" className="rounded-full px-7 text-base">
-                  <Link to="/auth">
-                    <LogIn className="mr-2 size-4" />
-                    Sign in to get working
-                  </Link>
-                </Button>
-              )}
-            </div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-card px-4 py-1.5 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-primary shadow-sm">
+                <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />
+                Sports physiotherapy
+              </span>
 
-            <ul
-              className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground ${
-                currentUser ? "mt-3" : "mt-12"
-              }`}
-            >
-              {audience.map((name, i) => (
-                <li key={name} className="flex items-center gap-3">
-                  {i > 0 && (
-                    <span className="size-1 rounded-full bg-accent/60" aria-hidden="true" />
-                  )}
-                  {name}
-                </li>
-              ))}
-            </ul>
-          </div>
+              <h1
+                className={`font-black leading-[1.03] tracking-tight ${
+                  currentUser ? "mt-3 text-3xl sm:text-4xl" : "mt-7 text-5xl sm:text-7xl"
+                }`}
+              >
+                <span className="bg-brand-gradient bg-clip-text text-transparent">VITO</span>{" "}
+                <span className="text-foreground">Physio</span>
+              </h1>
 
-          {!currentUser && (
-            <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 border-t px-5 py-10 text-center">
-              <VitoBrandLockup className="justify-center" />
-              <p className="max-w-md text-sm text-muted-foreground">
-                One record per athlete: injuries, assessments, rehab plans, follow-ups and recovery
-                progress, shared only with the people who need to see them.
+              <p
+                className={`mx-auto max-w-xl leading-relaxed text-muted-foreground ${
+                  currentUser ? "mt-2 text-sm sm:text-base" : "mt-6 text-lg sm:text-xl"
+                }`}
+              >
+                From the first injury report to a confident return to sport. Connected care for
+                athletes, schools, academies and clubs.
               </p>
-            </div>
-          )}
-        </section>
 
-        {currentUser && (
-          <>
-            <SignedInHomeHighlights steps={cycle} />
-            <SignedInHomeTabs />
-          </>
+              <div
+                className={`flex flex-wrap items-center justify-center gap-2 ${
+                  currentUser ? "mt-3" : "mt-6 sm:mt-9"
+                }`}
+              >
+                <WhatsAppConsultationButton compact={Boolean(currentUser)} />
+                {currentUser ? (
+                  <Button
+                    asChild
+                    size="sm"
+                    className="rounded-full bg-brand-gradient px-4 text-sm shadow-glow ring-1 ring-primary/25 transition-transform hover:-translate-y-0.5"
+                  >
+                    <Link to="/dashboard">
+                      <LayoutDashboard className="mr-2 size-4" />
+                      Workspace
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="outline"
+                    className="rounded-full px-7 text-base"
+                  >
+                    <Link to="/auth">
+                      <LogIn className="mr-2 size-4" />
+                      Sign in to get working
+                    </Link>
+                  </Button>
+                )}
+              </div>
+
+              <ul
+                className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground ${
+                  currentUser ? "mt-3" : "mt-12"
+                }`}
+              >
+                {audience.map((name, i) => (
+                  <li key={name} className="flex items-center gap-3">
+                    {i > 0 && (
+                      <span className="size-1 rounded-full bg-accent/60" aria-hidden="true" />
+                    )}
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {!currentUser && (
+              <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 border-t px-5 py-10 text-center">
+                <VitoBrandLockup className="justify-center" />
+                <p className="max-w-md text-sm text-muted-foreground">
+                  One record per athlete: injuries, assessments, rehab plans, follow-ups and
+                  recovery progress, shared only with the people who need to see them.
+                </p>
+              </div>
+            )}
+          </section>
         )}
+
+        {currentUser && <SignedInHomeHighlights steps={cycle} audience={audience} />}
+        {currentUser && <SignedInHomeTabs />}
 
         {!currentUser && (
           <section className="border-t bg-card">

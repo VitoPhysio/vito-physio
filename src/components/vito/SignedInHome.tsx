@@ -6,6 +6,7 @@ import {
   BookOpen,
   Compass,
   Home,
+  LayoutDashboard,
   MessageCircle,
   Newspaper,
   Plus,
@@ -26,6 +27,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { VitoBrandLockup } from "@/components/vito/VitoBrandLockup";
+import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
 
 type HomeTab = {
   value: "for-you" | "learn" | "updates" | "sports-hub";
@@ -47,7 +49,13 @@ const homeTabs: HomeTab[] = [
 ];
 
 /** Compact care highlights on the signed-in Home, navigable by arrows, touch, or trackpad. */
-export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
+export function SignedInHomeHighlights({
+  steps,
+  audience,
+}: {
+  steps: PathwayStep[];
+  audience: string[];
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
 
   function move(direction: -1 | 1) {
@@ -90,11 +98,43 @@ export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
       <div
         ref={trackRef}
         className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        aria-label="Care highlight carousel"
+        aria-label="Home hero and care highlights"
       >
         <article
           data-highlight-card
-          className="flex min-h-32 min-w-[min(88vw,40rem)] snap-start items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm sm:min-h-36 sm:min-w-[40rem] sm:gap-4 sm:p-4"
+          className="flex h-56 min-h-56 min-w-[min(88vw,40rem)] snap-start flex-col justify-center gap-2 rounded-2xl border bg-card p-4 shadow-sm sm:min-w-[40rem] sm:p-5"
+        >
+          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/15 bg-background px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
+            <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />
+            Sports physiotherapy
+          </span>
+          <h1 className="text-3xl font-black leading-none tracking-tight sm:text-4xl">
+            <span className="bg-brand-gradient bg-clip-text text-transparent">VITO</span>{" "}
+            <span className="text-foreground">Physio</span>
+          </h1>
+          <p className="max-w-xl text-xs leading-5 text-muted-foreground sm:text-sm">
+            Connected care from injury report to rehabilitation and confident return to sport.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <WhatsAppConsultationButton compact />
+            <Button
+              asChild
+              size="sm"
+              className="rounded-full bg-brand-gradient px-4 text-sm shadow-glow ring-1 ring-primary/25"
+            >
+              <Link to="/dashboard">
+                <LayoutDashboard aria-hidden="true" className="mr-2 size-4" />
+                Workspace
+              </Link>
+            </Button>
+          </div>
+          <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            {audience.join(" · ")}
+          </p>
+        </article>
+        <article
+          data-highlight-card
+          className="flex h-56 min-h-56 min-w-[min(88vw,40rem)] snap-start items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm sm:min-w-[40rem] sm:gap-4 sm:p-4"
         >
           <VitoBrandLockup compact showTagline={false} className="shrink-0" imageClassName="p-1" />
           <div className="min-w-0 border-l pl-3 sm:pl-4">
@@ -109,7 +149,7 @@ export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
         </article>
         <article
           data-highlight-card
-          className="min-h-32 min-w-[min(88vw,40rem)] snap-start rounded-2xl border bg-card p-3 shadow-sm sm:min-h-36 sm:min-w-[40rem] sm:p-4"
+          className="h-56 min-h-56 min-w-[min(88vw,40rem)] snap-start rounded-2xl border bg-card p-3 shadow-sm sm:min-w-[40rem] sm:p-4"
         >
           <div className="mb-2 flex items-center justify-between gap-3">
             <div>
