@@ -95,7 +95,7 @@ export function AppHeader({
     ];
     if (role === "athlete" || role === "parent")
       nav.push(
-        { key: "discover", label: "Discover", icon: Compass, to: "/discover" },
+        { key: "discover", label: "Community directory", icon: Compass, to: "/discover" },
         { key: "profile", label: "Athlete profile", icon: UserRound, to: "/profile" },
       );
     if (STAFF.includes(role))
