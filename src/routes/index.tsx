@@ -34,6 +34,7 @@ import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { AppHeader } from "@/components/vito/AppHeader";
 import { VitoBrandLockup } from "@/components/vito/VitoBrandLockup";
+import { SignedInBottomNavigation, SignedInHomeTabs } from "@/components/vito/SignedInHome";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -136,7 +137,11 @@ function Index() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div
+      className={`min-h-screen bg-background text-foreground ${
+        currentUser ? "pb-[calc(5rem+env(safe-area-inset-bottom))]" : ""
+      }`}
+    >
       {currentUser ? (
         <AppHeader user={currentUser} />
       ) : (
@@ -251,23 +256,39 @@ function Index() {
 
       <main>
         <section className="bg-hero-glow relative overflow-hidden">
-          <div className="mx-auto max-w-3xl px-5 pb-14 pt-16 text-center sm:pt-24">
+          <div
+            className={`mx-auto max-w-3xl px-5 text-center ${
+              currentUser ? "pb-8 pt-9 sm:pb-10 sm:pt-12" : "pb-14 pt-16 sm:pt-24"
+            }`}
+          >
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-card px-4 py-1.5 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-primary shadow-sm">
               <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />
               Sports physiotherapy
             </span>
 
-            <h1 className="mt-7 text-5xl font-black leading-[1.03] tracking-tight sm:text-7xl">
+            <h1
+              className={`mt-5 font-black leading-[1.03] tracking-tight ${
+                currentUser ? "text-4xl sm:text-6xl" : "mt-7 text-5xl sm:text-7xl"
+              }`}
+            >
               <span className="bg-brand-gradient bg-clip-text text-transparent">VITO</span>{" "}
               <span className="text-foreground">Physio</span>
             </h1>
 
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+            <p
+              className={`mx-auto max-w-xl leading-relaxed text-muted-foreground ${
+                currentUser ? "mt-4 text-base sm:text-lg" : "mt-6 text-lg sm:text-xl"
+              }`}
+            >
               From the first injury report to a confident return to sport. Connected care for
               athletes, schools, academies and clubs.
             </p>
 
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <div
+              className={`mt-6 flex flex-wrap items-center justify-center gap-3 ${
+                currentUser ? "sm:mt-7" : "sm:mt-9"
+              }`}
+            >
               <WhatsAppConsultationButton />
               {currentUser ? (
                 <Button
@@ -290,7 +311,11 @@ function Index() {
               )}
             </div>
 
-            <ul className="mt-12 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <ul
+              className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground ${
+                currentUser ? "mt-7" : "mt-12"
+              }`}
+            >
               {audience.map((name, i) => (
                 <li key={name} className="flex items-center gap-3">
                   {i > 0 && (
@@ -302,7 +327,11 @@ function Index() {
             </ul>
           </div>
 
-          <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 border-t px-5 py-10 text-center">
+          <div
+            className={`mx-auto flex max-w-3xl flex-col items-center gap-5 border-t px-5 text-center ${
+              currentUser ? "py-6 sm:py-8" : "py-10"
+            }`}
+          >
             <VitoBrandLockup className="justify-center" />
             <p className="max-w-md text-sm text-muted-foreground">
               One record per athlete: injuries, assessments, rehab plans, follow-ups and recovery
@@ -310,6 +339,8 @@ function Index() {
             </p>
           </div>
         </section>
+
+        {currentUser && <SignedInHomeTabs />}
 
         <section className="border-t bg-card">
           <div className="mx-auto max-w-6xl px-5 py-16">
@@ -346,6 +377,7 @@ function Index() {
           </div>
         </section>
       </main>
+      {currentUser && <SignedInBottomNavigation />}
     </div>
   );
 }

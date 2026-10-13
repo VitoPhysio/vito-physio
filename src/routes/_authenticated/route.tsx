@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/vito/AppHeader";
+import { SignedInBottomNavigation } from "@/components/vito/SignedInHome";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -20,7 +21,10 @@ function AuthenticatedLayout() {
   return (
     <>
       {!isMessages && <AppHeader user={user} />}
-      <Outlet />
+      <div className={isMessages ? "" : "pb-[calc(5rem+env(safe-area-inset-bottom))]"}>
+        <Outlet />
+      </div>
+      <SignedInBottomNavigation />
     </>
   );
 }
