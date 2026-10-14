@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCanGoBack, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import {
@@ -83,6 +84,8 @@ type MessagingUser = {
 function MessagesPage() {
   const { user } = Route.useRouteContext();
   const navigate = Route.useNavigate();
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -182,7 +185,11 @@ function MessagesPage() {
   }
 
   function closeMessages() {
-    void navigate({ to: "/dashboard" });
+    if (canGoBack) {
+      router.history.back();
+      return;
+    }
+    void navigate({ to: "/" });
   }
 
   return (
@@ -193,7 +200,7 @@ function MessagesPage() {
             <button
               type="button"
               onClick={closeMessages}
-              aria-label="Back to home dashboard"
+              aria-label="Go back to previous page"
               className="grid size-10 shrink-0 place-items-center rounded-full text-primary transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <ArrowLeft className="size-5" />
