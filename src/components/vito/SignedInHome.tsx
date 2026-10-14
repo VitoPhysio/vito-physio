@@ -17,17 +17,10 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { VitoBrandLockup } from "@/components/vito/VitoBrandLockup";
 import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
+import { SocialComposerDialog, SocialFeed } from "@/components/vito/SocialProfile";
 
 type HomeTab = {
   value: "for-you" | "learn" | "updates" | "sports-hub";
@@ -174,7 +167,7 @@ export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
 }
 
 /** Home-only content sections. These tabs are deliberately nested inside Home, not app navigation. */
-export function SignedInHomeTabs() {
+export function SignedInHomeTabs({ viewerId }: { viewerId: string }) {
   return (
     <section aria-label="Home community sections" className="w-full max-w-none px-0 pb-10 pt-0">
       <Tabs defaultValue="for-you" className="w-full">
@@ -197,12 +190,7 @@ export function SignedInHomeTabs() {
           value="for-you"
           className="mt-0 rounded-b-2xl border-x border-b border-border/80 bg-muted/40 p-2 shadow-inner dark:bg-background/75 sm:p-3"
         >
-          <EmptyCommunityPanel
-            icon={Users}
-            eyebrow="Community feed"
-            title="Your For You feed is ready to grow"
-            description="Community posts, recommendations, and shared sports updates will appear here once those community features are available. No sample accounts or posts are shown."
-          />
+          <SocialFeed viewerId={viewerId} />
         </TabsContent>
 
         <TabsContent
@@ -274,7 +262,7 @@ function EmptyCommunityPanel({
 }
 
 /** Fixed app navigation. Home is the sole parent of the horizontal Home tabs above. */
-export function SignedInBottomNavigation() {
+export function SignedInBottomNavigation({ userId }: { userId?: string }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
   const onHome = pathname === "/";
@@ -327,35 +315,7 @@ export function SignedInBottomNavigation() {
         </div>
       </nav>
 
-      <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus aria-hidden="true" className="size-5 text-primary" />
-              Create a community post
-            </DialogTitle>
-            <DialogDescription>
-              The post composer is prepared for the community workflow. Publishing and media uploads
-              will be connected in a later backend step.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Textarea
-              aria-label="Community post text"
-              placeholder="Share a sports update or useful reflection…"
-              rows={5}
-              disabled
-            />
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs leading-5 text-muted-foreground">Posting is not enabled yet.</p>
-              <Button type="button" disabled>
-                <Send aria-hidden="true" className="size-4" />
-                Publish
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SocialComposerDialog open={composerOpen} onOpenChange={setComposerOpen} userId={userId} />
     </>
   );
 }

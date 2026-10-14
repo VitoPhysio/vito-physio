@@ -27,7 +27,7 @@ function AuthenticatedLayout() {
       >
         <Outlet />
       </div>
-      {!isWorkspace && <SignedInBottomNavigation />}
+      {!isWorkspace && <SignedInBottomNavigation userId={user.id} />}
     </>
   );
 }
