@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -6,17 +6,13 @@ import {
   CalendarDays,
   Dumbbell,
   FileText,
-  Globe2,
   HeartPulse,
   LockKeyhole,
-  MapPin,
   MessageSquare,
   Plus,
   ShieldCheck,
   Trophy,
   Upload,
-  UserRound,
-  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CareRequests } from "@/components/vito/CareRequests";
@@ -89,7 +85,6 @@ export function AthletePortal({ user, view = "home" }: { user: User; view?: View
   const [homeSection, setHomeSection] = useState<HomeSection>("overview");
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
-  const fullProfileRef = useRef<HTMLDivElement>(null);
   const h = health.data;
   const v = viewer.data;
   const athlete = h?.athletes[0];
@@ -386,95 +381,7 @@ export function AthletePortal({ user, view = "home" }: { user: User; view?: View
                 viewerId={user.id}
                 isOwner
                 onEditProfile={() => setEditing(true)}
-                onViewFullProfile={() =>
-                  fullProfileRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-                }
               />
-              <div ref={fullProfileRef} className="scroll-mt-24 space-y-8">
-                {profileData.isLoading && (
-                  <p className="text-sm text-muted-foreground">Loading profile details…</p>
-                )}
-                {profileData.isError && (
-                  <p role="alert" className="border-l-4 border-destructive bg-card p-4 text-sm">
-                    Profile details could not be loaded.
-                  </p>
-                )}
-                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1">
-                    <MapPin className="size-4 text-primary" />
-                    {profile?.community?.district || "District not added"}
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1">
-                    <Globe2 className="size-4 text-primary" />
-                    {profile?.community?.country || "Country not added"}
-                  </span>
-                  {profile?.community?.headline && (
-                    <span className="rounded-full bg-accent/20 px-3 py-1 text-foreground">
-                      {profile.community.headline}
-                    </span>
-                  )}
-                </div>
-                <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
-                  <div className="space-y-7">
-                    <section className="rounded-2xl border bg-card p-5">
-                      <Heading title="Sporting identity" icon={UserRound} />
-                      <dl className="grid grid-cols-2 gap-5 text-sm">
-                        <ProfileDatum
-                          label="Sport"
-                          value={profileAthlete?.sport || profile?.community?.sport}
-                        />
-                        <ProfileDatum
-                          label="Position / event"
-                          value={profile?.community?.position}
-                        />
-                        <ProfileDatum
-                          label="School / team"
-                          value={[profile?.community?.school_name, profile?.community?.team]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        />
-                        <ProfileDatum label="Phone" value={profileAthlete?.phone} />
-                      </dl>
-                    </section>
-                    <section className="rounded-2xl border bg-card p-5">
-                      <Heading title="Biography" icon={FileText} />
-                      <p className="whitespace-pre-wrap text-sm leading-7 text-muted-foreground">
-                        {profile?.community?.bio ||
-                          "Add a short biography to introduce yourself to the VITO community."}
-                      </p>
-                    </section>
-                    <section className="rounded-2xl border bg-card p-5">
-                      <Heading title="Skills & interests" icon={Trophy} />
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          ...(profile?.community?.skills ?? []),
-                          ...(profile?.community?.interests ?? []),
-                        ].map((item: string) => (
-                          <span key={item} className="rounded-full bg-secondary px-3 py-1 text-sm">
-                            {item}
-                          </span>
-                        ))}
-                        {!profile?.community?.skills?.length &&
-                          !profile?.community?.interests?.length && (
-                            <p className="text-sm text-muted-foreground">
-                              No skills or interests added yet.
-                            </p>
-                          )}
-                      </div>
-                    </section>
-                  </div>
-                  <div className="space-y-7">
-                    <section className="rounded-2xl border bg-card p-5">
-                      <Heading title="Connections" icon={Users} />
-                      <Empty icon={Users} text="No connections to display." />
-                    </section>
-                    <section className="rounded-2xl border bg-card p-5">
-                      <Heading title="Activity" icon={Activity} />
-                      <Empty icon={Activity} text="No sporting updates yet." />
-                    </section>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -998,14 +905,6 @@ function Summary({
       <span className="text-xl font-bold text-foreground">{value}</span>
       <span className="text-xs font-normal text-muted-foreground">{detail}</span>
     </Button>
-  );
-}
-function ProfileDatum({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="mt-1 font-medium text-foreground">{value || "Not added"}</dd>
-    </div>
   );
 }
 function CoverPhotoEditor({

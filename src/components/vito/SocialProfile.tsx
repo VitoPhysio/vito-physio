@@ -34,6 +34,14 @@ type SocialProfileSummary = {
   role: string | null;
   headline: string | null;
   bio: string | null;
+  sport: string | null;
+  player_position: string | null;
+  school_name: string | null;
+  team: string | null;
+  interests: string[];
+  skills: string[];
+  district: string | null;
+  country: string | null;
   followers_count: number;
   following_count: number;
   posts_count: number;
@@ -86,13 +94,11 @@ export function SocialProfile({
   viewerId,
   isOwner = profileId === viewerId,
   onEditProfile,
-  onViewFullProfile,
 }: {
   profileId: string;
   viewerId: string;
   isOwner?: boolean;
   onEditProfile?: () => void;
-  onViewFullProfile?: () => void;
 }) {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<SocialTab>("posts");
@@ -143,7 +149,7 @@ export function SocialProfile({
 
   return (
     <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-      <div className="relative h-44 overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-accent sm:h-56">
+      <div className="relative h-32 overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-accent sm:h-40">
         {member.cover_path ? (
           <SocialImage path={member.cover_path} alt="" className="h-full w-full object-cover" />
         ) : (
@@ -151,23 +157,18 @@ export function SocialProfile({
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
       </div>
-      <div className="relative -mt-14 px-4 pb-0 sm:-mt-16 sm:px-7">
+      <div className="relative -mt-12 px-4 pb-0 sm:-mt-14 sm:px-7">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <PhotoAvatar
             path={member.avatar_path}
             name={member.full_name}
-            className="size-24 border-4 border-card bg-secondary text-2xl shadow-xl sm:size-28"
+            className="size-20 border-4 border-card bg-secondary text-2xl shadow-xl sm:size-24"
           />
           {isOwner ? (
             <div className="flex flex-wrap gap-2 pb-1">
               {onEditProfile && (
                 <Button variant="outline" size="sm" onClick={onEditProfile}>
                   Edit Profile
-                </Button>
-              )}
-              {onViewFullProfile && (
-                <Button size="sm" onClick={onViewFullProfile}>
-                  View Full Profile
                 </Button>
               )}
             </div>
@@ -182,16 +183,46 @@ export function SocialProfile({
             </Button>
           )}
         </div>
-        <div className="pb-4 pt-3">
-          <h1 className="text-2xl font-black tracking-tight sm:text-3xl">
-            {member.full_name || "VITO Physio member"}
-          </h1>
-          <p className="mt-1 text-sm font-semibold text-primary">{roleLabel(member.role)}</p>
-          {member.headline && <p className="mt-2 text-sm font-medium">{member.headline}</p>}
+        <div className="space-y-3 pb-5 pt-3">
+          <div>
+            <h1 className="text-2xl font-black tracking-tight sm:text-3xl">
+              {member.full_name || "VITO Physio member"}
+            </h1>
+            <p className="mt-1 text-sm font-semibold text-primary">{roleLabel(member.role)}</p>
+          </div>
+          {member.headline && <p className="text-sm font-medium">{member.headline}</p>}
+          {(member.sport || member.player_position || member.team || member.school_name) && (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-primary">
+              {[member.sport, member.player_position, member.team || member.school_name]
+                .filter(Boolean)
+                .map((item, index, items) => (
+                  <span key={`${item}-${index}`} className="inline-flex items-center gap-2">
+                    {item}
+                    {index < items.length - 1 && (
+                      <span aria-hidden="true" className="text-accent">
+                        ·
+                      </span>
+                    )}
+                  </span>
+                ))}
+            </div>
+          )}
           {member.bio && (
-            <p className="mt-2 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+            <p className="max-w-2xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
               {member.bio}
             </p>
+          )}
+          {(member.interests.length > 0 || member.skills.length > 0) && (
+            <div className="flex flex-wrap gap-2">
+              {[...member.interests, ...member.skills].map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full bg-secondary px-3 py-1 text-xs font-medium"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
           )}
         </div>
       </div>
