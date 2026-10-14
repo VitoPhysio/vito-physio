@@ -176,20 +176,17 @@ export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
 /** Home-only content sections. These tabs are deliberately nested inside Home, not app navigation. */
 export function SignedInHomeTabs() {
   return (
-    <section
-      aria-label="Home community sections"
-      className="mx-auto w-full max-w-6xl px-4 pb-10 pt-0 sm:px-5"
-    >
-      <Tabs defaultValue="for-you" className="w-[min(88vw,40rem)] max-w-full">
+    <section aria-label="Home community sections" className="w-full max-w-none px-0 pb-10 pt-0">
+      <Tabs defaultValue="for-you" className="w-full">
         <TabsList
           aria-label="Home sections"
-          className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-t-2xl rounded-b-none border border-border/80 border-b-0 bg-card/80 px-2 pb-0 pt-2 text-muted-foreground shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="grid h-auto w-full grid-cols-4 gap-2 rounded-none border-y border-border/80 bg-card/80 px-3 py-3 text-muted-foreground shadow-sm"
         >
           {homeTabs.map(({ value, label }) => (
             <TabsTrigger
               key={value}
               value={value}
-              className="min-h-10 shrink-0 rounded-none border-b-2 border-transparent px-2 text-xs font-medium transition-colors data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:font-bold data-[state=active]:text-accent data-[state=active]:shadow-none sm:px-3 sm:text-sm"
+              className="min-h-10 min-w-0 w-full whitespace-nowrap rounded-xl border border-primary/40 bg-background/80 px-1 text-[11px] font-semibold transition-colors data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-primary/25 sm:px-2 sm:text-sm"
             >
               {label}
             </TabsTrigger>
