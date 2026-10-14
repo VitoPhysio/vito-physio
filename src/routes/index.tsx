@@ -343,7 +343,7 @@ function Index() {
         )}
 
         {currentUser && <SignedInHomeHighlights steps={cycle} />}
-        {currentUser && <SignedInHomeTabs />}
+        {currentUser && <SignedInHomeTabs viewerId={currentUser.id} />}
 
         {!currentUser && (
           <section className="border-t bg-card">
@@ -382,7 +382,7 @@ function Index() {
           </section>
         )}
       </main>
-      {currentUser && <SignedInBottomNavigation />}
+      {currentUser && <SignedInBottomNavigation userId={currentUser.id} />}
     </div>
   );
 }
