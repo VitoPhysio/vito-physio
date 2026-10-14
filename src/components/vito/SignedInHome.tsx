@@ -32,7 +32,6 @@ import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultati
 type HomeTab = {
   value: "for-you" | "learn" | "updates" | "sports-hub";
   label: string;
-  icon: LucideIcon;
 };
 
 type PathwayStep = {
@@ -42,10 +41,10 @@ type PathwayStep = {
 };
 
 const homeTabs: HomeTab[] = [
-  { value: "for-you", label: "For You", icon: Compass },
-  { value: "learn", label: "Learn", icon: BookOpen },
-  { value: "updates", label: "Updates", icon: Newspaper },
-  { value: "sports-hub", label: "Sports Hub", icon: Trophy },
+  { value: "for-you", label: "For You" },
+  { value: "learn", label: "Learn" },
+  { value: "updates", label: "Updates" },
+  { value: "sports-hub", label: "Sports Hub" },
 ];
 
 /** Compact care highlights on the signed-in Home, navigable by arrows, touch, or trackpad. */
@@ -181,24 +180,26 @@ export function SignedInHomeTabs() {
       aria-label="Home community sections"
       className="mx-auto w-full max-w-6xl px-4 pb-10 pt-0 sm:px-5"
     >
-      <Tabs defaultValue="for-you" className="w-full">
+      <Tabs defaultValue="for-you" className="w-[min(88vw,40rem)] max-w-full">
         <TabsList
           aria-label="Home sections"
-          className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-border bg-transparent p-0 pb-1 text-muted-foreground [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-t-2xl rounded-b-none border border-border/80 border-b-0 bg-card/80 px-2 pb-0 pt-2 text-muted-foreground shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {homeTabs.map(({ value, label, icon: Icon }) => (
+          {homeTabs.map(({ value, label }) => (
             <TabsTrigger
               key={value}
               value={value}
-              className="min-h-11 shrink-0 gap-2 rounded-xl px-3 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm sm:px-4"
+              className="min-h-10 shrink-0 rounded-none border-b-2 border-transparent px-2 text-xs font-medium transition-colors data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:font-bold data-[state=active]:text-accent data-[state=active]:shadow-none sm:px-3 sm:text-sm"
             >
-              <Icon aria-hidden="true" className="size-4" />
               {label}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        <TabsContent value="for-you" className="mt-5 sm:mt-6">
+        <TabsContent
+          value="for-you"
+          className="mt-0 rounded-b-2xl border-x border-b border-border/80 bg-muted/40 p-2 shadow-inner dark:bg-background/75 sm:p-3"
+        >
           <EmptyCommunityPanel
             icon={Users}
             eyebrow="Community feed"
@@ -207,7 +208,10 @@ export function SignedInHomeTabs() {
           />
         </TabsContent>
 
-        <TabsContent value="learn" className="mt-5 sm:mt-6">
+        <TabsContent
+          value="learn"
+          className="mt-0 rounded-b-2xl border-x border-b border-border/80 bg-muted/40 p-2 shadow-inner dark:bg-background/75 sm:p-3"
+        >
           <EmptyCommunityPanel
             icon={BookOpen}
             eyebrow="Sports-health library"
@@ -216,7 +220,10 @@ export function SignedInHomeTabs() {
           />
         </TabsContent>
 
-        <TabsContent value="updates" className="mt-5 sm:mt-6">
+        <TabsContent
+          value="updates"
+          className="mt-0 rounded-b-2xl border-x border-b border-border/80 bg-muted/40 p-2 shadow-inner dark:bg-background/75 sm:p-3"
+        >
           <EmptyCommunityPanel
             icon={Newspaper}
             eyebrow="Community updates"
@@ -225,7 +232,10 @@ export function SignedInHomeTabs() {
           />
         </TabsContent>
 
-        <TabsContent value="sports-hub" className="mt-5 sm:mt-6">
+        <TabsContent
+          value="sports-hub"
+          className="mt-0 rounded-b-2xl border-x border-b border-border/80 bg-muted/40 p-2 shadow-inner dark:bg-background/75 sm:p-3"
+        >
           <EmptyCommunityPanel
             icon={Trophy}
             eyebrow="Sports Hub"
@@ -252,7 +262,7 @@ function EmptyCommunityPanel({
   children?: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-8">
+    <section className="rounded-xl border border-border/70 bg-card p-5 shadow-lg shadow-primary/5 ring-1 ring-foreground/[0.03] dark:shadow-xl dark:shadow-black/35 dark:ring-white/[0.04] sm:p-8">
       <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
         <span className="grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
           <Icon aria-hidden="true" className="size-7" />
