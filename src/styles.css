@@ -229,6 +229,18 @@
 }
 
 @layer utilities {
+  .dark nav[aria-label="Primary navigation"] a[aria-current="page"] {
+    color: var(--accent) !important;
+    background-color: color-mix(in oklab, var(--accent) 15%, var(--background));
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent),
+      0 3px 14px color-mix(in oklab, var(--accent) 16%, transparent);
+  }
+
+  .dark nav[aria-label="Primary navigation"] a[aria-current="page"] svg {
+    color: var(--accent) !important;
+  }
+
   .dark .bg-clip-text.text-transparent {
     background-image: none !important;
     color: #fff !important;
