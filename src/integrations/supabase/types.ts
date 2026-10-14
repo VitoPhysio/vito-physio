@@ -1441,6 +1441,14 @@ export type Database = {
           role: string | null;
           headline: string | null;
           bio: string | null;
+          sport: string | null;
+          player_position: string | null;
+          school_name: string | null;
+          team: string | null;
+          interests: string[];
+          skills: string[];
+          district: string | null;
+          country: string | null;
           followers_count: number;
           following_count: number;
           posts_count: number;
