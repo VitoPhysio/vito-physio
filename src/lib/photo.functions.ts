@@ -61,7 +61,10 @@ export const updateLinkedPhoto = createServerFn({ method: "POST" })
       .object({
         target: z.enum(["profile", "athlete", "organisation", "community-cover"]),
         targetId: z.string().uuid(),
-        path: z.string().regex(/^uploads\/[0-9a-f-]{36}\.(png|jpg|webp)$/),
+        path: z
+          .string()
+          .regex(/^uploads\/[0-9a-f-]{36}\.(png|jpg|webp)$/)
+          .nullable(),
       })
       .parse(input),
   )

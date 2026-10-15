@@ -41,7 +41,13 @@ const homeTabs: HomeTab[] = [
 ];
 
 /** Compact care highlights on the signed-in Home, navigable by arrows, touch, or trackpad. */
-export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
+export function SignedInHomeHighlights({
+  steps,
+  scrollHidden = false,
+}: {
+  steps: PathwayStep[];
+  scrollHidden?: boolean;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
 
   function move(direction: -1 | 1) {
@@ -57,7 +63,9 @@ export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
   return (
     <section
       aria-label="Care highlights"
-      className="relative mx-auto max-w-6xl px-4 pb-1 pt-0 sm:px-5"
+      aria-hidden={scrollHidden || undefined}
+      inert={scrollHidden}
+      className={`relative mx-auto max-w-6xl px-4 pb-1 pt-0 transition-opacity duration-200 sm:px-5 ${scrollHidden ? "pointer-events-none opacity-0" : "opacity-100"}`}
     >
       <div
         ref={trackRef}
@@ -167,13 +175,19 @@ export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
 }
 
 /** Home-only content sections. These tabs are deliberately nested inside Home, not app navigation. */
-export function SignedInHomeTabs({ viewerId }: { viewerId: string }) {
+export function SignedInHomeTabs({
+  viewerId,
+  scrollHidden = false,
+}: {
+  viewerId: string;
+  scrollHidden?: boolean;
+}) {
   return (
     <section aria-label="Home community sections" className="w-full max-w-none px-0 pb-10 pt-0">
       <Tabs defaultValue="for-you" className="w-full">
         <TabsList
           aria-label="Home sections"
-          className="grid h-auto w-full grid-cols-4 gap-2 rounded-none border-y border-border/80 bg-card/80 px-3 py-3 text-muted-foreground shadow-sm"
+          className={`sticky z-40 grid h-auto w-full grid-cols-4 gap-2 rounded-none border-y border-border/80 bg-card/95 px-3 py-3 text-muted-foreground shadow-sm backdrop-blur transition-[top] duration-200 ${scrollHidden ? "top-0" : "top-16"}`}
         >
           {homeTabs.map(({ value, label }) => (
             <TabsTrigger

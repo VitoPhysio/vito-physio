@@ -400,6 +400,7 @@ export function AthletePortal({ user, view = "home" }: { user: User; view?: View
               onUpdated={() => {
                 qc.invalidateQueries({ queryKey: ["viewer", user.id] });
                 qc.invalidateQueries({ queryKey: ["app-header", user.id] });
+                qc.invalidateQueries({ queryKey: ["social-profile", user.id] });
                 qc.invalidateQueries({ queryKey: ["athlete-profile", user.id] });
               }}
             />
@@ -432,6 +433,7 @@ export function AthletePortal({ user, view = "home" }: { user: User; view?: View
                       bio: String(f.get("bio") ?? "").trim() || null,
                       skills: split("skills"),
                       interests: split("interests"),
+                      discoverable: profile?.community?.discoverable ?? true,
                       visibility: String(f.get("visibility") ?? "community") as
                         "community" | "connections",
                     },
@@ -439,6 +441,7 @@ export function AthletePortal({ user, view = "home" }: { user: User; view?: View
                   toast.success("Profile updated");
                   qc.invalidateQueries({ queryKey: ["viewer", user.id] });
                   qc.invalidateQueries({ queryKey: ["app-header", user.id] });
+                  qc.invalidateQueries({ queryKey: ["social-profile", user.id] });
                   qc.invalidateQueries({ queryKey: ["athlete-profile", user.id] });
                   qc.invalidateQueries({ queryKey: ["athlete-health", user.id] });
                   setEditing(false);

@@ -17,6 +17,7 @@ import {
   Search,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useScrollVisibility } from "@/hooks/use-scroll-visibility";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -110,6 +111,7 @@ function Index() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const scrollHidden = useScrollVisibility(Boolean(currentUser));
   const matches = publicSearchItems.filter((item) =>
     `${item.label} ${item.description}`.toLowerCase().includes(search.trim().toLowerCase()),
   );
@@ -140,7 +142,7 @@ function Index() {
       }`}
     >
       {currentUser ? (
-        <AppHeader user={currentUser} />
+        <AppHeader user={currentUser} scrollHidden={scrollHidden} />
       ) : (
         <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm dark:bg-card dark:text-white">
           <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
@@ -342,8 +344,8 @@ function Index() {
           </section>
         )}
 
-        {currentUser && <SignedInHomeHighlights steps={cycle} />}
-        {currentUser && <SignedInHomeTabs viewerId={currentUser.id} />}
+        {currentUser && <SignedInHomeHighlights steps={cycle} scrollHidden={scrollHidden} />}
+        {currentUser && <SignedInHomeTabs viewerId={currentUser.id} scrollHidden={scrollHidden} />}
 
         {!currentUser && (
           <section className="border-t bg-card">

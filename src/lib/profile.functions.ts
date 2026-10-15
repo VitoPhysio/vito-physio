@@ -19,7 +19,7 @@ const profileInput = z.object({
   bio: optionalText(1500),
   skills: z.array(z.string().trim().min(1).max(60)).max(20),
   interests: z.array(z.string().trim().min(1).max(60)).max(20),
-  discoverable: z.boolean(),
+  discoverable: z.boolean().default(true),
   visibility: z.enum(['community', 'connections']),
 });
 
