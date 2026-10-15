@@ -111,7 +111,7 @@ function Index() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const scrollHidden = useScrollVisibility(Boolean(currentUser));
+  const scrollVisibility = useScrollVisibility(Boolean(currentUser));
   const matches = publicSearchItems.filter((item) =>
     `${item.label} ${item.description}`.toLowerCase().includes(search.trim().toLowerCase()),
   );
@@ -142,7 +142,7 @@ function Index() {
       }`}
     >
       {currentUser ? (
-        <AppHeader user={currentUser} scrollHidden={scrollHidden} />
+        <AppHeader user={currentUser} scrollHidden={scrollVisibility.hidden} />
       ) : (
         <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm dark:bg-card dark:text-white">
           <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
@@ -344,8 +344,20 @@ function Index() {
           </section>
         )}
 
-        {currentUser && <SignedInHomeHighlights steps={cycle} scrollHidden={scrollHidden} />}
-        {currentUser && <SignedInHomeTabs viewerId={currentUser.id} scrollHidden={scrollHidden} />}
+        {currentUser && (
+          <SignedInHomeHighlights
+            steps={cycle}
+            scrollHidden={scrollVisibility.hidden}
+            carouselVisible={!scrollVisibility.hidden}
+          />
+        )}
+        {currentUser && (
+          <SignedInHomeTabs
+            viewerId={currentUser.id}
+            scrollHidden={scrollVisibility.hidden}
+            carouselVisible={!scrollVisibility.hidden}
+          />
+        )}
 
         {!currentUser && (
           <section className="border-t bg-card">

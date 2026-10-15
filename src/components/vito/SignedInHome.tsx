@@ -44,9 +44,11 @@ const homeTabs: HomeTab[] = [
 export function SignedInHomeHighlights({
   steps,
   scrollHidden = false,
+  carouselVisible = false,
 }: {
   steps: PathwayStep[];
   scrollHidden?: boolean;
+  carouselVisible?: boolean;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +67,7 @@ export function SignedInHomeHighlights({
       aria-label="Care highlights"
       aria-hidden={scrollHidden || undefined}
       inert={scrollHidden}
-      className={`relative mx-auto max-w-6xl px-4 pb-1 pt-0 transition-opacity duration-200 sm:px-5 ${scrollHidden ? "pointer-events-none opacity-0" : "opacity-100"}`}
+      className={`sticky top-16 z-[39] mx-auto max-w-6xl px-4 pb-1 pt-0 transition-opacity duration-150 sm:px-5 ${carouselVisible ? "" : "-translate-y-full"} ${scrollHidden ? "pointer-events-none opacity-0" : "opacity-100"}`}
     >
       <div
         ref={trackRef}
@@ -178,16 +180,18 @@ export function SignedInHomeHighlights({
 export function SignedInHomeTabs({
   viewerId,
   scrollHidden = false,
+  carouselVisible = false,
 }: {
   viewerId: string;
   scrollHidden?: boolean;
+  carouselVisible?: boolean;
 }) {
   return (
     <section aria-label="Home community sections" className="w-full max-w-none px-0 pb-10 pt-0">
       <Tabs defaultValue="for-you" className="w-full">
         <TabsList
           aria-label="Home sections"
-          className={`sticky z-40 grid h-auto w-full grid-cols-4 gap-2 rounded-none border-y border-border/80 bg-card/95 px-3 py-3 text-muted-foreground shadow-sm backdrop-blur transition-[top] duration-200 ${scrollHidden ? "top-0" : "top-16"}`}
+          className={`sticky z-40 grid h-auto w-full grid-cols-4 gap-2 rounded-none border-y border-border/80 bg-card/95 px-3 py-3 text-muted-foreground shadow-sm backdrop-blur transition-[top] duration-200 ${scrollHidden ? "top-0" : carouselVisible ? "top-[18.75rem]" : "top-16"}`}
         >
           {homeTabs.map(({ value, label }) => (
             <TabsTrigger

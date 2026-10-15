@@ -1,17 +1,27 @@
 import { useEffect, useState } from "react";
 
-/** Hide shared home chrome after downward scroll and restore it promptly on upward scroll. */
-export function useScrollVisibility(enabled = true) {
-  const [hidden, setHidden] = useState(false);
+type ScrollVisibility = {
+  hidden: boolean;
+  scrollingUp: boolean;
+  pastHeader: boolean;
+};
+
+/** Hide shared home chrome while moving down and restore it on the first upward movement. */
+export function useScrollVisibility(enabled = true): ScrollVisibility {
+  const [visibility, setVisibility] = useState<ScrollVisibility>({
+    hidden: false,
+    scrollingUp: false,
+    pastHeader: false,
+  });
 
   useEffect(() => {
     if (!enabled) {
-      setHidden(false);
+      setVisibility({ hidden: false, scrollingUp: false, pastHeader: false });
       return;
     }
 
     let lastY = window.scrollY;
-    let accumulatedDelta = 0;
+    let downwardDistance = 0;
     let frame = 0;
 
     function onScroll() {
@@ -19,21 +29,26 @@ export function useScrollVisibility(enabled = true) {
       frame = window.requestAnimationFrame(() => {
         const currentY = Math.max(0, window.scrollY);
         const delta = currentY - lastY;
+        const pastHeader = currentY > 64;
 
         if (currentY < 24) {
-          accumulatedDelta = 0;
-          setHidden(false);
-        } else if (delta !== 0) {
-          if (Math.sign(delta) !== Math.sign(accumulatedDelta)) accumulatedDelta = 0;
-          accumulatedDelta += delta;
-
-          if (accumulatedDelta > 10) {
-            setHidden(true);
-            accumulatedDelta = 0;
-          } else if (accumulatedDelta < -10) {
-            setHidden(false);
-            accumulatedDelta = 0;
-          }
+          downwardDistance = 0;
+          setVisibility({ hidden: false, scrollingUp: false, pastHeader: false });
+        } else if (delta < 0) {
+          downwardDistance = 0;
+          setVisibility({ hidden: false, scrollingUp: true, pastHeader });
+        } else if (delta > 0) {
+          downwardDistance += delta;
+          setVisibility((current) => ({
+            hidden: downwardDistance > 10 ? true : current.hidden,
+            scrollingUp: false,
+            pastHeader,
+          }));
+          if (downwardDistance > 10) downwardDistance = 0;
+        } else {
+          setVisibility((current) =>
+            current.pastHeader === pastHeader ? current : { ...current, pastHeader },
+          );
         }
 
         lastY = currentY;
@@ -48,5 +63,5 @@ export function useScrollVisibility(enabled = true) {
     };
   }, [enabled]);
 
-  return hidden;
+  return visibility;
 }
