@@ -153,7 +153,7 @@ export function AthletePortal({ user, view = "home" }: { user: User; view?: View
       <main
         className={
           view === "profile"
-            ? "min-h-screen space-y-8 pb-28 pt-0"
+            ? "min-h-dvh w-full pt-0"
             : "mx-auto max-w-6xl space-y-8 px-4 pb-10 pt-2 sm:px-5"
         }
       >
@@ -375,7 +375,7 @@ export function AthletePortal({ user, view = "home" }: { user: User; view?: View
 
         {view === "profile" && (
           <div className="min-h-screen">
-            <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-7 sm:px-6">
+            <div className="min-h-dvh w-full">
               <SocialProfile
                 profileId={user.id}
                 viewerId={user.id}

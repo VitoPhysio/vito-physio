@@ -23,7 +23,7 @@ import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultati
 import { SocialComposerDialog, SocialFeed } from "@/components/vito/SocialProfile";
 
 type HomeTab = {
-  value: "for-you" | "learn" | "updates" | "sports-hub";
+  value: "posts" | "learn" | "updates" | "sports-hub";
   label: string;
 };
 
@@ -34,7 +34,7 @@ type PathwayStep = {
 };
 
 const homeTabs: HomeTab[] = [
-  { value: "for-you", label: "For You" },
+  { value: "posts", label: "Posts" },
   { value: "learn", label: "Learn" },
   { value: "updates", label: "Updates" },
   { value: "sports-hub", label: "Sports Hub" },
@@ -184,7 +184,7 @@ export function SignedInHomeTabs({
 }) {
   return (
     <section aria-label="Home community sections" className="w-full max-w-none px-0 pb-10 pt-0">
-      <Tabs defaultValue="for-you" className="w-full">
+      <Tabs defaultValue="posts" className="w-full">
         <TabsList
           aria-label="Home sections"
           className={`sticky z-40 grid h-auto w-full grid-cols-4 gap-2 rounded-none border-y border-border/80 bg-card/95 px-3 py-3 text-muted-foreground shadow-sm backdrop-blur transition-[top] duration-200 ${scrollHidden ? "top-0" : "top-16"}`}
@@ -200,10 +200,7 @@ export function SignedInHomeTabs({
           ))}
         </TabsList>
 
-        <TabsContent
-          value="for-you"
-          className="mt-0 rounded-b-2xl border-x border-b border-border/80 bg-muted/40 p-2 shadow-inner dark:bg-background/75 sm:p-3"
-        >
+        <TabsContent value="posts" className="mt-0 p-0">
           <SocialFeed viewerId={viewerId} />
         </TabsContent>
 

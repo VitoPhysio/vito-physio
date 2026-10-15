@@ -7,6 +7,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   Pencil,
+  RefreshCw,
   Send,
   Share2,
   Trash2,
@@ -136,7 +137,7 @@ export function SocialProfile({
   if (profile.isLoading) return <SocialLoading />;
   if (profile.isError || !profile.data) {
     return (
-      <section className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
+      <section className="min-h-dvh w-full bg-background px-4 py-6 text-sm text-muted-foreground sm:px-6">
         This profile could not be loaded. Please try again.
         <Button className="ml-3" size="sm" variant="outline" onClick={() => void profile.refetch()}>
           Retry
@@ -177,7 +178,7 @@ export function SocialProfile({
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+    <section className="min-h-dvh w-full overflow-hidden bg-background">
       <div className="relative h-32 overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-accent sm:h-40">
         <button
           type="button"
@@ -302,7 +303,7 @@ export function SocialProfile({
           </button>
         ))}
       </div>
-      <div className="divide-y">
+      <div className="divide-y border-y border-border/70">
         {posts.isLoading && <div className="p-6 text-sm text-muted-foreground">Loading posts…</div>}
         {posts.isError && (
           <div className="p-6 text-sm text-muted-foreground">
@@ -442,19 +443,20 @@ export function SocialFeed({ viewerId }: { viewerId: string }) {
   });
 
   return (
-    <section className="mx-auto mt-5 w-full max-w-6xl px-4 sm:px-5">
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
-            Community feed
-          </p>
-          <h2 className="mt-1 text-xl font-black tracking-tight">For You</h2>
+    <section aria-label="Community posts" className="w-full">
+      <div className="divide-y border-y border-border/70 bg-accent/5">
+        <div className="flex justify-end px-2 py-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            aria-label="Refresh posts"
+            title="Refresh posts"
+            onClick={() => void posts.refetch()}
+          >
+            <RefreshCw className="size-4" />
+          </Button>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => void posts.refetch()}>
-          Refresh
-        </Button>
-      </div>
-      <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
         {posts.isLoading && (
           <div className="p-6 text-sm text-muted-foreground">Loading community posts…</div>
         )}
@@ -766,9 +768,9 @@ function Count({ label, value }: { label: string; value: number }) {
 
 function SocialLoading() {
   return (
-    <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+    <section className="min-h-dvh w-full overflow-hidden bg-background">
       <div className="h-44 animate-pulse bg-secondary sm:h-56" />
-      <div className="space-y-3 p-5">
+      <div className="space-y-3 px-4 py-5">
         <div className="h-8 w-48 animate-pulse rounded bg-secondary" />
         <div className="h-4 w-72 animate-pulse rounded bg-secondary" />
       </div>
