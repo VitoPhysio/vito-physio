@@ -16,7 +16,7 @@ import {
   ShieldCheck,
   Search,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useScrollVisibility } from "@/hooks/use-scroll-visibility";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
@@ -33,7 +33,11 @@ import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultati
 import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { AppHeader } from "@/components/vito/AppHeader";
-import { VitoBrandLockup } from "@/components/vito/VitoBrandLockup";
+import {
+  VitoBrandLockup,
+  VitoLoadingOverlay,
+  VitoLoadingScreen,
+} from "@/components/vito/VitoBrandLockup";
 import {
   SignedInBottomNavigation,
   SignedInHomeHighlights,
@@ -109,12 +113,18 @@ const publicSearchItems = [
 function Index() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [headerReady, setHeaderReady] = useState(false);
+  const [homeStage, setHomeStage] = useState(0);
+  const currentUserId = useRef<string | null>(null);
+  const markHeaderReady = useCallback(() => setHeaderReady(true), []);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const scrollHidden = useScrollVisibility(Boolean(currentUser));
   const matches = publicSearchItems.filter((item) =>
     `${item.label} ${item.description}`.toLowerCase().includes(search.trim().toLowerCase()),
   );
+  const activeUserId = currentUser?.id ?? null;
 
   function selectSearchItem(item: (typeof publicSearchItems)[number]) {
     setSearch("");
@@ -128,12 +138,61 @@ function Index() {
   }
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setCurrentUser(data.user ?? null));
+    let active = true;
+    let authEventReceived = false;
+    const applyUser = (nextUser: User | null) => {
+      if (!active) return;
+      const nextUserId = nextUser?.id ?? null;
+      if (currentUserId.current !== nextUserId) {
+        currentUserId.current = nextUserId;
+        setHeaderReady(false);
+        setHomeStage(0);
+      }
+      setCurrentUser(nextUser);
+      setAuthReady(true);
+    };
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => setCurrentUser(session?.user ?? null));
-    return () => subscription.unsubscribe();
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      authEventReceived = true;
+      applyUser(session?.user ?? null);
+    });
+    void supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!authEventReceived) applyUser(error ? null : (data.session?.user ?? null));
+      })
+      .catch(() => {
+        if (!authEventReceived) applyUser(null);
+      });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
+
+  useEffect(() => {
+    if (!activeUserId || !headerReady) {
+      setHomeStage(0);
+      return;
+    }
+
+    setHomeStage(1);
+    const carouselTimer = window.setTimeout(() => setHomeStage(2), 120);
+    const tabsTimer = window.setTimeout(() => setHomeStage(3), 240);
+    const feedTimer = window.setTimeout(() => setHomeStage(4), 380);
+    const navigationTimer = window.setTimeout(() => setHomeStage(5), 500);
+    return () => {
+      window.clearTimeout(carouselTimer);
+      window.clearTimeout(tabsTimer);
+      window.clearTimeout(feedTimer);
+      window.clearTimeout(navigationTimer);
+    };
+  }, [activeUserId, headerReady]);
+
+  if (!authReady) return <VitoLoadingScreen />;
 
   return (
     <div
@@ -142,7 +201,7 @@ function Index() {
       }`}
     >
       {currentUser ? (
-        <AppHeader user={currentUser} scrollHidden={scrollHidden} />
+        <AppHeader user={currentUser} onReady={markHeaderReady} scrollHidden={scrollHidden} />
       ) : (
         <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm dark:bg-card dark:text-white">
           <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
@@ -344,8 +403,20 @@ function Index() {
           </section>
         )}
 
-        {currentUser && <SignedInHomeHighlights steps={cycle} scrollHidden={scrollHidden} />}
-        {currentUser && <SignedInHomeTabs viewerId={currentUser.id} scrollHidden={scrollHidden} />}
+        {currentUser && homeStage >= 2 && (
+          <div className="home-load-in">
+            <SignedInHomeHighlights steps={cycle} scrollHidden={scrollHidden} />
+          </div>
+        )}
+        {currentUser && homeStage >= 3 && (
+          <div className="home-load-in">
+            <SignedInHomeTabs
+              viewerId={currentUser.id}
+              scrollHidden={scrollHidden}
+              contentReady={homeStage >= 4}
+            />
+          </div>
+        )}
 
         {!currentUser && (
           <section className="border-t bg-card">
@@ -384,7 +455,8 @@ function Index() {
           </section>
         )}
       </main>
-      {currentUser && <SignedInBottomNavigation userId={currentUser.id} />}
+      {currentUser && homeStage >= 5 && <SignedInBottomNavigation userId={currentUser.id} />}
+      {currentUser && !headerReady && <VitoLoadingOverlay />}
     </div>
   );
 }
