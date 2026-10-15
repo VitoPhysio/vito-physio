@@ -74,17 +74,50 @@ export function VitoBrandLockup({
   );
 }
 
+export function VitoLoadingMark({
+  size = "size-28",
+  className,
+}: {
+  size?: string;
+  className?: string;
+}) {
+  return (
+    <span className={cn("relative grid shrink-0 place-items-center", size, className)}>
+      <span
+        aria-hidden="true"
+        className="absolute inset-0 animate-spin rounded-full border-[3px] border-primary/15 border-t-accent motion-reduce:animate-none"
+      />
+      <span aria-hidden="true" className="absolute inset-2 rounded-full border border-primary/10" />
+      <span className="relative grid size-[70%] place-items-center rounded-full bg-background p-3 shadow-sm ring-1 ring-border dark:bg-card">
+        <img src={logo} alt="" className="size-full object-contain" />
+      </span>
+    </span>
+  );
+}
+
+function VitoLoadingMessage() {
+  return (
+    <div className="flex flex-col items-center gap-5 text-center" role="status" aria-live="polite">
+      <VitoLoadingMark />
+      <span className="text-sm font-medium text-muted-foreground">
+        Loading your VITO care space…
+      </span>
+    </div>
+  );
+}
+
 export function VitoLoadingScreen() {
   return (
     <main className="grid min-h-screen place-items-center bg-background px-5 text-foreground">
-      <div
-        className="flex flex-col items-center gap-5 text-center"
-        role="status"
-        aria-live="polite"
-      >
-        <VitoBrandLockup compact />
-        <span className="text-sm font-medium text-muted-foreground">Loading your care space…</span>
-      </div>
+      <VitoLoadingMessage />
     </main>
+  );
+}
+
+export function VitoLoadingOverlay() {
+  return (
+    <div className="fixed inset-0 z-[100] grid place-items-center bg-background px-5 text-foreground">
+      <VitoLoadingMessage />
+    </div>
   );
 }

@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { VitoBrandLockup } from "@/components/vito/VitoBrandLockup";
+import { VitoBrandLockup, VitoLoadingMark } from "@/components/vito/VitoBrandLockup";
 import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
 
 type HomeTab = {
@@ -174,7 +174,7 @@ export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
 }
 
 /** Home-only content sections. These tabs are deliberately nested inside Home, not app navigation. */
-export function SignedInHomeTabs() {
+export function SignedInHomeTabs({ contentReady = true }: { contentReady?: boolean }) {
   return (
     <section aria-label="Home community sections" className="w-full max-w-none px-0 pb-10 pt-0">
       <Tabs defaultValue="for-you" className="w-full">
@@ -197,51 +197,76 @@ export function SignedInHomeTabs() {
           value="for-you"
           className="mt-0 rounded-b-2xl border-x border-b border-border/80 bg-muted/40 p-2 shadow-inner dark:bg-background/75 sm:p-3"
         >
-          <EmptyCommunityPanel
-            icon={Users}
-            eyebrow="Community feed"
-            title="Your For You feed is ready to grow"
-            description="Community posts, recommendations, and shared sports updates will appear here once those community features are available. No sample accounts or posts are shown."
-          />
+          <HomeContentGate ready={contentReady}>
+            <EmptyCommunityPanel
+              icon={Users}
+              eyebrow="Community feed"
+              title="Your For You feed is ready to grow"
+              description="Community posts, recommendations, and shared sports updates will appear here once those community features are available. No sample accounts or posts are shown."
+            />
+          </HomeContentGate>
         </TabsContent>
 
         <TabsContent
           value="learn"
           className="mt-0 rounded-b-2xl border-x border-b border-border/80 bg-muted/40 p-2 shadow-inner dark:bg-background/75 sm:p-3"
         >
-          <EmptyCommunityPanel
-            icon={BookOpen}
-            eyebrow="Sports-health library"
-            title="Learning resources will live here"
-            description="This Home section is reserved for injury prevention, rehabilitation, recovery, and safe-training resources. It will use verified VITO content rather than placeholder articles."
-          />
+          <HomeContentGate ready={contentReady}>
+            <EmptyCommunityPanel
+              icon={BookOpen}
+              eyebrow="Sports-health library"
+              title="Learning resources will live here"
+              description="This Home section is reserved for injury prevention, rehabilitation, recovery, and safe-training resources. It will use verified VITO content rather than placeholder articles."
+            />
+          </HomeContentGate>
         </TabsContent>
 
         <TabsContent
           value="updates"
           className="mt-0 rounded-b-2xl border-x border-b border-border/80 bg-muted/40 p-2 shadow-inner dark:bg-background/75 sm:p-3"
         >
-          <EmptyCommunityPanel
-            icon={Newspaper}
-            eyebrow="Community updates"
-            title="Updates will appear here"
-            description="Announcements and updates from athletes, coaches, schools, clubs, and other sports stakeholders will appear here once community publishing is available."
-          />
+          <HomeContentGate ready={contentReady}>
+            <EmptyCommunityPanel
+              icon={Newspaper}
+              eyebrow="Community updates"
+              title="Updates will appear here"
+              description="Announcements and updates from athletes, coaches, schools, clubs, and other sports stakeholders will appear here once community publishing is available."
+            />
+          </HomeContentGate>
         </TabsContent>
 
         <TabsContent
           value="sports-hub"
           className="mt-0 rounded-b-2xl border-x border-b border-border/80 bg-muted/40 p-2 shadow-inner dark:bg-background/75 sm:p-3"
         >
-          <EmptyCommunityPanel
-            icon={Trophy}
-            eyebrow="Sports Hub"
-            title="A space for sport and activity"
-            description="This section is reserved for events, competitions, teams, clubs, academies, and other sports-community activities. No events or achievements have been invented for this frontend step."
-          />
+          <HomeContentGate ready={contentReady}>
+            <EmptyCommunityPanel
+              icon={Trophy}
+              eyebrow="Sports Hub"
+              title="A space for sport and activity"
+              description="This section is reserved for events, competitions, teams, clubs, academies, and other sports-community activities. No events or achievements have been invented for this frontend step."
+            />
+          </HomeContentGate>
         </TabsContent>
       </Tabs>
     </section>
+  );
+}
+
+function HomeContentGate({ ready, children }: { ready: boolean; children: React.ReactNode }) {
+  return ready ? children : <HomeStoriesLoading />;
+}
+
+function HomeStoriesLoading() {
+  return (
+    <div
+      className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-xl bg-card px-5 py-10 text-center shadow-sm"
+      role="status"
+      aria-live="polite"
+    >
+      <VitoLoadingMark size="size-12" />
+      <span className="text-sm font-medium text-muted-foreground">Loading Home stories…</span>
+    </div>
   );
 }
 

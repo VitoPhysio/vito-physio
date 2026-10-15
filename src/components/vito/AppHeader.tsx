@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Bell,
@@ -43,15 +43,21 @@ const ADMIN = ["super_admin", "vito_admin"];
 export function AppHeader({
   user,
   profileNavigatesHome = false,
+  onReady,
 }: {
   user: User;
   profileNavigatesHome?: boolean;
+  onReady?: () => void;
 }) {
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const queryClient = useQueryClient();
-  const { data, refetch } = useQuery({
+  const {
+    data,
+    refetch,
+    isLoading: profileLoading,
+  } = useQuery({
     queryKey: ["app-header", user.id],
     queryFn: async () => {
       const [{ data: profile }, { data: roles }] = await Promise.all([
@@ -67,7 +73,7 @@ export function AppHeader({
     },
   });
 
-  const { data: unreadCount = 0 } = useQuery({
+  const { data: unreadCount = 0, isLoading: notificationsLoading } = useQuery({
     queryKey: ["notification-count", user.id],
     queryFn: async () => {
       const { count, error } = await supabase
@@ -79,6 +85,10 @@ export function AppHeader({
     },
     refetchInterval: 30000,
   });
+
+  useEffect(() => {
+    if (!profileLoading && !notificationsLoading) onReady?.();
+  }, [notificationsLoading, onReady, profileLoading]);
 
   const items = useMemo<QuickMenuItem[]>(() => {
     const role = data?.role ?? "athlete";
