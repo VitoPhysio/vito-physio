@@ -19,7 +19,7 @@ import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { VitoBrandLockup, VitoLoadingMark } from "@/components/vito/VitoBrandLockup";
+import { VitoLoadingMark } from "@/components/vito/VitoBrandLockup";
 import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
 import { SocialComposerDialog, SocialFeed } from "@/components/vito/SocialProfile";
 
@@ -102,7 +102,14 @@ export function SignedInHomeHighlights({
           data-highlight-card
           className="flex h-56 min-h-56 min-w-[min(88vw,40rem)] snap-start items-center gap-3 rounded-2xl border bg-card p-3 shadow-sm sm:min-w-[40rem] sm:gap-4 sm:p-4"
         >
-          <VitoBrandLockup compact showTagline={false} className="shrink-0" imageClassName="p-1" />
+          <div
+            aria-hidden="true"
+            className="relative grid size-14 shrink-0 place-items-center rounded-full bg-brand-gradient p-[3px] shadow-glow"
+          >
+            <span className="absolute -inset-2 rounded-full border border-primary/15" />
+            <span className="absolute -right-1 top-1/2 size-2 -translate-y-1/2 rounded-full bg-accent shadow-[0_0_0_4px_hsl(var(--background))]" />
+            <span className="relative size-full rounded-full bg-background/95 ring-1 ring-white/35 dark:bg-card/95 dark:ring-white/10" />
+          </div>
           <div className="min-w-0 border-l pl-3 sm:pl-4">
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-accent">
               Care that moves with you
