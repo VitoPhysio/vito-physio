@@ -17,6 +17,7 @@ import {
   Search,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useScrollVisibility } from "@/hooks/use-scroll-visibility";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -119,6 +120,7 @@ function Index() {
   const markHeaderReady = useCallback(() => setHeaderReady(true), []);
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const scrollHidden = useScrollVisibility(Boolean(currentUser));
   const matches = publicSearchItems.filter((item) =>
     `${item.label} ${item.description}`.toLowerCase().includes(search.trim().toLowerCase()),
   );
@@ -199,7 +201,7 @@ function Index() {
       }`}
     >
       {currentUser ? (
-        <AppHeader user={currentUser} onReady={markHeaderReady} />
+        <AppHeader user={currentUser} onReady={markHeaderReady} scrollHidden={scrollHidden} />
       ) : (
         <header className="sticky top-0 z-50 bg-foreground text-background shadow-sm dark:bg-card dark:text-white">
           <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
@@ -403,12 +405,16 @@ function Index() {
 
         {currentUser && homeStage >= 2 && (
           <div className="home-load-in">
-            <SignedInHomeHighlights steps={cycle} />
+            <SignedInHomeHighlights steps={cycle} scrollHidden={scrollHidden} />
           </div>
         )}
         {currentUser && homeStage >= 3 && (
           <div className="home-load-in">
-            <SignedInHomeTabs contentReady={homeStage >= 4} />
+            <SignedInHomeTabs
+              viewerId={currentUser.id}
+              scrollHidden={scrollHidden}
+              contentReady={homeStage >= 4}
+            />
           </div>
         )}
 
@@ -449,7 +455,7 @@ function Index() {
           </section>
         )}
       </main>
-      {currentUser && homeStage >= 5 && <SignedInBottomNavigation />}
+      {currentUser && homeStage >= 5 && <SignedInBottomNavigation userId={currentUser.id} />}
       {currentUser && !headerReady && <VitoLoadingOverlay />}
     </div>
   );

@@ -44,10 +44,12 @@ export function AppHeader({
   user,
   profileNavigatesHome = false,
   onReady,
+  scrollHidden = false,
 }: {
   user: User;
   profileNavigatesHome?: boolean;
   onReady?: () => void;
+  scrollHidden?: boolean;
 }) {
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -142,7 +144,11 @@ export function AppHeader({
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-primary text-primary-foreground shadow-sm print:hidden">
+    <header
+      aria-hidden={scrollHidden || undefined}
+      inert={scrollHidden}
+      className={`sticky top-0 z-40 bg-primary text-primary-foreground shadow-sm transition-transform duration-200 ease-out print:hidden ${scrollHidden ? "-translate-y-full pointer-events-none" : "translate-y-0"}`}
+    >
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-5">
         <VitoInfoPanel triggerClassName="focus-visible:ring-primary-foreground/70" />
 

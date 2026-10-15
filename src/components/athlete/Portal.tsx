@@ -1,50 +1,88 @@
-import { useState } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Activity, CalendarDays, Dumbbell, FileText, Globe2, HeartPulse, LockKeyhole, MapPin, MessageSquare, Plus, ShieldCheck, Trophy, Upload, UserRound, Users } from 'lucide-react';
-import { toast } from 'sonner';
-import { CareRequests } from '@/components/vito/CareRequests';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Progress } from '@/components/ui/progress';
-import { EditablePhoto, PhotoAvatar, fileToPhotoPath } from '@/components/vito/Photo';
-import { Inbox } from '@/components/vito/Communications';
-import { supabase } from '@/integrations/supabase/client';
-import { contactClinician, reportInjury } from '@/lib/athlete.functions';
-import { loadAthleteProfile, saveAthleteProfile } from '@/lib/profile.functions';
-import { updateLinkedPhoto } from '@/lib/photo.functions';
-import { STAGE_LABEL, stageProgress, useHealth, useViewer } from './data';
+import { useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Activity,
+  CalendarDays,
+  Dumbbell,
+  FileText,
+  HeartPulse,
+  LockKeyhole,
+  MessageSquare,
+  Plus,
+  ShieldCheck,
+  Trophy,
+  Upload,
+} from "lucide-react";
+import { toast } from "sonner";
+import { CareRequests } from "@/components/vito/CareRequests";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { EditablePhoto, PhotoAvatar, fileToPhotoPath } from "@/components/vito/Photo";
+import { Inbox } from "@/components/vito/Communications";
+import { supabase } from "@/integrations/supabase/client";
+import { contactClinician, reportInjury } from "@/lib/athlete.functions";
+import { loadAthleteProfile, saveAthleteProfile } from "@/lib/profile.functions";
+import { updateLinkedPhoto } from "@/lib/photo.functions";
+import { SocialProfile } from "@/components/vito/SocialProfile";
+import { STAGE_LABEL, stageProgress, useHealth, useViewer } from "./data";
 
-type View = 'home' | 'profile';
-type HomeSection = 'overview' | 'register' | 'actions' | 'connections' | 'recovery' | 'updates' | 'activity';
-type Tool = 'injuries' | 'rehab' | 'assessments' | 'appointments' | 'reports' | 'messages' | 'report' | 'contact' | 'notifications';
+type View = "home" | "profile";
+type HomeSection =
+  "overview" | "register" | "actions" | "connections" | "recovery" | "updates" | "activity";
+type Tool =
+  | "injuries"
+  | "rehab"
+  | "assessments"
+  | "appointments"
+  | "reports"
+  | "messages"
+  | "report"
+  | "contact"
+  | "notifications";
 const tools: { key: Tool; label: string; icon: typeof HeartPulse }[] = [
-  { key: 'report', label: 'Register new case', icon: Plus }, { key: 'injuries', label: 'My injuries', icon: HeartPulse },
-  { key: 'rehab', label: 'Rehabilitation', icon: Dumbbell }, { key: 'assessments', label: 'Assessments', icon: ShieldCheck },
-  { key: 'contact', label: 'Contact clinician', icon: MessageSquare }, { key: 'appointments', label: 'Appointments', icon: CalendarDays },
-  { key: 'reports', label: 'Reports & history', icon: FileText }, { key: 'notifications', label: 'Care updates', icon: Activity },
+  { key: "report", label: "Register new case", icon: Plus },
+  { key: "injuries", label: "My injuries", icon: HeartPulse },
+  { key: "rehab", label: "Rehabilitation", icon: Dumbbell },
+  { key: "assessments", label: "Assessments", icon: ShieldCheck },
+  { key: "contact", label: "Contact clinician", icon: MessageSquare },
+  { key: "appointments", label: "Appointments", icon: CalendarDays },
+  { key: "reports", label: "Reports & history", icon: FileText },
+  { key: "notifications", label: "Care updates", icon: Activity },
 ];
-const date = (value: string | null) => value ? new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not scheduled';
+const date = (value: string | null) =>
+  value
+    ? new Date(value).toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "Not scheduled";
 const homeSections: { key: HomeSection; label: string }[] = [
-  { key: 'overview', label: 'Care overview' },
-  { key: 'register', label: 'Register new case' },
-  { key: 'actions', label: 'Quick actions' },
-  { key: 'connections', label: 'Connections' },
-  { key: 'recovery', label: 'Recovery tracking' },
-  { key: 'updates', label: 'Care updates' },
-  { key: 'activity', label: 'Sporting activity' },
+  { key: "overview", label: "Care overview" },
+  { key: "register", label: "Register new case" },
+  { key: "actions", label: "Quick actions" },
+  { key: "connections", label: "Connections" },
+  { key: "recovery", label: "Recovery tracking" },
+  { key: "updates", label: "Care updates" },
+  { key: "activity", label: "Sporting activity" },
 ];
 
-export function AthletePortal({ user, view = 'home' }: { user: User; view?: View }) {
+export function AthletePortal({ user, view = "home" }: { user: User; view?: View }) {
   const viewer = useViewer(user);
   const health = useHealth(user.id);
-  const profileData = useQuery({ queryKey: ['athlete-profile', user.id], enabled: view === 'profile', queryFn: () => loadAthleteProfile({ data: {} }) });
+  const profileData = useQuery({
+    queryKey: ["athlete-profile", user.id],
+    enabled: view === "profile",
+    queryFn: () => loadAthleteProfile({ data: {} }),
+  });
   const qc = useQueryClient();
   const [tool, setTool] = useState<Tool | null>(null);
-  const [homeSection, setHomeSection] = useState<HomeSection>('overview');
+  const [homeSection, setHomeSection] = useState<HomeSection>("overview");
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const h = health.data;
@@ -52,111 +90,873 @@ export function AthletePortal({ user, view = 'home' }: { user: User; view?: View
   const athlete = h?.athletes[0];
   const profile = profileData.data;
   const profileAthlete = profile?.athlete ?? athlete;
-  const documents = useQuery({ queryKey: ['athlete-documents', user.id], enabled: tool === 'reports' && !!h?.athletes.length, queryFn: async () => {
-    const ids = h?.athletes.map(a => a.id) ?? [];
-    const { data, error } = await supabase.from('documents').select('id, title, storage_path, created_at').in('athlete_id', ids);
-    if (error) throw error; return data ?? [];
-  }});
+  const documents = useQuery({
+    queryKey: ["athlete-documents", user.id],
+    enabled: tool === "reports" && !!h?.athletes.length,
+    queryFn: async () => {
+      const ids = h?.athletes.map((a) => a.id) ?? [];
+      const { data, error } = await supabase
+        .from("documents")
+        .select("id, title, storage_path, created_at")
+        .in("athlete_id", ids);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
   async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault(); const form = new FormData(e.currentTarget); setBusy(true);
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    setBusy(true);
     try {
-      if (tool === 'report') {
-        const id = String(form.get('athlete'));
-        if (!id) throw new Error('Link your athlete record first.');
-        const code = await reportInjury({ data: { athlete_id: id, body_region: String(form.get('region')), mechanism: String(form.get('mechanism')), injury_date: String(form.get('date')) || undefined, pain_score: Number(form.get('pain')), notes: String(form.get('body')) } });
+      if (tool === "report") {
+        const id = String(form.get("athlete"));
+        if (!id) throw new Error("Link your athlete record first.");
+        const code = await reportInjury({
+          data: {
+            athlete_id: id,
+            body_region: String(form.get("region")),
+            mechanism: String(form.get("mechanism")),
+            injury_date: String(form.get("date")) || undefined,
+            pain_score: Number(form.get("pain")),
+            notes: String(form.get("body")),
+          },
+        });
         toast.success(`Injury reported: ${code}`);
       } else {
-        await contactClinician({ data: { athlete_id: String(form.get('athlete')) || undefined, kind: String(form.get('kind')) as 'message' | 'appointment' | 'consultation' | 'follow_up', body: String(form.get('body')) } });
-        toast.success('Sent to the VITO clinical team');
+        await contactClinician({
+          data: {
+            athlete_id: String(form.get("athlete")) || undefined,
+            kind: String(form.get("kind")) as
+              "message" | "appointment" | "consultation" | "follow_up",
+            body: String(form.get("body")),
+          },
+        });
+        toast.success("Sent to the VITO clinical team");
       }
-      qc.invalidateQueries({ queryKey: ['athlete-health', user.id] }); qc.invalidateQueries({ queryKey: ['inbox', user.id] }); setTool(null);
-    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save. Please try again.'); }
-    finally { setBusy(false); }
+      qc.invalidateQueries({ queryKey: ["athlete-health", user.id] });
+      qc.invalidateQueries({ queryKey: ["inbox", user.id] });
+      setTool(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   }
-  return <div className={view === 'profile' ? 'fixed inset-0 z-50 overflow-y-auto bg-background' : 'min-h-screen bg-background'}>
-    <main className={view === 'profile' ? 'min-h-screen space-y-8 pb-28 pt-0' : 'mx-auto max-w-6xl space-y-8 px-4 pb-10 pt-2 sm:px-5'}>
-      {view === 'home' && <>
-        <section aria-label="Care workspace sections" className="space-y-5">
-          <div role="tablist" aria-label="Care workspace sections" className="flex gap-2 overflow-x-auto border-b pb-3">
-            {homeSections.map(section => <Button key={section.key} role="tab" aria-selected={homeSection === section.key} aria-controls={`home-panel-${section.key}`} variant={homeSection === section.key ? 'default' : 'outline'} className="shrink-0" onClick={() => setHomeSection(section.key)}>{section.label}</Button>)}
-          </div>
-          <div id={`home-panel-${homeSection}`} role="tabpanel" aria-label={homeSections.find(section => section.key === homeSection)?.label} className="space-y-8">
-            {health.isError && <div role="alert" className="flex items-center justify-between gap-3 border-l-4 border-destructive bg-card p-4"><p>Health records could not be loaded.</p><Button variant="outline" onClick={() => health.refetch()}>Retry</Button></div>}
-            {homeSection === 'overview' && <section className="overflow-hidden rounded-2xl border bg-card shadow-sm"><div className="flex items-start justify-between gap-5 border-b bg-secondary/50 p-5 sm:p-7"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Your care at a glance</p><h2 className="mt-2 text-2xl font-bold tracking-tight">Health & injury overview</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Keep track of your current health, recovery plan, appointments, and clinical assessments in one place.</p></div><div className="hidden rounded-2xl bg-primary/10 p-3 text-primary sm:block"><HeartPulse className="size-7" /></div></div><div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
-              <Summary label="Current injuries" value={health.isLoading ? '…' : String(h?.active.length ?? 0)} detail={h?.active[0]?.body_region || 'No active injury recorded'} icon={HeartPulse} onClick={() => setTool('injuries')} />
-              <Summary label="Rehabilitation" value={health.isLoading ? '…' : String(h?.rehab.filter(p => h.active.some(i => i.id === p.injury_id)).length ?? 0)} detail={h?.rehab[0]?.phase || 'Plans & prescribed exercises'} icon={Dumbbell} onClick={() => setTool('rehab')} />
-              <Summary label="Next appointment" value={h?.upcoming[0] ? date(h.upcoming[0].scheduled_at) : 'Not scheduled'} detail={h?.upcoming[0]?.purpose || 'Appointments & follow-ups'} icon={CalendarDays} onClick={() => setTool('appointments')} />
-              <Summary label="Assessments" value={health.isLoading ? '…' : String(h?.assessments.length ?? 0)} detail="Your assessment summaries" icon={ShieldCheck} onClick={() => setTool('assessments')} />
-            </div></section>}
-            {homeSection === 'register' && <section className="rounded-xl border bg-card p-6 shadow-sm"><div className="max-w-2xl"><p className="text-xs font-semibold uppercase tracking-wide text-accent">Start a care record</p><h2 className="mt-2 text-2xl font-bold">Register a new case</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Tell the VITO clinical team about a new injury or concern. Your report will be added to your care workspace for review.</p><Button className="mt-5" onClick={() => setTool('report')}><Plus className="size-4" />Register new case</Button></div></section>}
-            {homeSection === 'actions' && <section><Heading title="Quick actions" icon={Activity} /><div className="flex flex-wrap gap-2">{tools.map(t => <Button key={t.key} variant="outline" className="h-auto min-h-11 justify-start whitespace-normal bg-card py-3" onClick={() => setTool(t.key)}><t.icon className="size-4 shrink-0 text-primary" />{t.label}</Button>)}</div></section>}
-            {homeSection === 'connections' && <section><Heading title="My clinical team" icon={LockKeyhole} />{h?.careTeam.length ? h.careTeam.map(c => <div key={c.id} className="mb-3 flex items-center gap-3"><PhotoAvatar name={c.name} /><span className="text-sm font-medium">{c.name}</span></div>) : <Empty icon={LockKeyhole} text="Your clinical team will appear here." />}<div className="mt-4 flex flex-wrap gap-2"><Button onClick={() => setTool('contact')}><MessageSquare className="size-4" />Contact clinician</Button><Button variant="outline" onClick={() => setTool('messages')}>Messages</Button></div></section>}
-            {homeSection === 'recovery' && <section><Heading title="Recovery tracking" icon={Activity} />{h?.active.length ? <div className="grid gap-3 sm:grid-cols-2">{h.active.map(i => <Button key={i.id} variant="outline" className="h-auto flex-col items-stretch gap-3 bg-card p-4 text-left" onClick={() => setTool('injuries')}><span className="flex justify-between gap-2"><span className="font-semibold">{i.body_region}</span><span className="text-xs text-primary">{STAGE_LABEL[i.status] ?? i.status}</span></span><Progress value={stageProgress(i.status)} /><span className="text-xs text-muted-foreground">{i.injury_code}</span></Button>)}</div> : <Empty icon={Activity} text="No recovery tracking available yet." />}</section>}
-            {homeSection === 'updates' && <section><Heading title="Care updates" icon={Activity} />{h?.timeline.length ? <ul className="divide-y border-y">{h.timeline.slice(0, 8).map(t => <li key={t.id} className="flex gap-3 py-4"><span className="mt-1 size-2 shrink-0 rounded-full bg-accent" /><div><p className="text-sm font-medium">{t.title}</p><p className="mt-1 text-xs text-muted-foreground">{date(t.at)}</p></div></li>)}</ul> : <Empty icon={Activity} text="No care updates yet." />}</section>}
-            {homeSection === 'activity' && <section><Heading title="Sporting activity" icon={Trophy} /><Empty icon={Trophy} text="No sporting updates yet." /></section>}
-          </div>
-        </section>
-      </>}
+  return (
+    <div
+      className={
+        view === "profile"
+          ? "fixed inset-0 z-50 overflow-y-auto bg-background"
+          : "min-h-screen bg-background"
+      }
+    >
+      <main
+        className={
+          view === "profile"
+            ? "min-h-dvh w-full pt-0"
+            : "mx-auto max-w-6xl space-y-8 px-4 pb-10 pt-2 sm:px-5"
+        }
+      >
+        {view === "home" && (
+          <>
+            <section aria-label="Care workspace sections" className="space-y-5">
+              <div
+                role="tablist"
+                aria-label="Care workspace sections"
+                className="flex gap-2 overflow-x-auto border-b pb-3"
+              >
+                {homeSections.map((section) => (
+                  <Button
+                    key={section.key}
+                    role="tab"
+                    aria-selected={homeSection === section.key}
+                    aria-controls={`home-panel-${section.key}`}
+                    variant={homeSection === section.key ? "default" : "outline"}
+                    className="shrink-0"
+                    onClick={() => setHomeSection(section.key)}
+                  >
+                    {section.label}
+                  </Button>
+                ))}
+              </div>
+              <div
+                id={`home-panel-${homeSection}`}
+                role="tabpanel"
+                aria-label={homeSections.find((section) => section.key === homeSection)?.label}
+                className="space-y-8"
+              >
+                {health.isError && (
+                  <div
+                    role="alert"
+                    className="flex items-center justify-between gap-3 border-l-4 border-destructive bg-card p-4"
+                  >
+                    <p>Health records could not be loaded.</p>
+                    <Button variant="outline" onClick={() => health.refetch()}>
+                      Retry
+                    </Button>
+                  </div>
+                )}
+                {homeSection === "overview" && (
+                  <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+                    <div className="flex items-start justify-between gap-5 border-b bg-secondary/50 p-5 sm:p-7">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+                          Your care at a glance
+                        </p>
+                        <h2 className="mt-2 text-2xl font-bold tracking-tight">
+                          Health & injury overview
+                        </h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                          Keep track of your current health, recovery plan, appointments, and
+                          clinical assessments in one place.
+                        </p>
+                      </div>
+                      <div className="hidden rounded-2xl bg-primary/10 p-3 text-primary sm:block">
+                        <HeartPulse className="size-7" />
+                      </div>
+                    </div>
+                    <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+                      <Summary
+                        label="Current injuries"
+                        value={health.isLoading ? "…" : String(h?.active.length ?? 0)}
+                        detail={h?.active[0]?.body_region || "No active injury recorded"}
+                        icon={HeartPulse}
+                        onClick={() => setTool("injuries")}
+                      />
+                      <Summary
+                        label="Rehabilitation"
+                        value={
+                          health.isLoading
+                            ? "…"
+                            : String(
+                                h?.rehab.filter((p) => h.active.some((i) => i.id === p.injury_id))
+                                  .length ?? 0,
+                              )
+                        }
+                        detail={h?.rehab[0]?.phase || "Plans & prescribed exercises"}
+                        icon={Dumbbell}
+                        onClick={() => setTool("rehab")}
+                      />
+                      <Summary
+                        label="Next appointment"
+                        value={h?.upcoming[0] ? date(h.upcoming[0].scheduled_at) : "Not scheduled"}
+                        detail={h?.upcoming[0]?.purpose || "Appointments & follow-ups"}
+                        icon={CalendarDays}
+                        onClick={() => setTool("appointments")}
+                      />
+                      <Summary
+                        label="Assessments"
+                        value={health.isLoading ? "…" : String(h?.assessments.length ?? 0)}
+                        detail="Your assessment summaries"
+                        icon={ShieldCheck}
+                        onClick={() => setTool("assessments")}
+                      />
+                    </div>
+                  </section>
+                )}
+                {homeSection === "register" && (
+                  <section className="rounded-xl border bg-card p-6 shadow-sm">
+                    <div className="max-w-2xl">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+                        Start a care record
+                      </p>
+                      <h2 className="mt-2 text-2xl font-bold">Register a new case</h2>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        Tell the VITO clinical team about a new injury or concern. Your report will
+                        be added to your care workspace for review.
+                      </p>
+                      <Button className="mt-5" onClick={() => setTool("report")}>
+                        <Plus className="size-4" />
+                        Register new case
+                      </Button>
+                    </div>
+                  </section>
+                )}
+                {homeSection === "actions" && (
+                  <section>
+                    <Heading title="Quick actions" icon={Activity} />
+                    <div className="flex flex-wrap gap-2">
+                      {tools.map((t) => (
+                        <Button
+                          key={t.key}
+                          variant="outline"
+                          className="h-auto min-h-11 justify-start whitespace-normal bg-card py-3"
+                          onClick={() => setTool(t.key)}
+                        >
+                          <t.icon className="size-4 shrink-0 text-primary" />
+                          {t.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </section>
+                )}
+                {homeSection === "connections" && (
+                  <section>
+                    <Heading title="My clinical team" icon={LockKeyhole} />
+                    {h?.careTeam.length ? (
+                      h.careTeam.map((c) => (
+                        <div key={c.id} className="mb-3 flex items-center gap-3">
+                          <PhotoAvatar name={c.name} />
+                          <span className="text-sm font-medium">{c.name}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <Empty icon={LockKeyhole} text="Your clinical team will appear here." />
+                    )}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button onClick={() => setTool("contact")}>
+                        <MessageSquare className="size-4" />
+                        Contact clinician
+                      </Button>
+                      <Button variant="outline" onClick={() => setTool("messages")}>
+                        Messages
+                      </Button>
+                    </div>
+                  </section>
+                )}
+                {homeSection === "recovery" && (
+                  <section>
+                    <Heading title="Recovery tracking" icon={Activity} />
+                    {h?.active.length ? (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {h.active.map((i) => (
+                          <Button
+                            key={i.id}
+                            variant="outline"
+                            className="h-auto flex-col items-stretch gap-3 bg-card p-4 text-left"
+                            onClick={() => setTool("injuries")}
+                          >
+                            <span className="flex justify-between gap-2">
+                              <span className="font-semibold">{i.body_region}</span>
+                              <span className="text-xs text-primary">
+                                {STAGE_LABEL[i.status] ?? i.status}
+                              </span>
+                            </span>
+                            <Progress value={stageProgress(i.status)} />
+                            <span className="text-xs text-muted-foreground">{i.injury_code}</span>
+                          </Button>
+                        ))}
+                      </div>
+                    ) : (
+                      <Empty icon={Activity} text="No recovery tracking available yet." />
+                    )}
+                  </section>
+                )}
+                {homeSection === "updates" && (
+                  <section>
+                    <Heading title="Care updates" icon={Activity} />
+                    {h?.timeline.length ? (
+                      <ul className="divide-y border-y">
+                        {h.timeline.slice(0, 8).map((t) => (
+                          <li key={t.id} className="flex gap-3 py-4">
+                            <span className="mt-1 size-2 shrink-0 rounded-full bg-accent" />
+                            <div>
+                              <p className="text-sm font-medium">{t.title}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">{date(t.at)}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <Empty icon={Activity} text="No care updates yet." />
+                    )}
+                  </section>
+                )}
+                {homeSection === "activity" && (
+                  <section>
+                    <Heading title="Sporting activity" icon={Trophy} />
+                    <Empty icon={Trophy} text="No sporting updates yet." />
+                  </section>
+                )}
+              </div>
+            </section>
+          </>
+        )}
 
-      {view === 'profile' && <div className="min-h-screen">
-        <section className="relative h-72 overflow-hidden border-b bg-gradient-to-br from-primary via-primary/90 to-accent sm:h-80">
-          {profile?.community?.cover_path ? <PhotoAvatar path={profile.community.cover_path} name="Cover photo" className="absolute inset-0 size-full rounded-none bg-transparent text-transparent" /> : <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.24),transparent_34%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.18),transparent_32%)]" />}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
-          <div className="absolute inset-x-0 bottom-0 mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-5 px-4 py-6 sm:px-6">
-            <div className="flex items-end gap-4 text-white"><PhotoAvatar path={v?.avatar} name={v?.name} className="size-24 border-4 border-white/80 shadow-xl sm:size-28" /><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/75">Athlete profile</p><h1 className="mt-1 text-3xl font-bold tracking-tight">{v?.name || profile?.profile?.full_name || 'Athlete profile'}</h1><p className="mt-1 text-sm text-white/80">{profileAthlete?.sport || profile?.community?.headline || 'Add your sporting identity'}</p></div></div>
-            <Button variant="secondary" onClick={() => setEditing(true)}><UserRound className="size-4" />Edit profile</Button>
+        {view === "profile" && (
+          <div className="min-h-screen">
+            <div className="min-h-dvh w-full">
+              <SocialProfile
+                profileId={user.id}
+                viewerId={user.id}
+                isOwner
+                onEditProfile={() => setEditing(true)}
+              />
+            </div>
           </div>
-          <CoverPhotoEditor path={profile?.community?.cover_path} userId={user.id} onUpdated={() => qc.invalidateQueries({ queryKey: ['athlete-profile', user.id] })} />
-        </section>
-        <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-7 sm:px-6">
-          {profileData.isLoading && <p className="text-sm text-muted-foreground">Loading profile details…</p>}
-          {profileData.isError && <p role="alert" className="border-l-4 border-destructive bg-card p-4 text-sm">Profile details could not be loaded.</p>}
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"><span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1"><MapPin className="size-4 text-primary" />{profile?.community?.district || 'District not added'}</span><span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1"><Globe2 className="size-4 text-primary" />{profile?.community?.country || 'Country not added'}</span>{profile?.community?.headline && <span className="rounded-full bg-accent/20 px-3 py-1 text-foreground">{profile.community.headline}</span>}</div>
-          <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr]"><div className="space-y-7"><section className="rounded-2xl border bg-card p-5"><Heading title="Sporting identity" icon={UserRound} /><dl className="grid grid-cols-2 gap-5 text-sm"><ProfileDatum label="Sport" value={profileAthlete?.sport || profile?.community?.sport} /><ProfileDatum label="Position / event" value={profile?.community?.position} /><ProfileDatum label="School / team" value={[profile?.community?.school_name, profile?.community?.team].filter(Boolean).join(' · ')} /><ProfileDatum label="Phone" value={profileAthlete?.phone} /></dl></section><section className="rounded-2xl border bg-card p-5"><Heading title="Biography" icon={FileText} /><p className="whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{profile?.community?.bio || 'Add a short biography to introduce yourself to the VITO community.'}</p></section><section className="rounded-2xl border bg-card p-5"><Heading title="Skills & interests" icon={Trophy} /><div className="flex flex-wrap gap-2">{[...(profile?.community?.skills ?? []), ...(profile?.community?.interests ?? [])].map((item: string) => <span key={item} className="rounded-full bg-secondary px-3 py-1 text-sm">{item}</span>)}{!profile?.community?.skills?.length && !profile?.community?.interests?.length && <p className="text-sm text-muted-foreground">No skills or interests added yet.</p>}</div></section></div><div className="space-y-7"><section className="rounded-2xl border bg-card p-5"><Heading title="Connections" icon={Users} /><Empty icon={Users} text="No connections to display." /></section><section className="rounded-2xl border bg-card p-5"><Heading title="Activity" icon={Activity} /><Empty icon={Activity} text="No sporting updates yet." /></section></div></div>
-        </div>
-      </div>}
-    </main>
-    <Dialog open={editing} onOpenChange={setEditing}><DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl"><DialogHeader><DialogTitle>Edit profile</DialogTitle></DialogHeader><div className="space-y-5"><EditablePhoto path={v?.avatar ?? null} name={v?.name ?? null} target="profile" targetId={user.id} onUpdated={() => { qc.invalidateQueries({ queryKey: ['viewer', user.id] }); qc.invalidateQueries({ queryKey: ['app-header', user.id] }); qc.invalidateQueries({ queryKey: ['athlete-profile', user.id] }); }} /><form className="grid gap-4 sm:grid-cols-2" onSubmit={async e => { e.preventDefault(); const f = new FormData(e.currentTarget); const split = (key: string) => String(f.get(key) ?? '').split(',').map(item => item.trim()).filter(Boolean); setBusy(true); try { await saveAthleteProfile({ data: { full_name: String(f.get('full_name') ?? '').trim(), first_name: String(f.get('first_name') ?? '').trim(), surname: String(f.get('surname') ?? '').trim(), sport: String(f.get('sport') ?? '').trim() || null, date_of_birth: String(f.get('date_of_birth') ?? '') || null, phone: String(f.get('phone') ?? '').trim() || null, headline: String(f.get('headline') ?? '').trim() || null, position: String(f.get('position') ?? '').trim() || null, school_name: String(f.get('school_name') ?? '').trim() || null, team: String(f.get('team') ?? '').trim() || null, district: String(f.get('district') ?? '').trim() || null, country: String(f.get('country') ?? '').trim() || null, bio: String(f.get('bio') ?? '').trim() || null, skills: split('skills'), interests: split('interests'), visibility: String(f.get('visibility') ?? 'community') as 'community' | 'connections' } }); toast.success('Profile updated'); qc.invalidateQueries({ queryKey: ['viewer', user.id] }); qc.invalidateQueries({ queryKey: ['app-header', user.id] }); qc.invalidateQueries({ queryKey: ['athlete-profile', user.id] }); qc.invalidateQueries({ queryKey: ['athlete-health', user.id] }); setEditing(false); } catch (error) { toast.error(error instanceof Error ? error.message : 'Profile could not be saved.'); } finally { setBusy(false); } }}>
-          <div className="sm:col-span-2"><Label htmlFor="profile-full-name">Display name</Label><Input id="profile-full-name" name="full_name" required maxLength={120} defaultValue={profile?.profile?.full_name ?? v?.name ?? ''} className="mt-1" /></div>
-          <div><Label htmlFor="profile-first-name">First name</Label><Input id="profile-first-name" name="first_name" required maxLength={120} defaultValue={profileAthlete?.first_name ?? v?.firstName ?? ''} className="mt-1" /></div>
-          <div><Label htmlFor="profile-surname">Surname</Label><Input id="profile-surname" name="surname" required maxLength={120} defaultValue={profileAthlete?.surname ?? ''} className="mt-1" /></div>
-          <div><Label htmlFor="profile-sport">Sport</Label><Input id="profile-sport" name="sport" maxLength={80} defaultValue={profileAthlete?.sport ?? profile?.community?.sport ?? ''} className="mt-1" /></div>
-          <div><Label htmlFor="profile-position">Position / event</Label><Input id="profile-position" name="position" maxLength={80} defaultValue={profile?.community?.position ?? ''} className="mt-1" /></div>
-          <div><Label htmlFor="profile-school">School / academy / club</Label><Input id="profile-school" name="school_name" maxLength={160} defaultValue={profile?.community?.school_name ?? ''} className="mt-1" /></div>
-          <div><Label htmlFor="profile-team">Team</Label><Input id="profile-team" name="team" maxLength={120} defaultValue={profile?.community?.team ?? ''} className="mt-1" /></div>
-          <div><Label htmlFor="profile-dob">Date of birth</Label><Input id="profile-dob" name="date_of_birth" type="date" defaultValue={profileAthlete?.date_of_birth ?? ''} className="mt-1" /></div>
-          <div><Label htmlFor="profile-phone">Phone</Label><Input id="profile-phone" name="phone" maxLength={40} defaultValue={profileAthlete?.phone ?? ''} className="mt-1" /></div>
-          <div><Label htmlFor="profile-district">District of residence</Label><Input id="profile-district" name="district" maxLength={120} defaultValue={profile?.community?.district ?? ''} className="mt-1" placeholder="District or region" /></div>
-          <div><Label htmlFor="profile-country">Country of residence</Label><Input id="profile-country" name="country" maxLength={120} defaultValue={profile?.community?.country ?? ''} className="mt-1" placeholder="Country" /></div>
-          <div className="sm:col-span-2"><Label htmlFor="profile-headline">Profile headline</Label><Input id="profile-headline" name="headline" maxLength={120} defaultValue={profile?.community?.headline ?? ''} className="mt-1" placeholder="A short introduction" /></div>
-          <div className="sm:col-span-2"><Label htmlFor="profile-bio">Biography</Label><Textarea id="profile-bio" name="bio" maxLength={1500} defaultValue={profile?.community?.bio ?? ''} className="mt-1" rows={5} placeholder="Tell the VITO community about yourself" /></div>
-          <div><Label htmlFor="profile-skills">Skills</Label><Input id="profile-skills" name="skills" defaultValue={(profile?.community?.skills ?? []).join(', ')} className="mt-1" placeholder="Comma-separated" /></div>
-          <div><Label htmlFor="profile-interests">Interests</Label><Input id="profile-interests" name="interests" defaultValue={(profile?.community?.interests ?? []).join(', ')} className="mt-1" placeholder="Comma-separated" /></div>
-          <div><Label htmlFor="profile-visibility">Profile visibility</Label><select id="profile-visibility" name="visibility" defaultValue={profile?.community?.visibility ?? 'community'} className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"><option value="community">Visible to the VITO community</option><option value="connections">Visible to connections only</option></select></div>
-          <div className="sm:col-span-2"><Button disabled={busy} type="submit">{busy ? 'Saving…' : 'Save profile'}</Button></div>
-        </form></div></DialogContent></Dialog>
-    <Dialog open={tool !== null} onOpenChange={open => { if (!open) setTool(null); }}><DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{tool === 'messages' ? 'Private clinical messages' : tools.find(t => t.key === tool)?.label}</DialogTitle></DialogHeader>
-      {(tool === 'report' || tool === 'contact') && <form className="space-y-4" onSubmit={submit}>
-        <Label htmlFor="athlete-record">Athlete record</Label><select id="athlete-record" name="athlete" className="w-full rounded-md border bg-background p-2" required={tool === 'report'}><option value="">{tool === 'report' ? 'Choose athlete' : 'General enquiry'}</option>{h?.athletes.map(a => <option key={a.id} value={a.id}>{a.first_name} {a.surname}</option>)}</select>
-        {tool === 'report' ? <><Label htmlFor="region">Body region</Label><Input id="region" name="region" required minLength={2} maxLength={120} /><Label htmlFor="injury-date">Injury date</Label><Input id="injury-date" name="date" type="date" /><Label htmlFor="mechanism">What happened?</Label><Input id="mechanism" name="mechanism" maxLength={500} /><Label htmlFor="pain">Pain score (0–10)</Label><Input id="pain" name="pain" type="number" min={0} max={10} defaultValue={0} /></> : <><Label htmlFor="request-kind">Request type</Label><select id="request-kind" name="kind" className="w-full rounded-md border bg-background p-2"><option value="message">Message</option><option value="appointment">Appointment request</option><option value="consultation">Consultation request</option><option value="follow_up">Follow-up request</option></select></>}
-        <Label htmlFor="message-body">{tool === 'report' ? 'Additional details' : 'Message to clinical team'}</Label><Textarea id="message-body" name="body" required={tool === 'contact'} minLength={tool === 'contact' ? 2 : undefined} maxLength={tool === 'report' ? 1500 : 4000} /><Button type="submit" disabled={busy || (tool === 'report' && !h?.linked)}>{busy ? 'Sending…' : tool === 'report' ? 'Register case' : 'Send request'}</Button>
-      </form>}
-      {tool === 'messages' && <Inbox userId={user.id} />}
-      {tool === 'injuries' && <div className="space-y-4">{h?.injuries.map(i => <article key={i.id} className="border-b pb-4"><h3 className="font-semibold">{i.body_region} · {i.injury_code}</h3><p className="my-2 text-sm text-primary">{STAGE_LABEL[i.status] ?? i.status}</p><Progress value={stageProgress(i.status)} /><p className="mt-2 text-sm text-muted-foreground">{date(i.injury_date)} · Pain: {i.pain_score ?? 'Not recorded'}/10</p>{i.mechanism && <p className="mt-2 text-sm">{i.mechanism}</p>}{h.recovery.filter(r => r.injury_id === i.id).map(r => <p key={r.id} className="mt-2 text-sm">{date(r.created_at)} · {STAGE_LABEL[r.status] ?? r.status}{r.notes ? ` — ${r.notes}` : ''}</p>)}</article>)}{!h?.injuries.length && <Empty icon={HeartPulse} text="No injuries recorded." />}</div>}
-      {tool === 'rehab' && <div className="space-y-5">{h?.rehab.map(p => <article key={p.id} className="border-b pb-4"><h3 className="font-semibold">{p.plan_code} · {p.phase || 'Rehabilitation plan'}</h3><p className="my-2 text-sm">{p.goals}</p><p className="text-xs text-muted-foreground">Target return: {date(p.target_return_date)}</p>{p.notes && <p className="mt-2 text-sm">{p.notes}</p>}</article>)}{h?.exercises.map(e => <article key={e.id} className="border-b pb-3"><h3 className="font-semibold">{e.name}</h3><p className="text-sm">{e.sets ?? '—'} sets · {e.reps || '—'} reps · {e.frequency}</p><p className="mt-1 text-sm text-muted-foreground">{e.instructions}</p></article>)}{!h?.rehab.length && !h?.exercises.length && <Empty icon={Dumbbell} text="No rehabilitation prescribed yet." />}</div>}
-      {tool === 'assessments' && <>{h?.assessments.map(a => <article key={a.id} className="border-b py-3"><h3 className="font-semibold">{a.assessment_type || 'Injury assessment'} · {a.assessment_code}</h3><p className="text-sm">Assessed: {date(a.assessment_date)}</p><p className="text-sm text-muted-foreground">Follow-up: {date(a.follow_up_date)}</p></article>)}{!h?.assessments.length && <Empty icon={ShieldCheck} text="No assessment summaries yet." />}</>}
-      {tool === 'appointments' && <><Button variant="outline" onClick={() => setTool('contact')}><Plus className="size-4" />Request appointment</Button><h3 className="pt-2 text-sm font-semibold">My requests</h3><CareRequests staff={false} userId={user.id} />{h?.appointments.map(a => <article key={a.id} className="border-b py-3"><h3 className="font-semibold">{a.purpose || 'Clinical appointment'}</h3><p className="text-sm">{new Date(a.scheduled_at).toLocaleString()} · {a.status}</p><p className="text-sm text-muted-foreground">{a.location}</p></article>)}{h?.dueFollowUps.map((f,i) => <p key={i} className="border-b py-3 text-sm">{f.source} · {date(f.date)}</p>)}{!h?.appointments.length && !h?.dueFollowUps.length && <Empty icon={CalendarDays} text="No appointments or follow-ups scheduled." />}</>}
-      {tool === 'notifications' && <>{h?.timeline.map(t => <p key={t.id} className="border-b py-3 text-sm">{t.title} · {date(t.at)}</p>)}{!h?.timeline.length && <Empty icon={Activity} text="No care updates yet." />}</>}
-      {tool === 'reports' && <div className="athlete-print-summary space-y-3"><Button variant="outline" onClick={() => window.print()}><FileText className="size-4" />Print health summary</Button><div className="space-y-3 text-sm"><h3 className="font-semibold">{athlete ? `${athlete.first_name} ${athlete.surname}` : v?.name}</h3>{h?.injuries.map(i => <p key={i.id}>{i.injury_code} · {i.body_region} · {STAGE_LABEL[i.status] ?? i.status} · {date(i.injury_date)}</p>)}{h?.followUps.map(f => <article key={f.id}><h4 className="font-medium">Review · {date(f.review_date)}</h4><p>{f.progress}</p><p>{f.next_steps}</p></article>)}</div><h3 className="font-semibold">Documents</h3>{documents.isError && <p role="alert">Documents could not be loaded.</p>}{documents.data?.map(d => <Button key={d.id} variant="outline" onClick={async () => { const { data, error } = await supabase.storage.from('case-documents').createSignedUrl(d.storage_path, 60); if (error || !data) toast.error('Document could not be opened.'); else window.open(data.signedUrl, '_blank', 'noopener,noreferrer'); }}><FileText className="size-4" />{d.title}</Button>)}{!documents.isLoading && !documents.data?.length && !documents.isError && <Empty icon={FileText} text="No documents available." />}</div>}
-    </DialogContent></Dialog>
-  </div>;
+        )}
+      </main>
+      <Dialog open={editing} onOpenChange={setEditing}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Edit profile</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5">
+            <EditablePhoto
+              path={v?.avatar ?? null}
+              name={v?.name ?? null}
+              target="profile"
+              targetId={user.id}
+              onUpdated={() => {
+                qc.invalidateQueries({ queryKey: ["viewer", user.id] });
+                qc.invalidateQueries({ queryKey: ["app-header", user.id] });
+                qc.invalidateQueries({ queryKey: ["social-profile", user.id] });
+                qc.invalidateQueries({ queryKey: ["athlete-profile", user.id] });
+              }}
+            />
+            <form
+              className="grid gap-4 sm:grid-cols-2"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                const split = (key: string) =>
+                  String(f.get(key) ?? "")
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean);
+                setBusy(true);
+                try {
+                  await saveAthleteProfile({
+                    data: {
+                      full_name: String(f.get("full_name") ?? "").trim(),
+                      first_name: String(f.get("first_name") ?? "").trim(),
+                      surname: String(f.get("surname") ?? "").trim(),
+                      sport: String(f.get("sport") ?? "").trim() || null,
+                      date_of_birth: String(f.get("date_of_birth") ?? "") || null,
+                      phone: String(f.get("phone") ?? "").trim() || null,
+                      headline: String(f.get("headline") ?? "").trim() || null,
+                      position: String(f.get("position") ?? "").trim() || null,
+                      school_name: String(f.get("school_name") ?? "").trim() || null,
+                      team: String(f.get("team") ?? "").trim() || null,
+                      district: String(f.get("district") ?? "").trim() || null,
+                      country: String(f.get("country") ?? "").trim() || null,
+                      bio: String(f.get("bio") ?? "").trim() || null,
+                      skills: split("skills"),
+                      interests: split("interests"),
+                      discoverable: profile?.community?.discoverable ?? true,
+                      visibility: String(f.get("visibility") ?? "community") as
+                        "community" | "connections",
+                    },
+                  });
+                  toast.success("Profile updated");
+                  qc.invalidateQueries({ queryKey: ["viewer", user.id] });
+                  qc.invalidateQueries({ queryKey: ["app-header", user.id] });
+                  qc.invalidateQueries({ queryKey: ["social-profile", user.id] });
+                  qc.invalidateQueries({ queryKey: ["athlete-profile", user.id] });
+                  qc.invalidateQueries({ queryKey: ["athlete-health", user.id] });
+                  setEditing(false);
+                } catch (error) {
+                  toast.error(
+                    error instanceof Error ? error.message : "Profile could not be saved.",
+                  );
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <div className="sm:col-span-2">
+                <Label htmlFor="profile-full-name">Display name</Label>
+                <Input
+                  id="profile-full-name"
+                  name="full_name"
+                  required
+                  maxLength={120}
+                  defaultValue={profile?.profile?.full_name ?? v?.name ?? ""}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-first-name">First name</Label>
+                <Input
+                  id="profile-first-name"
+                  name="first_name"
+                  required
+                  maxLength={120}
+                  defaultValue={profileAthlete?.first_name ?? v?.firstName ?? ""}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-surname">Surname</Label>
+                <Input
+                  id="profile-surname"
+                  name="surname"
+                  required
+                  maxLength={120}
+                  defaultValue={profileAthlete?.surname ?? ""}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-sport">Sport</Label>
+                <Input
+                  id="profile-sport"
+                  name="sport"
+                  maxLength={80}
+                  defaultValue={profileAthlete?.sport ?? profile?.community?.sport ?? ""}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-position">Position / event</Label>
+                <Input
+                  id="profile-position"
+                  name="position"
+                  maxLength={80}
+                  defaultValue={profile?.community?.position ?? ""}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-school">School / academy / club</Label>
+                <Input
+                  id="profile-school"
+                  name="school_name"
+                  maxLength={160}
+                  defaultValue={profile?.community?.school_name ?? ""}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-team">Team</Label>
+                <Input
+                  id="profile-team"
+                  name="team"
+                  maxLength={120}
+                  defaultValue={profile?.community?.team ?? ""}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-dob">Date of birth</Label>
+                <Input
+                  id="profile-dob"
+                  name="date_of_birth"
+                  type="date"
+                  defaultValue={profileAthlete?.date_of_birth ?? ""}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-phone">Phone</Label>
+                <Input
+                  id="profile-phone"
+                  name="phone"
+                  maxLength={40}
+                  defaultValue={profileAthlete?.phone ?? ""}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-district">District of residence</Label>
+                <Input
+                  id="profile-district"
+                  name="district"
+                  maxLength={120}
+                  defaultValue={profile?.community?.district ?? ""}
+                  className="mt-1"
+                  placeholder="District or region"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-country">Country of residence</Label>
+                <Input
+                  id="profile-country"
+                  name="country"
+                  maxLength={120}
+                  defaultValue={profile?.community?.country ?? ""}
+                  className="mt-1"
+                  placeholder="Country"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="profile-headline">Profile headline</Label>
+                <Input
+                  id="profile-headline"
+                  name="headline"
+                  maxLength={120}
+                  defaultValue={profile?.community?.headline ?? ""}
+                  className="mt-1"
+                  placeholder="A short introduction"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="profile-bio">Biography</Label>
+                <Textarea
+                  id="profile-bio"
+                  name="bio"
+                  maxLength={1500}
+                  defaultValue={profile?.community?.bio ?? ""}
+                  className="mt-1"
+                  rows={5}
+                  placeholder="Tell the VITO community about yourself"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-skills">Skills</Label>
+                <Input
+                  id="profile-skills"
+                  name="skills"
+                  defaultValue={(profile?.community?.skills ?? []).join(", ")}
+                  className="mt-1"
+                  placeholder="Comma-separated"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-interests">Interests</Label>
+                <Input
+                  id="profile-interests"
+                  name="interests"
+                  defaultValue={(profile?.community?.interests ?? []).join(", ")}
+                  className="mt-1"
+                  placeholder="Comma-separated"
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-visibility">Profile visibility</Label>
+                <select
+                  id="profile-visibility"
+                  name="visibility"
+                  defaultValue={profile?.community?.visibility ?? "community"}
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="community">Visible to the VITO community</option>
+                  <option value="connections">Visible to connections only</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <Button disabled={busy} type="submit">
+                  {busy ? "Saving…" : "Save profile"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={tool !== null}
+        onOpenChange={(open) => {
+          if (!open) setTool(null);
+        }}
+      >
+        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {tool === "messages"
+                ? "Private clinical messages"
+                : tools.find((t) => t.key === tool)?.label}
+            </DialogTitle>
+          </DialogHeader>
+          {(tool === "report" || tool === "contact") && (
+            <form className="space-y-4" onSubmit={submit}>
+              <Label htmlFor="athlete-record">Athlete record</Label>
+              <select
+                id="athlete-record"
+                name="athlete"
+                className="w-full rounded-md border bg-background p-2"
+                required={tool === "report"}
+              >
+                <option value="">{tool === "report" ? "Choose athlete" : "General enquiry"}</option>
+                {h?.athletes.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.first_name} {a.surname}
+                  </option>
+                ))}
+              </select>
+              {tool === "report" ? (
+                <>
+                  <Label htmlFor="region">Body region</Label>
+                  <Input id="region" name="region" required minLength={2} maxLength={120} />
+                  <Label htmlFor="injury-date">Injury date</Label>
+                  <Input id="injury-date" name="date" type="date" />
+                  <Label htmlFor="mechanism">What happened?</Label>
+                  <Input id="mechanism" name="mechanism" maxLength={500} />
+                  <Label htmlFor="pain">Pain score (0–10)</Label>
+                  <Input id="pain" name="pain" type="number" min={0} max={10} defaultValue={0} />
+                </>
+              ) : (
+                <>
+                  <Label htmlFor="request-kind">Request type</Label>
+                  <select
+                    id="request-kind"
+                    name="kind"
+                    className="w-full rounded-md border bg-background p-2"
+                  >
+                    <option value="message">Message</option>
+                    <option value="appointment">Appointment request</option>
+                    <option value="consultation">Consultation request</option>
+                    <option value="follow_up">Follow-up request</option>
+                  </select>
+                </>
+              )}
+              <Label htmlFor="message-body">
+                {tool === "report" ? "Additional details" : "Message to clinical team"}
+              </Label>
+              <Textarea
+                id="message-body"
+                name="body"
+                required={tool === "contact"}
+                minLength={tool === "contact" ? 2 : undefined}
+                maxLength={tool === "report" ? 1500 : 4000}
+              />
+              <Button type="submit" disabled={busy || (tool === "report" && !h?.linked)}>
+                {busy ? "Sending…" : tool === "report" ? "Register case" : "Send request"}
+              </Button>
+            </form>
+          )}
+          {tool === "messages" && <Inbox userId={user.id} />}
+          {tool === "injuries" && (
+            <div className="space-y-4">
+              {h?.injuries.map((i) => (
+                <article key={i.id} className="border-b pb-4">
+                  <h3 className="font-semibold">
+                    {i.body_region} · {i.injury_code}
+                  </h3>
+                  <p className="my-2 text-sm text-primary">{STAGE_LABEL[i.status] ?? i.status}</p>
+                  <Progress value={stageProgress(i.status)} />
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {date(i.injury_date)} · Pain: {i.pain_score ?? "Not recorded"}/10
+                  </p>
+                  {i.mechanism && <p className="mt-2 text-sm">{i.mechanism}</p>}
+                  {h.recovery
+                    .filter((r) => r.injury_id === i.id)
+                    .map((r) => (
+                      <p key={r.id} className="mt-2 text-sm">
+                        {date(r.created_at)} · {STAGE_LABEL[r.status] ?? r.status}
+                        {r.notes ? ` — ${r.notes}` : ""}
+                      </p>
+                    ))}
+                </article>
+              ))}
+              {!h?.injuries.length && <Empty icon={HeartPulse} text="No injuries recorded." />}
+            </div>
+          )}
+          {tool === "rehab" && (
+            <div className="space-y-5">
+              {h?.rehab.map((p) => (
+                <article key={p.id} className="border-b pb-4">
+                  <h3 className="font-semibold">
+                    {p.plan_code} · {p.phase || "Rehabilitation plan"}
+                  </h3>
+                  <p className="my-2 text-sm">{p.goals}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Target return: {date(p.target_return_date)}
+                  </p>
+                  {p.notes && <p className="mt-2 text-sm">{p.notes}</p>}
+                </article>
+              ))}
+              {h?.exercises.map((e) => (
+                <article key={e.id} className="border-b pb-3">
+                  <h3 className="font-semibold">{e.name}</h3>
+                  <p className="text-sm">
+                    {e.sets ?? "—"} sets · {e.reps || "—"} reps · {e.frequency}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{e.instructions}</p>
+                </article>
+              ))}
+              {!h?.rehab.length && !h?.exercises.length && (
+                <Empty icon={Dumbbell} text="No rehabilitation prescribed yet." />
+              )}
+            </div>
+          )}
+          {tool === "assessments" && (
+            <>
+              {h?.assessments.map((a) => (
+                <article key={a.id} className="border-b py-3">
+                  <h3 className="font-semibold">
+                    {a.assessment_type || "Injury assessment"} · {a.assessment_code}
+                  </h3>
+                  <p className="text-sm">Assessed: {date(a.assessment_date)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Follow-up: {date(a.follow_up_date)}
+                  </p>
+                </article>
+              ))}
+              {!h?.assessments.length && (
+                <Empty icon={ShieldCheck} text="No assessment summaries yet." />
+              )}
+            </>
+          )}
+          {tool === "appointments" && (
+            <>
+              <Button variant="outline" onClick={() => setTool("contact")}>
+                <Plus className="size-4" />
+                Request appointment
+              </Button>
+              <h3 className="pt-2 text-sm font-semibold">My requests</h3>
+              <CareRequests staff={false} userId={user.id} />
+              {h?.appointments.map((a) => (
+                <article key={a.id} className="border-b py-3">
+                  <h3 className="font-semibold">{a.purpose || "Clinical appointment"}</h3>
+                  <p className="text-sm">
+                    {new Date(a.scheduled_at).toLocaleString()} · {a.status}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{a.location}</p>
+                </article>
+              ))}
+              {h?.dueFollowUps.map((f, i) => (
+                <p key={i} className="border-b py-3 text-sm">
+                  {f.source} · {date(f.date)}
+                </p>
+              ))}
+              {!h?.appointments.length && !h?.dueFollowUps.length && (
+                <Empty icon={CalendarDays} text="No appointments or follow-ups scheduled." />
+              )}
+            </>
+          )}
+          {tool === "notifications" && (
+            <>
+              {h?.timeline.map((t) => (
+                <p key={t.id} className="border-b py-3 text-sm">
+                  {t.title} · {date(t.at)}
+                </p>
+              ))}
+              {!h?.timeline.length && <Empty icon={Activity} text="No care updates yet." />}
+            </>
+          )}
+          {tool === "reports" && (
+            <div className="athlete-print-summary space-y-3">
+              <Button variant="outline" onClick={() => window.print()}>
+                <FileText className="size-4" />
+                Print health summary
+              </Button>
+              <div className="space-y-3 text-sm">
+                <h3 className="font-semibold">
+                  {athlete ? `${athlete.first_name} ${athlete.surname}` : v?.name}
+                </h3>
+                {h?.injuries.map((i) => (
+                  <p key={i.id}>
+                    {i.injury_code} · {i.body_region} · {STAGE_LABEL[i.status] ?? i.status} ·{" "}
+                    {date(i.injury_date)}
+                  </p>
+                ))}
+                {h?.followUps.map((f) => (
+                  <article key={f.id}>
+                    <h4 className="font-medium">Review · {date(f.review_date)}</h4>
+                    <p>{f.progress}</p>
+                    <p>{f.next_steps}</p>
+                  </article>
+                ))}
+              </div>
+              <h3 className="font-semibold">Documents</h3>
+              {documents.isError && <p role="alert">Documents could not be loaded.</p>}
+              {documents.data?.map((d) => (
+                <Button
+                  key={d.id}
+                  variant="outline"
+                  onClick={async () => {
+                    const { data, error } = await supabase.storage
+                      .from("case-documents")
+                      .createSignedUrl(d.storage_path, 60);
+                    if (error || !data) toast.error("Document could not be opened.");
+                    else window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <FileText className="size-4" />
+                  {d.title}
+                </Button>
+              ))}
+              {!documents.isLoading && !documents.data?.length && !documents.isError && (
+                <Empty icon={FileText} text="No documents available." />
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
-function Heading({ title, icon: Icon }: { title: string; icon: typeof HeartPulse }) { return <h2 className="mb-4 flex items-center gap-2 text-lg font-bold"><Icon className="size-5 text-primary" />{title}</h2>; }
-function Empty({ icon: Icon, text }: { icon: typeof HeartPulse; text: string }) { return <div className="flex min-h-28 items-center gap-3 py-6 text-sm text-muted-foreground"><Icon className="size-7 shrink-0 text-muted-foreground/60" /><p>{text}</p></div>; }
-function Summary({ label, value, detail, icon: Icon, onClick }: { label: string; value: string; detail: string; icon: typeof HeartPulse; onClick: () => void }) { return <Button variant="outline" onClick={onClick} className="h-full min-h-36 flex-col items-stretch justify-start gap-3 whitespace-normal bg-card p-4 text-left"><span className="flex items-center justify-between text-xs font-medium text-muted-foreground">{label}<Icon className="size-4 text-accent" /></span><span className="text-xl font-bold text-foreground">{value}</span><span className="text-xs font-normal text-muted-foreground">{detail}</span></Button>; }
-function ProfileDatum({ label, value }: { label: string; value?: string | null }) { return <div><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium text-foreground">{value || 'Not added'}</dd></div>; }
-function CoverPhotoEditor({ path, userId, onUpdated }: { path?: string | null; userId: string; onUpdated: () => void }) {
+function Heading({ title, icon: Icon }: { title: string; icon: typeof HeartPulse }) {
+  return (
+    <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
+      <Icon className="size-5 text-primary" />
+      {title}
+    </h2>
+  );
+}
+function Empty({ icon: Icon, text }: { icon: typeof HeartPulse; text: string }) {
+  return (
+    <div className="flex min-h-28 items-center gap-3 py-6 text-sm text-muted-foreground">
+      <Icon className="size-7 shrink-0 text-muted-foreground/60" />
+      <p>{text}</p>
+    </div>
+  );
+}
+function Summary({
+  label,
+  value,
+  detail,
+  icon: Icon,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: typeof HeartPulse;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      variant="outline"
+      onClick={onClick}
+      className="h-full min-h-36 flex-col items-stretch justify-start gap-3 whitespace-normal bg-card p-4 text-left"
+    >
+      <span className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+        {label}
+        <Icon className="size-4 text-accent" />
+      </span>
+      <span className="text-xl font-bold text-foreground">{value}</span>
+      <span className="text-xs font-normal text-muted-foreground">{detail}</span>
+    </Button>
+  );
+}
+function CoverPhotoEditor({
+  path,
+  userId,
+  onUpdated,
+}: {
+  path?: string | null;
+  userId: string;
+  onUpdated: () => void;
+}) {
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
-  return <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6"><label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/30 bg-black/35 px-3 py-2 text-xs font-semibold text-white backdrop-blur transition-colors hover:bg-black/55"><Upload className="size-4" />{busy ? 'Uploading…' : path ? 'Change cover photo' : 'Upload cover photo'}<input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={busy} onChange={async e => { const file = e.target.files?.[0]; if (!file) return; setBusy(true); setMessage(''); try { const nextPath = await fileToPhotoPath(file); await updateLinkedPhoto({ data: { target: 'community-cover', targetId: userId, path: nextPath } }); setMessage('Cover updated'); onUpdated(); } catch (error) { setMessage(error instanceof Error ? error.message : 'Upload failed'); } finally { setBusy(false); e.target.value = ''; } }} /></label>{message && <p className="mt-1 rounded bg-black/45 px-2 py-1 text-right text-[11px] text-white">{message}</p>}</div>;
+  const [message, setMessage] = useState("");
+  return (
+    <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
+      <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/30 bg-black/35 px-3 py-2 text-xs font-semibold text-white backdrop-blur transition-colors hover:bg-black/55">
+        <Upload className="size-4" />
+        {busy ? "Uploading…" : path ? "Change cover photo" : "Upload cover photo"}
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="sr-only"
+          disabled={busy}
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setBusy(true);
+            setMessage("");
+            try {
+              const nextPath = await fileToPhotoPath(file);
+              await updateLinkedPhoto({
+                data: { target: "community-cover", targetId: userId, path: nextPath },
+              });
+              setMessage("Cover updated");
+              onUpdated();
+            } catch (error) {
+              setMessage(error instanceof Error ? error.message : "Upload failed");
+            } finally {
+              setBusy(false);
+              e.target.value = "";
+            }
+          }}
+        />
+      </label>
+      {message && (
+        <p className="mt-1 rounded bg-black/45 px-2 py-1 text-right text-[11px] text-white">
+          {message}
+        </p>
+      )}
+    </div>
+  );
 }

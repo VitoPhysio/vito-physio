@@ -17,20 +17,14 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { VitoBrandLockup, VitoLoadingMark } from "@/components/vito/VitoBrandLockup";
 import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
+import { SocialComposerDialog, SocialFeed } from "@/components/vito/SocialProfile";
 
 type HomeTab = {
-  value: "for-you" | "learn" | "updates" | "sports-hub";
+  value: "posts" | "learn" | "updates" | "sports-hub";
   label: string;
 };
 
@@ -41,14 +35,20 @@ type PathwayStep = {
 };
 
 const homeTabs: HomeTab[] = [
-  { value: "for-you", label: "For You" },
+  { value: "posts", label: "Posts" },
   { value: "learn", label: "Learn" },
   { value: "updates", label: "Updates" },
   { value: "sports-hub", label: "Sports Hub" },
 ];
 
 /** Compact care highlights on the signed-in Home, navigable by arrows, touch, or trackpad. */
-export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
+export function SignedInHomeHighlights({
+  steps,
+  scrollHidden = false,
+}: {
+  steps: PathwayStep[];
+  scrollHidden?: boolean;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
 
   function move(direction: -1 | 1) {
@@ -64,7 +64,9 @@ export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
   return (
     <section
       aria-label="Care highlights"
-      className="relative mx-auto max-w-6xl px-4 pb-1 pt-0 sm:px-5"
+      aria-hidden={scrollHidden || undefined}
+      inert={scrollHidden}
+      className={`relative mx-auto max-w-6xl px-4 pb-1 pt-0 transition-opacity duration-200 sm:px-5 ${scrollHidden ? "pointer-events-none opacity-0" : "opacity-100"}`}
     >
       <div
         ref={trackRef}
@@ -174,13 +176,21 @@ export function SignedInHomeHighlights({ steps }: { steps: PathwayStep[] }) {
 }
 
 /** Home-only content sections. These tabs are deliberately nested inside Home, not app navigation. */
-export function SignedInHomeTabs({ contentReady = true }: { contentReady?: boolean }) {
+export function SignedInHomeTabs({
+  viewerId,
+  scrollHidden = false,
+  contentReady = true,
+}: {
+  viewerId: string;
+  scrollHidden?: boolean;
+  contentReady?: boolean;
+}) {
   return (
     <section aria-label="Home community sections" className="w-full max-w-none px-0 pb-10 pt-0">
-      <Tabs defaultValue="for-you" className="w-full">
+      <Tabs defaultValue="posts" className="w-full">
         <TabsList
           aria-label="Home sections"
-          className="grid h-auto w-full grid-cols-4 gap-2 rounded-none border-y border-border/80 bg-card/80 px-3 py-3 text-muted-foreground shadow-sm"
+          className={`sticky z-40 grid h-auto w-full grid-cols-4 gap-2 rounded-none border-y border-border/80 bg-card/95 px-3 py-3 text-muted-foreground shadow-sm backdrop-blur transition-[top] duration-200 ${scrollHidden ? "top-0" : "top-16"}`}
         >
           {homeTabs.map(({ value, label }) => (
             <TabsTrigger
@@ -193,17 +203,9 @@ export function SignedInHomeTabs({ contentReady = true }: { contentReady?: boole
           ))}
         </TabsList>
 
-        <TabsContent
-          value="for-you"
-          className="mt-0 rounded-b-2xl border-x border-b border-border/80 bg-muted/40 p-2 shadow-inner dark:bg-background/75 sm:p-3"
-        >
+        <TabsContent value="posts" className="mt-0 p-0">
           <HomeContentGate ready={contentReady}>
-            <EmptyCommunityPanel
-              icon={Users}
-              eyebrow="Community feed"
-              title="Your For You feed is ready to grow"
-              description="Community posts, recommendations, and shared sports updates will appear here once those community features are available. No sample accounts or posts are shown."
-            />
+            <SocialFeed viewerId={viewerId} />
           </HomeContentGate>
         </TabsContent>
 
@@ -299,7 +301,7 @@ function EmptyCommunityPanel({
 }
 
 /** Fixed app navigation. Home is the sole parent of the horizontal Home tabs above. */
-export function SignedInBottomNavigation() {
+export function SignedInBottomNavigation({ userId }: { userId: string }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
   const onHome = pathname === "/";
@@ -352,35 +354,7 @@ export function SignedInBottomNavigation() {
         </div>
       </nav>
 
-      <Dialog open={composerOpen} onOpenChange={setComposerOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus aria-hidden="true" className="size-5 text-primary" />
-              Create a community post
-            </DialogTitle>
-            <DialogDescription>
-              The post composer is prepared for the community workflow. Publishing and media uploads
-              will be connected in a later backend step.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Textarea
-              aria-label="Community post text"
-              placeholder="Share a sports update or useful reflection…"
-              rows={5}
-              disabled
-            />
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs leading-5 text-muted-foreground">Posting is not enabled yet.</p>
-              <Button type="button" disabled>
-                <Send aria-hidden="true" className="size-4" />
-                Publish
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SocialComposerDialog open={composerOpen} onOpenChange={setComposerOpen} userId={userId} />
     </>
   );
 }

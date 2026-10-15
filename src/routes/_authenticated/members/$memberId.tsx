@@ -11,7 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PhotoAvatar } from "@/components/vito/Photo";
+import { SocialProfile } from "@/components/vito/SocialProfile";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/members/$memberId")({
@@ -52,6 +52,7 @@ function roleLabel(role: string | null | undefined) {
 
 function MemberProfilePage() {
   const { memberId } = Route.useParams();
+  const { user } = Route.useRouteContext();
   const profile = useQuery({
     queryKey: ["member-profile", memberId],
     queryFn: async () => {
@@ -97,7 +98,7 @@ function MemberProfilePage() {
           </Button>
         </div>
       ) : profile.data ? (
-        <ProfileDashboard member={profile.data} />
+        <ProfileDashboard member={profile.data} viewerId={user.id} />
       ) : (
         <div className="mx-auto flex min-h-[70vh] max-w-lg flex-col items-center justify-center gap-4 px-6 text-center">
           <Users className="size-12 text-primary/70" />
@@ -116,48 +117,19 @@ function MemberProfilePage() {
   );
 }
 
-function ProfileDashboard({ member }: { member: MemberCard }) {
+function ProfileDashboard({ member, viewerId }: { member: MemberCard; viewerId: string }) {
   const name = member.full_name?.trim() || "VITO Physio member";
-  const isAthlete = member.role === "athlete";
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-12 pt-4 sm:px-6 sm:pt-6">
-      <section className="relative overflow-hidden rounded-3xl border bg-card shadow-sm">
-        <div className="relative h-44 overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-accent sm:h-56">
-          {member.cover_path ? (
-            <img src={member.cover_path} alt="" className="h-full w-full object-cover opacity-80" />
-          ) : (
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.24),transparent_34%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.18),transparent_32%)]" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
-        </div>
-        <div className="relative -mt-16 flex flex-col gap-4 px-5 pb-6 sm:-mt-20 sm:px-8">
-          <PhotoAvatar
-            path={member.avatar_path}
-            name={name}
-            className="size-28 border-4 border-card bg-secondary text-3xl shadow-xl sm:size-36"
-          />
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-              {isAthlete ? "Athlete profile dashboard" : "VITO Physio profile"}
-            </p>
-            <h2 className="mt-1 text-3xl font-black tracking-tight">{name}</h2>
-            <p className="mt-2 text-sm font-medium text-muted-foreground">
-              {roleLabel(member.role)}
-            </p>
-            {member.headline && (
-              <p className="mt-2 max-w-2xl text-sm leading-6">{member.headline}</p>
-            )}
-          </div>
-        </div>
-      </section>
+      <SocialProfile profileId={member.id} viewerId={viewerId} />
 
       <div className="mt-6 grid gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(16rem,0.8fr)]">
         <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
           <div className="flex items-center gap-2">
             <Trophy className="size-5 text-primary" />
             <h3 className="text-lg font-bold">
-              {isAthlete ? "Athlete identity" : "Professional identity"}
+              {member.role === "athlete" ? "Athlete identity" : "Professional identity"}
             </h3>
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
