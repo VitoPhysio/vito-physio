@@ -6,11 +6,13 @@ import {
   ImagePlus,
   MessageCircle,
   MoreHorizontal,
+  Pencil,
   Send,
   Share2,
+  Trash2,
   UserPlus,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,8 +23,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { PhotoAvatar, fileToSocialPostPhotoPath } from "@/components/vito/Photo";
+import { PhotoAvatar, fileToPhotoPath, fileToSocialPostPhotoPath } from "@/components/vito/Photo";
 import { supabase } from "@/integrations/supabase/client";
+import { updateLinkedPhoto } from "@/lib/photo.functions";
 
 export type SocialTab = "posts" | "replies" | "media";
 
@@ -102,6 +105,11 @@ export function SocialProfile({
 }) {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<SocialTab>("posts");
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
+  const [coverPreviewOpen, setCoverPreviewOpen] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const profileFileRef = useRef<HTMLInputElement>(null);
+  const coverFileRef = useRef<HTMLInputElement>(null);
   const profile = useQuery({
     queryKey: ["social-profile", profileId],
     queryFn: async () => {
@@ -138,6 +146,27 @@ export function SocialProfile({
   }
 
   const member = profile.data;
+
+  async function saveOwnerPhoto(target: "profile" | "community-cover", file: File | null) {
+    setPhotoBusy(true);
+    try {
+      const path = file ? await fileToPhotoPath(file) : null;
+      await updateLinkedPhoto({ data: { target, targetId: profileId, path } });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["social-profile", profileId] }),
+        queryClient.invalidateQueries({ queryKey: ["viewer", profileId] }),
+        queryClient.invalidateQueries({ queryKey: ["app-header", profileId] }),
+      ]);
+      toast.success(path ? "Photo updated" : "Photo removed");
+      if (target === "profile") setAvatarPreviewOpen(false);
+      else setCoverPreviewOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Photo could not be updated.");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
   async function toggleFollow() {
     const { error } = await supabase.rpc("toggle_social_follow", { _following: profileId });
     if (error) {
@@ -150,20 +179,38 @@ export function SocialProfile({
   return (
     <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
       <div className="relative h-32 overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-accent sm:h-40">
-        {member.cover_path ? (
-          <SocialImage path={member.cover_path} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.24),transparent_34%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.18),transparent_32%)]" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
+        <button
+          type="button"
+          aria-label="View cover photo"
+          onClick={() => setCoverPreviewOpen(true)}
+          className="absolute inset-0 size-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
+        >
+          {member.cover_path ? (
+            <SocialImage
+              path={member.cover_path}
+              alt="Cover photo"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.24),transparent_34%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.18),transparent_32%)]" />
+          )}
+          <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
+        </button>
       </div>
       <div className="relative -mt-12 px-4 pb-0 sm:-mt-14 sm:px-7">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <PhotoAvatar
-            path={member.avatar_path}
-            name={member.full_name}
-            className="size-20 border-4 border-card bg-secondary text-2xl shadow-xl sm:size-24"
-          />
+          <button
+            type="button"
+            aria-label="View profile picture"
+            onClick={() => setAvatarPreviewOpen(true)}
+            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            <PhotoAvatar
+              path={member.avatar_path}
+              name={member.full_name}
+              className="size-20 border-4 border-card bg-secondary text-2xl shadow-xl sm:size-24"
+            />
+          </button>
           {isOwner ? (
             <div className="flex flex-wrap gap-2 pb-1">
               {onEditProfile && (
@@ -277,6 +324,104 @@ export function SocialProfile({
           <SocialPostCard key={post.id} post={post} />
         ))}
       </div>
+
+      <Dialog open={avatarPreviewOpen} onOpenChange={setAvatarPreviewOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Profile picture</DialogTitle>
+          </DialogHeader>
+          <div className="grid min-h-56 place-items-center overflow-hidden rounded-xl bg-secondary/50 p-3">
+            {member.avatar_path ? (
+              <SocialImage
+                path={member.avatar_path}
+                alt={`${member.full_name ?? "Member"} profile picture`}
+                className="max-h-[60dvh] max-w-full rounded-lg object-contain"
+              />
+            ) : (
+              <div className="grid size-48 place-items-center rounded-full bg-secondary text-5xl font-bold text-primary">
+                {(member.full_name ?? "?").slice(0, 1).toUpperCase()}
+              </div>
+            )}
+          </div>
+          {isOwner && (
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button disabled={photoBusy} onClick={() => profileFileRef.current?.click()}>
+                <Pencil className="size-4" />
+                {photoBusy ? "Saving…" : "Edit profile picture"}
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={photoBusy || !member.avatar_path}
+                onClick={() => void saveOwnerPhoto("profile", null)}
+              >
+                <Trash2 className="size-4" />
+                Remove picture
+              </Button>
+              <input
+                ref={profileFileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="sr-only"
+                disabled={photoBusy}
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  event.target.value = "";
+                  if (file) void saveOwnerPhoto("profile", file);
+                }}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={coverPreviewOpen} onOpenChange={setCoverPreviewOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Cover photo</DialogTitle>
+          </DialogHeader>
+          <div className="grid min-h-40 place-items-center overflow-hidden rounded-xl bg-secondary/50 p-3">
+            {member.cover_path ? (
+              <SocialImage
+                path={member.cover_path}
+                alt="Profile cover photo"
+                className="max-h-[65dvh] max-w-full rounded-lg object-contain"
+              />
+            ) : (
+              <div className="grid min-h-40 w-full place-items-center rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 text-sm text-muted-foreground">
+                No cover photo yet
+              </div>
+            )}
+          </div>
+          {isOwner && (
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button disabled={photoBusy} onClick={() => coverFileRef.current?.click()}>
+                <Pencil className="size-4" />
+                {photoBusy ? "Saving…" : "Edit cover photo"}
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={photoBusy || !member.cover_path}
+                onClick={() => void saveOwnerPhoto("community-cover", null)}
+              >
+                <Trash2 className="size-4" />
+                Remove cover photo
+              </Button>
+              <input
+                ref={coverFileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="sr-only"
+                disabled={photoBusy}
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  event.target.value = "";
+                  if (file) void saveOwnerPhoto("community-cover", file);
+                }}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
