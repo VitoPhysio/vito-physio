@@ -733,22 +733,34 @@ async function loadConversations(userId: string): Promise<ConversationView[]> {
   const participantIds = [
     ...new Set((allParticipants ?? []).map((row: Participant) => row.user_id)),
   ];
-  const [
-    { data: profiles, error: profilesError },
-    { data: directoryUsers, error: directoryError },
-  ] = await Promise.all([
-    supabase.from("profiles").select("id,full_name,avatar_path").in("id", participantIds),
+  const [{ data: directoryUsers, error: directoryError }, conversationProfiles] = await Promise.all([
     supabase.rpc("list_messaging_users", { _query: null }),
+    Promise.all(
+      participantIds.map(async (participantId) => {
+        const { data, error } = await supabase.rpc("get_messaging_member_profile", {
+          _user_id: participantId,
+        });
+        if (error) throw error;
+        return data?.[0] ?? null;
+      }),
+    ),
   ]);
-  if (profilesError || directoryError) throw profilesError ?? directoryError;
+  if (directoryError) throw directoryError;
   const roleMap = new Map(
     (directoryUsers ?? []).map((member) => [member.id, member.role] as const),
   );
   const profileMap = new Map<string, Profile>(
-    (profiles ?? []).map((profile: Profile) => [
-      profile.id,
-      { ...profile, role: roleMap.get(profile.id) ?? null },
-    ]),
+    conversationProfiles
+      .filter((profile): profile is NonNullable<typeof profile> => profile !== null)
+      .map((profile) => [
+        profile.id,
+        {
+          id: profile.id,
+          full_name: profile.full_name,
+          avatar_path: profile.avatar_path,
+          role: profile.role ?? roleMap.get(profile.id) ?? null,
+        },
+      ]),
   );
   const messageMap = new Map<string, Message[]>();
   for (const message of (messages ?? []) as Message[]) {
