@@ -6,11 +6,13 @@ export function VitoBrandLockup({
   imageClassName,
   showTagline = true,
   compact = false,
+  showLogo = true,
 }: {
   className?: string;
   imageClassName?: string;
   showTagline?: boolean;
   compact?: boolean;
+  showLogo?: boolean;
 }) {
   return (
     <div
@@ -20,28 +22,30 @@ export function VitoBrandLockup({
         className,
       )}
     >
-      <div
-        className={cn(
-          "relative shrink-0 rounded-full bg-brand-gradient p-[3px] shadow-glow",
-          compact ? "size-14" : "size-32 sm:size-40",
-        )}
-      >
-        <span
-          aria-hidden="true"
-          className="absolute -inset-2 rounded-full border border-primary/15"
-        />
-        <span
-          aria-hidden="true"
-          className="absolute -right-1 top-1/2 size-2 -translate-y-1/2 rounded-full bg-accent shadow-[0_0_0_4px_hsl(var(--background))]"
-        />
-        <div className="relative grid size-full place-items-center rounded-full bg-background/95 p-3 ring-1 ring-white/35 dark:bg-card/95 dark:ring-white/10">
-          <img
-            src={logo}
-            alt="VITO Physio logo"
-            className={cn("size-full object-contain", imageClassName)}
+      {showLogo && (
+        <div
+          className={cn(
+            "relative shrink-0 rounded-full bg-brand-gradient p-[3px] shadow-glow",
+            compact ? "size-14" : "size-32 sm:size-40",
+          )}
+        >
+          <span
+            aria-hidden="true"
+            className="absolute -inset-2 rounded-full border border-primary/15"
           />
+          <span
+            aria-hidden="true"
+            className="absolute -right-1 top-1/2 size-2 -translate-y-1/2 rounded-full bg-accent shadow-[0_0_0_4px_hsl(var(--background))]"
+          />
+          <div className="relative grid size-full place-items-center rounded-full bg-background/95 p-3 ring-1 ring-white/35 dark:bg-card/95 dark:ring-white/10">
+            <img
+              src={logo}
+              alt="VITO Physio logo"
+              className={cn("size-full object-contain", imageClassName)}
+            />
+          </div>
         </div>
-      </div>
+      )}
       <div className={cn("min-w-0", compact ? "text-left" : "text-center")}>
         <p
           className={cn(
