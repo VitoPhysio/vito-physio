@@ -393,7 +393,7 @@ function Index() {
 
             {!currentUser && (
               <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 border-t px-5 py-10 text-center">
-                <VitoBrandLockup className="justify-center" />
+                <VitoBrandLockup className="justify-center" showLogo={false} />
                 <p className="max-w-md text-sm text-muted-foreground">
                   One record per athlete: injuries, assessments, rehab plans, follow-ups and
                   recovery progress, shared only with the people who need to see them.
