@@ -121,7 +121,7 @@ function ProfileDashboard({ member, viewerId }: { member: MemberCard; viewerId: 
   const name = member.full_name?.trim() || "VITO Physio member";
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 pb-12 pt-4 sm:px-6 sm:pt-6">
+    <main className="w-full px-0 pb-12 pt-0">
       <SocialProfile profileId={member.id} viewerId={viewerId} />
 
       <div className="mt-6 grid gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(16rem,0.8fr)]">
