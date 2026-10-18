@@ -589,11 +589,11 @@ export function SocialComposerDialog({
 
 function SocialPostCard({ post }: { post: SocialPost }) {
   const queryClient = useQueryClient();
-  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [postOpen, setPostOpen] = useState(false);
   const [comment, setComment] = useState("");
   const comments = useQuery({
     queryKey: ["social-comments", post.id],
-    enabled: commentsOpen,
+    enabled: postOpen,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("list_social_comments", { _post_id: post.id });
       if (error) throw error;
@@ -630,14 +630,15 @@ function SocialPostCard({ post }: { post: SocialPost }) {
     }
     const link = `${window.location.origin}/profile#post-${post.id}`;
     try {
-      if (navigator.share)
+      const nativeShare = typeof navigator.share === "function";
+      if (nativeShare)
         await navigator.share({
           title: "VITO Physio post",
           text: post.body ?? "VITO Physio community post",
           url: link,
         });
       else await navigator.clipboard.writeText(link);
-      toast.success(navigator.share ? "Post shared" : "Post link copied");
+      toast.success(nativeShare ? "Post shared" : "Post link copied");
     } catch {
       toast.success("Post share recorded");
     }
@@ -646,88 +647,205 @@ function SocialPostCard({ post }: { post: SocialPost }) {
   }
 
   return (
-    <article id={`post-${post.id}`} className="p-4 sm:p-5">
-      <div className="flex gap-3">
-        <PhotoAvatar path={post.author_avatar_path} name={post.author_name} className="size-10" />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold">
-                {post.author_name || "VITO Physio member"}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {roleLabel(post.author_role)} · {formatDate(post.created_at)}
-              </p>
-            </div>
-            <button
-              type="button"
-              aria-label="Post options"
-              className="rounded-full p-1 text-muted-foreground hover:bg-secondary"
-            >
-              <MoreHorizontal className="size-4" />
-            </button>
-          </div>
-          {post.body && <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{post.body}</p>}
-          {post.media_path && (
-            <SocialImage
-              path={post.media_path}
-              alt="Post media"
-              className="mt-3 max-h-[28rem] w-full rounded-2xl border object-cover"
+    <>
+      <article
+        id={`post-${post.id}`}
+        role="group"
+        tabIndex={0}
+        aria-label={`Post by ${post.author_name || "VITO Physio member"}. Activate to open the full post.`}
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest("button, a")) return;
+          setPostOpen(true);
+        }}
+        onKeyDown={(event) => {
+          if ((event.target as HTMLElement) !== event.currentTarget) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setPostOpen(true);
+          }
+        }}
+        className="cursor-pointer p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:p-5"
+      >
+        <div className="flex gap-3">
+          <button
+            type="button"
+            aria-label={`Open ${post.author_name || "member"}'s profile`}
+            onClick={() => window.location.assign(`/members/${post.author_id}`)}
+            className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <PhotoAvatar
+              path={post.author_avatar_path}
+              name={post.author_name}
+              className="size-10"
             />
-          )}
-          <div className="mt-3 flex items-center justify-between gap-1 text-muted-foreground">
-            <button
-              type="button"
-              onClick={() => void like()}
-              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-colors hover:bg-secondary ${post.liked ? "text-rose-600" : ""}`}
-            >
-              <Heart className={`size-4 ${post.liked ? "fill-current" : ""}`} />
-              {post.likes_count || "Like"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCommentsOpen((open) => !open)}
-              className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-colors hover:bg-secondary"
-            >
-              <MessageCircle className="size-4" />
-              {post.comments_count || "Comment"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void share()}
-              className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-colors hover:bg-secondary"
-            >
-              <Share2 className="size-4" />
-              {post.shares_count || "Share"}
-            </button>
-            <button
-              type="button"
-              aria-label="Copy post link"
-              onClick={() =>
-                void navigator.clipboard
-                  ?.writeText(`${window.location.origin}/profile#post-${post.id}`)
-                  .then(() => toast.success("Post link copied"))
-              }
-              className="rounded-full p-2 hover:bg-secondary"
-            >
-              <Copy className="size-4" />
-            </button>
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold">
+                  {post.author_name || "VITO Physio member"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {roleLabel(post.author_role)} · {formatDate(post.created_at)}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Post options"
+                className="rounded-full p-1 text-muted-foreground hover:bg-secondary"
+              >
+                <MoreHorizontal className="size-4" />
+              </button>
+            </div>
+            {post.body && <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{post.body}</p>}
+            {post.media_path && (
+              <SocialImage
+                path={post.media_path}
+                alt="Post media"
+                className="mt-3 max-h-[28rem] w-full rounded-2xl border object-cover"
+              />
+            )}
+            <div className="mt-3 flex items-center justify-between gap-1 text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => void like()}
+                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-colors hover:bg-secondary ${post.liked ? "text-rose-600" : ""}`}
+              >
+                <Heart className={`size-4 ${post.liked ? "fill-current" : ""}`} />
+                {post.likes_count || "Like"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPostOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-colors hover:bg-secondary"
+              >
+                <MessageCircle className="size-4" />
+                {post.comments_count || "Comment"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void share()}
+                className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-colors hover:bg-secondary"
+              >
+                <Share2 className="size-4" />
+                {post.shares_count || "Share"}
+              </button>
+              <button
+                type="button"
+                aria-label="Copy post link"
+                onClick={() =>
+                  void navigator.clipboard
+                    ?.writeText(`${window.location.origin}/profile#post-${post.id}`)
+                    .then(() => toast.success("Post link copied"))
+                }
+                className="rounded-full p-2 hover:bg-secondary"
+              >
+                <Copy className="size-4" />
+              </button>
+            </div>
           </div>
-          {commentsOpen && (
-            <div className="mt-4 space-y-3 rounded-xl bg-secondary/40 p-3">
+        </div>
+      </article>
+
+      <Dialog open={postOpen} onOpenChange={setPostOpen}>
+        <DialogContent className="max-h-[92dvh] w-[min(96vw,52rem)] max-w-none overflow-hidden p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Post by {post.author_name || "VITO Physio member"}</DialogTitle>
+            <DialogDescription>Full post and community comments.</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[92dvh] space-y-4 overflow-y-auto p-4 sm:space-y-5 sm:p-6">
+            <div className="flex gap-3">
+              <button
+                type="button"
+                aria-label={`Open ${post.author_name || "member"}'s profile`}
+                onClick={() => window.location.assign(`/members/${post.author_id}`)}
+                className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <PhotoAvatar
+                  path={post.author_avatar_path}
+                  name={post.author_name}
+                  className="size-11"
+                />
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold">
+                  {post.author_name || "VITO Physio member"}
+                </p>
+                <p className="text-xs text-muted-foreground">{roleLabel(post.author_role)}</p>
+              </div>
+            </div>
+            {post.body && <p className="whitespace-pre-wrap text-sm leading-6">{post.body}</p>}
+            {post.media_path && (
+              <SocialImage
+                path={post.media_path}
+                alt="Post media"
+                className="max-h-[65vh] w-full rounded-2xl border object-contain"
+              />
+            )}
+            <div className="flex items-center justify-between gap-1 border-y py-2 text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => void like()}
+                className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-colors hover:bg-secondary ${post.liked ? "text-rose-600" : ""}`}
+              >
+                <Heart className={`size-4 ${post.liked ? "fill-current" : ""}`} />
+                {post.likes_count || "Like"}
+              </button>
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 text-xs">
+                <MessageCircle className="size-4" />
+                {post.comments_count || "Comment"}
+              </span>
+              <button
+                type="button"
+                onClick={() => void share()}
+                className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs transition-colors hover:bg-secondary"
+              >
+                <Share2 className="size-4" />
+                {post.shares_count || "Share"}
+              </button>
+              <button
+                type="button"
+                aria-label="Copy post link"
+                onClick={() =>
+                  void navigator.clipboard
+                    ?.writeText(`${window.location.origin}/profile#post-${post.id}`)
+                    .then(() => toast.success("Post link copied"))
+                }
+                className="rounded-full p-2 hover:bg-secondary"
+              >
+                <Copy className="size-4" />
+              </button>
+            </div>
+            <div className="space-y-3 rounded-xl bg-secondary/40 p-3 sm:p-4">
+              <h3 className="text-sm font-semibold">Comments</h3>
               {comments.isLoading && (
                 <p className="text-xs text-muted-foreground">Loading comments…</p>
               )}
+              {comments.isError && (
+                <p className="text-xs text-destructive">
+                  Comments could not be loaded. Please try again.
+                </p>
+              )}
+              {!comments.isLoading && !comments.isError && !comments.data?.length && (
+                <p className="text-xs text-muted-foreground">Be the first to comment.</p>
+              )}
               {comments.data?.map((item) => (
                 <div key={item.id} className="flex gap-2">
-                  <PhotoAvatar
-                    path={item.author_avatar_path}
-                    name={item.author_name}
-                    className="size-7"
-                  />
-                  <div className="min-w-0 rounded-xl bg-background px-3 py-2">
+                  <button
+                    type="button"
+                    aria-label={`Open ${item.author_name || "member"}'s profile`}
+                    onClick={() => window.location.assign(`/members/${item.author_id}`)}
+                    className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <PhotoAvatar
+                      path={item.author_avatar_path}
+                      name={item.author_name}
+                      className="size-7"
+                    />
+                  </button>
+                  <div className="min-w-0 flex-1 rounded-xl bg-background px-3 py-2">
                     <p className="text-xs font-bold">{item.author_name || "VITO Physio member"}</p>
-                    <p className="mt-1 text-sm">{item.body}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm">{item.body}</p>
                   </div>
                 </div>
               ))}
@@ -750,10 +868,10 @@ function SocialPostCard({ post }: { post: SocialPost }) {
                 </Button>
               </div>
             </div>
-          )}
-        </div>
-      </div>
-    </article>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -779,16 +897,40 @@ function SocialLoading() {
 }
 
 function SocialImage({ path, alt, className }: { path: string; alt: string; className?: string }) {
+  const [open, setOpen] = useState(false);
   const { data: url } = useQuery({
     queryKey: ["social-image", path],
     queryFn: async () =>
       (await supabase.storage.from("avatars").createSignedUrl(path, 3600)).data?.signedUrl ?? null,
     staleTime: 50 * 60 * 1000,
   });
-  return url ? (
-    <img src={url} alt={alt} className={className} />
-  ) : (
-    <div className={`bg-secondary ${className ?? "h-40 rounded-xl"}`} aria-label={alt} />
+  if (!url)
+    return <div className={`bg-secondary ${className ?? "h-40 rounded-xl"}`} aria-label={alt} />;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen(true);
+        }}
+        aria-label={`View ${alt} full size`}
+        className="block w-full cursor-zoom-in text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <img src={url} alt={alt} className={className} />
+      </button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[96dvh] w-[min(96vw,72rem)] max-w-none overflow-hidden p-2 sm:p-4">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{alt}</DialogTitle>
+            <DialogDescription>
+              Full-size image preview. Close to return to the post.
+            </DialogDescription>
+          </DialogHeader>
+          <img src={url} alt={alt} className="max-h-[88dvh] w-full rounded-lg object-contain" />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

@@ -279,6 +279,9 @@ function MessagesPage() {
                   conversation={conversation}
                   selected={conversation.id === selectedId}
                   onSelect={() => void openConversation(conversation)}
+                  onOpenProfile={(participantId) =>
+                    window.location.assign(`/members/${participantId}`)
+                  }
                 />
               ))
             ) : (
@@ -398,28 +401,39 @@ function MessagesPage() {
               ) : filteredUsers.length ? (
                 <div className="divide-y">
                   {filteredUsers.map((member) => (
-                    <button
+                    <div
                       key={member.id}
-                      type="button"
-                      disabled={startingConversation}
-                      onClick={() => void startConversation(member)}
-                      className="flex w-full items-center gap-3 bg-card px-4 py-4 text-left transition hover:bg-secondary disabled:cursor-wait disabled:opacity-60 sm:px-5"
+                      className="flex w-full items-center gap-3 border-b bg-card px-4 py-4 transition hover:bg-secondary sm:px-5"
                     >
-                      <PhotoAvatar
-                        path={member.avatar_path}
-                        name={member.full_name}
-                        className="size-12 shrink-0"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-base font-semibold text-foreground">
-                          {messagingUserDisplayName(member)}
+                      <button
+                        type="button"
+                        onClick={() => window.location.assign(`/members/${member.id}`)}
+                        aria-label={`Open ${messagingUserDisplayName(member)}'s profile`}
+                        className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <PhotoAvatar
+                          path={member.avatar_path}
+                          name={member.full_name}
+                          className="size-12"
+                        />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={startingConversation}
+                        onClick={() => void startConversation(member)}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-wait disabled:opacity-60"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-base font-semibold text-foreground">
+                            {messagingUserDisplayName(member)}
+                          </span>
+                          <span className="mt-1 block truncate text-xs capitalize text-muted-foreground">
+                            {member.role.replaceAll("_", " ")}
+                          </span>
                         </span>
-                        <span className="mt-1 block truncate text-xs capitalize text-muted-foreground">
-                          {member.role.replaceAll("_", " ")}
-                        </span>
-                      </span>
-                      <MessageCircle className="size-5 shrink-0 text-primary" />
-                    </button>
+                        <MessageCircle className="size-5 shrink-0 text-primary" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -444,23 +458,44 @@ function ConversationRow({
   conversation,
   selected,
   onSelect,
+  onOpenProfile,
 }: {
   conversation: ConversationView;
   selected: boolean;
   onSelect: () => void;
+  onOpenProfile: (participantId: string) => void;
 }) {
+  const profileId = conversation.otherProfiles[0]?.id;
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`flex w-full items-center gap-3 border-b px-4 py-4 text-left transition hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${selected ? "bg-secondary" : "bg-card"}`}
+    <div
+      className={`flex w-full items-center gap-3 border-b px-4 py-4 transition hover:bg-secondary/80 ${selected ? "bg-secondary" : "bg-card"}`}
     >
-      <PhotoAvatar
-        path={conversation.avatarPath}
-        name={conversation.displayName}
-        className="size-12 shrink-0"
-      />
-      <span className="min-w-0 flex-1">
+      {profileId ? (
+        <button
+          type="button"
+          onClick={() => onOpenProfile(profileId)}
+          aria-label={`Open ${conversation.displayName}'s profile`}
+          className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <PhotoAvatar
+            path={conversation.avatarPath}
+            name={conversation.displayName}
+            className="size-12"
+          />
+        </button>
+      ) : (
+        <PhotoAvatar
+          path={conversation.avatarPath}
+          name={conversation.displayName}
+          className="size-12 shrink-0"
+        />
+      )}
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-label={`Open conversation with ${conversation.displayName}`}
+        className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+      >
         <span className="flex items-center justify-between gap-2">
           <span className="truncate font-bold">{conversation.displayName}</span>
           <span
@@ -481,8 +516,8 @@ function ConversationRow({
             </span>
           )}
         </span>
-      </span>
-    </button>
+      </button>
+    </div>
   );
 }
 
@@ -502,6 +537,7 @@ function ChatView({
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
+  const profilePhotoUserId = conversation.otherProfiles[0]?.id ?? conversation.otherUserId;
 
   useEffect(() => {
     historyRef.current?.scrollTo({ top: historyRef.current.scrollHeight });
@@ -543,10 +579,10 @@ function ChatView({
         >
           <ArrowLeft className="size-5" />
         </button>
-        {conversation.otherUserId ? (
+        {profilePhotoUserId ? (
           <button
             type="button"
-            onClick={() => onOpenProfile(conversation.otherUserId!)}
+            onClick={() => onOpenProfile(profilePhotoUserId)}
             aria-label={`Open ${conversation.displayName}'s profile`}
             className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
@@ -796,8 +832,8 @@ async function loadConversations(userId: string): Promise<ConversationView[]> {
         otherProfiles.map((profile) => profile.full_name || "VITO Physio member").join(", ") ||
         "VITO Physio member",
       avatarPath: otherProfiles[0]?.avatar_path ?? null,
-      otherUserId: otherProfiles.length === 1 ? otherProfiles[0].id : null,
-      otherRole: otherProfiles.length === 1 ? (otherProfiles[0].role ?? null) : null,
+      otherUserId: otherProfiles.length === 1 ? (otherProfiles[0]?.id ?? null) : null,
+      otherRole: otherProfiles.length === 1 ? (otherProfiles[0]?.role ?? null) : null,
     };
   });
 }
@@ -839,7 +875,7 @@ function messagingUserDisplayName(member: MessagingUser) {
 }
 
 function filterLabel(filter: Filter) {
-  return filter[0].toUpperCase() + filter.slice(1);
+  return filter.charAt(0).toUpperCase() + filter.slice(1);
 }
 
 function formatChatTime(value: string) {
