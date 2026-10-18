@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import ReactMarkdown from "react-markdown";
@@ -12,6 +12,7 @@ import {
   Clock3,
   FileText,
   HeartPulse,
+  ImagePlus,
   PenLine,
   Search,
   Sparkles,
@@ -24,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { uploadBlogArticleImage } from "@/lib/blog.functions";
 import type { Database } from "@/integrations/supabase/types";
 
 export type BlogArticle = Database["public"]["Tables"]["blog_articles"]["Row"];
@@ -527,6 +529,9 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   const [content, setContent] = useState("");
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [initialized, setInitialized] = useState(false);
   const existing = articleQuery.data;
 
@@ -586,6 +591,58 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   function updateTitle(value: string) {
     setTitle(value);
     if (!articleId || !initialized) setSlug(slugify(value));
+  }
+
+  async function insertArticlePhoto(file: File, input: HTMLInputElement) {
+    input.value = "";
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Choose a PNG, JPG or WEBP photo.");
+      return;
+    }
+    if (file.size > 6 * 1024 * 1024) {
+      toast.error("Article photos must be 6 MB or smaller.");
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = "";
+      for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+      }
+      const url = await uploadBlogArticleImage({
+        data: {
+          base64: btoa(binary),
+          contentType: file.type as "image/jpeg" | "image/png" | "image/webp",
+        },
+      });
+      const textarea = contentRef.current;
+      const start = textarea?.selectionStart ?? content.length;
+      const end = textarea?.selectionEnd ?? content.length;
+      const extensionIndex = file.name.lastIndexOf(".");
+      const alt =
+        (extensionIndex > 0 ? file.name.slice(0, extensionIndex) : file.name)
+          .replaceAll(String.fromCharCode(92), "")
+          .replaceAll("[", "")
+          .replaceAll("]", "")
+          .trim() || "Article photo";
+      const imageMarkdown = `![${alt}](${url})`;
+      const before = content.slice(0, start);
+      const after = content.slice(end);
+      const prefix = before && !before.endsWith("\n") ? "\n\n" : "";
+      const next = `${before}${prefix}${imageMarkdown}\n\n${after}`;
+      setContent(next);
+      toast.success("Photo added to your story.");
+      requestAnimationFrame(() => {
+        textarea?.focus();
+        const cursor = before.length + prefix.length + imageMarkdown.length + 2;
+        textarea?.setSelectionRange(cursor, cursor);
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The photo could not be uploaded.");
+    } finally {
+      setUploadingPhoto(false);
+    }
   }
 
   async function saveArticle(status: "draft" | "published"): Promise<void> {
@@ -685,7 +742,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
               type="button"
               variant="outline"
               className="rounded-full"
-              disabled={saving}
+              disabled={saving || uploadingPhoto}
               onClick={() => void saveArticle("draft")}
             >
               <FileText className="mr-2 size-4" /> Save draft
@@ -693,7 +750,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
             <Button
               type="button"
               className="rounded-full bg-brand-gradient shadow-glow"
-              disabled={saving}
+              disabled={saving || uploadingPhoto}
               onClick={() => void saveArticle("published")}
             >
               <Check className="mr-2 size-4" />{" "}
@@ -804,11 +861,39 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex items-end justify-between gap-3">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
                     <Label htmlFor="blog-content">Your story</Label>
-                    <span className="text-xs text-muted-foreground">Markdown supported</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        Markdown · PNG/JPG/WEBP up to 6 MB
+                      </span>
+                      <input
+                        ref={photoInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="sr-only"
+                        aria-label="Choose a photo for your article"
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0];
+                          if (file) void insertArticlePhoto(file, event.currentTarget);
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full"
+                        disabled={uploadingPhoto || saving}
+                        onClick={() => photoInputRef.current?.click()}
+                      >
+                        <ImagePlus className="mr-2 size-4" />
+                        {uploadingPhoto ? "Uploading…" : "Add photo"}
+                      </Button>
+                    </div>
                   </div>
                   <Textarea
+                    ref={contentRef}
+                    disabled={uploadingPhoto}
                     id="blog-content"
                     value={content}
                     onChange={(event) => setContent(event.target.value)}
@@ -887,7 +972,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
 
 export function BlogMarkdown({ content }: { content: string }) {
   return (
-    <div className="space-y-5 break-words text-[1.0625rem] leading-8 text-foreground/90 [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/30 [&_a]:underline-offset-4 hover:[&_a]:decoration-primary [&_blockquote]:my-7 [&_blockquote]:border-l-4 [&_blockquote]:border-accent [&_blockquote]:pl-5 [&_blockquote]:font-serif [&_blockquote]:text-xl [&_blockquote]:italic [&_code]:rounded [&_code]:bg-secondary [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.9em] [&_h2]:mb-3 [&_h2]:mt-10 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:leading-tight sm:[&_h2]:text-3xl [&_h3]:mb-2 [&_h3]:mt-8 [&_h3]:font-serif [&_h3]:text-xl [&_h3]:font-bold [&_li]:my-2 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6 [&_p]:my-5 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-foreground [&_pre]:p-4 [&_pre]:text-background [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_hr]:my-8 [&_hr]:border-border">
+    <div className="space-y-5 break-words text-[1.0625rem] leading-8 text-foreground/90 [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/30 [&_a]:underline-offset-4 hover:[&_a]:decoration-primary [&_blockquote]:my-7 [&_blockquote]:border-l-4 [&_blockquote]:border-accent [&_blockquote]:pl-5 [&_blockquote]:font-serif [&_blockquote]:text-xl [&_blockquote]:italic [&_code]:rounded [&_code]:bg-secondary [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.9em] [&_h2]:mb-3 [&_h2]:mt-10 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:leading-tight sm:[&_h2]:text-3xl [&_h3]:mb-2 [&_h3]:mt-8 [&_h3]:font-serif [&_h3]:text-xl [&_h3]:font-bold [&_img]:mx-auto [&_img]:my-8 [&_img]:max-h-[40rem] [&_img]:rounded-2xl [&_img]:object-contain [&_li]:my-2 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6 [&_p]:my-5 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-foreground [&_pre]:p-4 [&_pre]:text-background [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_hr]:my-8 [&_hr]:border-border">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
     </div>
   );
