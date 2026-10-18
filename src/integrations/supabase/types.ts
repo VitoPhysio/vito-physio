@@ -1408,6 +1408,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      blog_articles: {
+        Row: {
+          author_id: string;
+          author_name: string;
+          category: string;
+          content_markdown: string;
+          cover_image_url: string | null;
+          created_at: string;
+          excerpt: string;
+          id: string;
+          published_at: string | null;
+          slug: string;
+          status: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          author_id: string;
+          author_name?: string;
+          category?: string;
+          content_markdown?: string;
+          cover_image_url?: string | null;
+          created_at?: string;
+          excerpt?: string;
+          id?: string;
+          published_at?: string | null;
+          slug: string;
+          status?: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          author_id?: string;
+          author_name?: string;
+          category?: string;
+          content_markdown?: string;
+          cover_image_url?: string | null;
+          created_at?: string;
+          excerpt?: string;
+          id?: string;
+          published_at?: string | null;
+          slug?: string;
+          status?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       user_roles: {
         Row: {
           id: string;
