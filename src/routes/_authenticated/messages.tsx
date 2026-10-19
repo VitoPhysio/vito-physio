@@ -2,12 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCanGoBack, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, PointerEvent, Ref } from "react";
 import {
   ArrowLeft,
+  Ban,
   Check,
   CheckCheck,
   ChevronDown,
+  Copy,
   Filter,
   LoaderCircle,
   MessageCircle,
@@ -21,6 +23,10 @@ import {
   UserRound,
   Video,
   Phone,
+  Plus,
+  Reply,
+  Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,12 +49,27 @@ type Profile = {
   avatar_path: string | null;
   role?: string | null;
 };
+type Reaction = {
+  message_id: string;
+  user_id: string;
+  emoji: string;
+};
+type QuotedMessage = {
+  id: string;
+  sender_id: string;
+  body: string;
+  deleted: boolean;
+};
 type Message = {
   id: string;
   conversation_id: string;
   sender_id: string;
   body: string;
   created_at: string;
+  reply_to_id: string | null;
+  deleted_at: string | null;
+  reply_to: QuotedMessage | null;
+  reactions: Reaction[];
 };
 type Participant = {
   conversation_id: string;
@@ -71,6 +92,8 @@ type ConversationView = Conversation & {
   avatarPath: string | null;
   otherUserId: string | null;
   otherRole: string | null;
+  /** False until the message interactions migration is applied. */
+  interactive: boolean;
 };
 
 type Filter = "all" | "unread" | "read";
@@ -104,6 +127,9 @@ function MessagesPage() {
     const channel = supabase
       .channel(`messages-inbox-${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+        void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "message_reactions" }, () => {
         void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
       })
       .on(
@@ -536,12 +562,54 @@ function ChatView({
 }) {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [actionsFor, setActionsFor] = useState<Message | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const historyRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const messageRefs = useRef(new Map<string, HTMLDivElement>());
   const profilePhotoUserId = conversation.otherProfiles[0]?.id ?? conversation.otherUserId;
 
   useEffect(() => {
     historyRef.current?.scrollTo({ top: historyRef.current.scrollHeight });
   }, [conversation.messages.length, conversation.id]);
+
+  useEffect(() => {
+    setReplyTo(null);
+    setActionsFor(null);
+  }, [conversation.id]);
+
+  useEffect(() => {
+    if (!highlightedId) return;
+    const timer = window.setTimeout(() => setHighlightedId(null), 1600);
+    return () => window.clearTimeout(timer);
+  }, [highlightedId]);
+
+  function senderLabel(senderId: string) {
+    if (senderId === userId) return "You";
+    const profile = conversation.otherProfiles.find((member) => member.id === senderId);
+    return profile?.full_name || "VITO Physio member";
+  }
+
+  function startReply(message: Message) {
+    if (!conversation.interactive) {
+      toast.info("Replies become available once message interactions are enabled.");
+      return;
+    }
+    if (message.deleted_at) return;
+    setReplyTo(message);
+    inputRef.current?.focus();
+  }
+
+  function jumpToMessage(messageId: string) {
+    const target = messageRefs.current.get(messageId);
+    if (!target) {
+      toast.info("The original message is no longer available.");
+      return;
+    }
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedId(messageId);
+  }
 
   async function sendMessage() {
     const text = body.trim();
@@ -551,6 +619,7 @@ function ChatView({
       conversation_id: conversation.id,
       sender_id: userId,
       body: text,
+      ...(replyTo && conversation.interactive ? { reply_to_id: replyTo.id } : {}),
     });
     setSending(false);
     if (error) {
@@ -558,13 +627,74 @@ function ChatView({
       return;
     }
     setBody("");
+    setReplyTo(null);
     onSent();
+  }
+
+  async function toggleReaction(message: Message, emoji: string) {
+    if (!conversation.interactive || message.deleted_at) return;
+    const current = message.reactions.find((reaction) => reaction.user_id === userId);
+    const { error } =
+      current?.emoji === emoji
+        ? await supabase
+            .from("message_reactions")
+            .delete()
+            .eq("message_id", message.id)
+            .eq("user_id", userId)
+        : await supabase
+            .from("message_reactions")
+            .upsert(
+              { message_id: message.id, user_id: userId, emoji },
+              { onConflict: "message_id,user_id" },
+            );
+    if (error) {
+      toast.error("Your reaction could not be saved. Please try again.");
+      return;
+    }
+    onSent();
+  }
+
+  async function deleteForMe(message: Message) {
+    const { error } = await supabase
+      .from("message_hidden")
+      .insert({ message_id: message.id, user_id: userId });
+    if (error) {
+      toast.error("The message could not be deleted. Please try again.");
+      return;
+    }
+    if (replyTo?.id === message.id) setReplyTo(null);
+    toast.success("Message deleted for you.");
+    onSent();
+  }
+
+  async function deleteForEveryone(message: Message) {
+    const { error } = await supabase.rpc("delete_message_for_everyone", {
+      _message_id: message.id,
+    });
+    if (error) {
+      toast.error("The message could not be deleted for everyone. Please try again.");
+      return;
+    }
+    if (replyTo?.id === message.id) setReplyTo(null);
+    toast.success("Message deleted for everyone.");
+    onSent();
+  }
+
+  async function copyMessage(message: Message) {
+    try {
+      await navigator.clipboard.writeText(message.body);
+      toast.success("Message copied.");
+    } catch {
+      toast.error("Unable to copy this message.");
+    }
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       void sendMessage();
+    } else if (event.key === "Escape" && replyTo) {
+      setReplyTo(null);
     }
   }
 
@@ -642,7 +772,7 @@ function ChatView({
 
       <div
         ref={historyRef}
-        className="min-h-0 flex-1 overflow-y-auto bg-background px-4 py-5 sm:px-8"
+        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-background px-4 py-5 sm:px-8"
       >
         <div className="mx-auto flex max-w-3xl flex-col gap-3">
           {conversation.messages.length ? (
@@ -657,19 +787,22 @@ function ChatView({
                       {formatDate(message.created_at)}
                     </p>
                   )}
-                  <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-2.5 shadow-sm sm:max-w-[70%] ${mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border bg-card"}`}
-                    >
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.body}</p>
-                      <div
-                        className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-foreground/75" : "text-muted-foreground"}`}
-                      >
-                        {formatMessageTime(message.created_at)}
-                        {mine && <CheckCheck className="size-3" />}
-                      </div>
-                    </div>
-                  </div>
+                  <MessageBubble
+                    ref={(node) => {
+                      if (node) messageRefs.current.set(message.id, node);
+                      else messageRefs.current.delete(message.id);
+                    }}
+                    message={message}
+                    mine={mine}
+                    userId={userId}
+                    canSwipe={conversation.interactive && !message.deleted_at}
+                    highlighted={highlightedId === message.id}
+                    quotedSender={message.reply_to ? senderLabel(message.reply_to.sender_id) : null}
+                    onOpenActions={() => setActionsFor(message)}
+                    onReply={() => startReply(message)}
+                    onJumpTo={jumpToMessage}
+                    onToggleReaction={(emoji) => void toggleReaction(message, emoji)}
+                  />
                 </div>
               );
             })
@@ -681,8 +814,27 @@ function ChatView({
         </div>
       </div>
 
+      {replyTo && (
+        <div className="flex shrink-0 items-center gap-3 border-t bg-card px-3 pt-3">
+          <div className="min-w-0 flex-1 rounded-lg border-l-4 border-primary bg-secondary/60 px-3 py-2">
+            <p className="text-xs font-bold text-primary">
+              Replying to {senderLabel(replyTo.sender_id)}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">{replyTo.body}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReplyTo(null)}
+            aria-label="Cancel reply"
+            className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
       <form
-        className="flex shrink-0 items-center gap-2 border-t bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        className={`flex shrink-0 items-center gap-2 bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] ${replyTo ? "" : "border-t"}`}
         onSubmit={(event) => {
           event.preventDefault();
           void sendMessage();
@@ -707,6 +859,7 @@ function ChatView({
           <Smile className="size-5" />
         </button>
         <input
+          ref={inputRef}
           value={body}
           onChange={(event) => setBody(event.target.value)}
           onKeyDown={handleKeyDown}
@@ -724,6 +877,444 @@ function ChatView({
           <Send className="size-4" />
         </button>
       </form>
+
+      {actionsFor && (
+        <MessageActionSheet
+          message={actionsFor}
+          mine={actionsFor.sender_id === userId}
+          interactive={conversation.interactive}
+          myReaction={actionsFor.reactions.find((reaction) => reaction.user_id === userId)?.emoji}
+          onClose={() => setActionsFor(null)}
+          onReact={(emoji) => void toggleReaction(actionsFor, emoji)}
+          onReply={() => startReply(actionsFor)}
+          onCopy={() => void copyMessage(actionsFor)}
+          onDeleteForMe={() => void deleteForMe(actionsFor)}
+          onDeleteForEveryone={() => void deleteForEveryone(actionsFor)}
+        />
+      )}
+    </div>
+  );
+}
+
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+const MORE_REACTIONS = [
+  "🔥",
+  "👏",
+  "🎉",
+  "💪",
+  "😍",
+  "😊",
+  "🤔",
+  "😅",
+  "😎",
+  "🙌",
+  "👌",
+  "💯",
+  "😡",
+  "😴",
+  "🤝",
+  "✅",
+];
+const LONG_PRESS_MS = 450;
+const SWIPE_REPLY_THRESHOLD = 64;
+const SWIPE_MAX_OFFSET = 96;
+
+function MessageBubble({
+  ref,
+  message,
+  mine,
+  userId,
+  canSwipe,
+  highlighted,
+  quotedSender,
+  onOpenActions,
+  onReply,
+  onJumpTo,
+  onToggleReaction,
+}: {
+  ref: Ref<HTMLDivElement>;
+  message: Message;
+  mine: boolean;
+  userId: string;
+  canSwipe: boolean;
+  highlighted: boolean;
+  quotedSender: string | null;
+  onOpenActions: () => void;
+  onReply: () => void;
+  onJumpTo: (messageId: string) => void;
+  onToggleReaction: (emoji: string) => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const gesture = useRef<{ x: number; y: number; swiping: boolean; offset: number } | null>(null);
+  const pressTimer = useRef<number | undefined>(undefined);
+  const suppressClick = useRef(false);
+  const deleted = Boolean(message.deleted_at);
+
+  useEffect(() => () => window.clearTimeout(pressTimer.current), []);
+
+  function cancelPress() {
+    window.clearTimeout(pressTimer.current);
+    pressTimer.current = undefined;
+  }
+
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    suppressClick.current = false;
+    gesture.current = { x: event.clientX, y: event.clientY, swiping: false, offset: 0 };
+    cancelPress();
+    pressTimer.current = window.setTimeout(() => {
+      pressTimer.current = undefined;
+      gesture.current = null;
+      suppressClick.current = true;
+      navigator.vibrate?.(15);
+      onOpenActions();
+    }, LONG_PRESS_MS);
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    const state = gesture.current;
+    if (!state) return;
+    const dx = event.clientX - state.x;
+    const dy = event.clientY - state.y;
+    if (!state.swiping) {
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) cancelPress();
+      if (canSwipe && dx > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        state.swiping = true;
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } else if (Math.abs(dy) > 10 || dx < -10) {
+        gesture.current = null;
+        return;
+      }
+    }
+    if (state.swiping) {
+      state.offset = Math.max(0, Math.min(dx, SWIPE_MAX_OFFSET));
+      setOffset(state.offset);
+    }
+  }
+
+  function finishGesture(commit: boolean) {
+    cancelPress();
+    const state = gesture.current;
+    gesture.current = null;
+    if (!state?.swiping) return;
+    suppressClick.current = true;
+    setOffset(0);
+    if (commit && state.offset >= SWIPE_REPLY_THRESHOLD) {
+      navigator.vibrate?.(10);
+      onReply();
+    }
+  }
+
+  function handleClick() {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    onOpenActions();
+  }
+
+  const reactionGroups = useMemo(() => {
+    const groups = new Map<string, { count: number; mine: boolean }>();
+    for (const reaction of message.reactions) {
+      const group = groups.get(reaction.emoji) ?? { count: 0, mine: false };
+      group.count += 1;
+      group.mine ||= reaction.user_id === userId;
+      groups.set(reaction.emoji, group);
+    }
+    return [...groups.entries()];
+  }, [message.reactions, userId]);
+
+  return (
+    <div
+      ref={ref}
+      className={`relative flex flex-col rounded-2xl transition-colors duration-700 ${mine ? "items-end" : "items-start"} ${highlighted ? "bg-primary/15" : ""}`}
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-1 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-secondary text-primary"
+        style={{
+          opacity: Math.min(offset / SWIPE_REPLY_THRESHOLD, 1),
+          transform: `translateY(-50%) scale(${offset >= SWIPE_REPLY_THRESHOLD ? 1.1 : 0.8})`,
+        }}
+      >
+        <Reply className="size-4" />
+      </span>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-haspopup="dialog"
+        aria-label={`Message options for “${message.body.slice(0, 60)}”`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={() => finishGesture(true)}
+        onPointerCancel={() => finishGesture(false)}
+        onPointerLeave={() => !gesture.current?.swiping && cancelPress()}
+        onClick={handleClick}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          cancelPress();
+          gesture.current = null;
+          onOpenActions();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onOpenActions();
+          }
+        }}
+        style={{
+          transform: offset ? `translateX(${offset}px)` : undefined,
+          transition: offset ? "none" : "transform 180ms ease-out",
+        }}
+        className={`max-w-[85%] cursor-pointer touch-pan-y select-none rounded-2xl px-4 py-2.5 shadow-sm [-webkit-touch-callout:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:max-w-[70%] ${mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border bg-card"}`}
+      >
+        {message.reply_to && !deleted && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onJumpTo(message.reply_to!.id);
+            }}
+            className={`mb-1.5 block w-full rounded-lg border-l-4 px-2.5 py-1.5 text-left text-xs ${mine ? "border-primary-foreground/70 bg-primary-foreground/15" : "border-primary bg-secondary/70"}`}
+          >
+            <span
+              className={`block font-bold ${mine ? "text-primary-foreground" : "text-primary"}`}
+            >
+              {quotedSender}
+            </span>
+            <span
+              className={`line-clamp-2 ${mine ? "text-primary-foreground/80" : "text-muted-foreground"} ${message.reply_to.deleted ? "italic" : ""}`}
+            >
+              {message.reply_to.body}
+            </span>
+          </button>
+        )}
+        {deleted ? (
+          <p
+            className={`flex items-center gap-1.5 text-sm italic ${mine ? "text-primary-foreground/80" : "text-muted-foreground"}`}
+          >
+            <Ban className="size-3.5" />
+            {mine ? "You deleted this message" : "This message was deleted"}
+          </p>
+        ) : (
+          <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.body}</p>
+        )}
+        <div
+          className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-foreground/75" : "text-muted-foreground"}`}
+        >
+          {formatMessageTime(message.created_at)}
+          {mine && !deleted && <CheckCheck className="size-3" />}
+        </div>
+      </div>
+      {reactionGroups.length > 0 && (
+        <div
+          className={`-mt-2 flex flex-wrap gap-1 px-2 ${mine ? "justify-end" : "justify-start"}`}
+        >
+          {reactionGroups.map(([emoji, group]) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => onToggleReaction(emoji)}
+              aria-label={`${emoji} reaction, ${group.count}${group.mine ? ", including you. Tap to remove yours" : ". Tap to react"}`}
+              className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs shadow-sm transition hover:scale-105 ${group.mine ? "border-primary/50 bg-secondary" : "bg-card"}`}
+            >
+              <span>{emoji}</span>
+              {group.count > 1 && (
+                <span className="font-semibold text-muted-foreground">{group.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MessageActionSheet({
+  message,
+  mine,
+  interactive,
+  myReaction,
+  onClose,
+  onReact,
+  onReply,
+  onCopy,
+  onDeleteForMe,
+  onDeleteForEveryone,
+}: {
+  message: Message;
+  mine: boolean;
+  interactive: boolean;
+  myReaction: string | undefined;
+  onClose: () => void;
+  onReact: (emoji: string) => void;
+  onReply: () => void;
+  onCopy: () => void;
+  onDeleteForMe: () => void;
+  onDeleteForEveryone: () => void;
+}) {
+  const [step, setStep] = useState<"menu" | "delete">("menu");
+  const [showMore, setShowMore] = useState(false);
+  const deleted = Boolean(message.deleted_at);
+  const firstActionRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const openedAt = useRef(Date.now());
+
+  useEffect(() => {
+    firstActionRef.current?.focus();
+    function handleKey(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") closeRef.current();
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
+
+  function run(action: () => void) {
+    action();
+    onClose();
+  }
+
+  const itemClass =
+    "flex w-full items-center gap-3 px-5 py-3.5 text-left text-sm font-medium transition hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none";
+
+  return (
+    <div
+      className="fixed inset-0 z-[150] flex items-end justify-center bg-black/45 backdrop-blur-[2px] sm:items-center"
+      onClick={() => {
+        // Ignore the release of the long press that opened the sheet.
+        if (Date.now() - openedAt.current > 350) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Message options"
+        onClick={(event) => event.stopPropagation()}
+        className="w-full max-w-sm overflow-hidden rounded-t-3xl bg-card pb-[env(safe-area-inset-bottom)] shadow-2xl animate-in slide-in-from-bottom-4 fade-in sm:rounded-3xl"
+      >
+        <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-muted sm:hidden" />
+        <p
+          className={`mx-5 mt-4 line-clamp-3 rounded-2xl px-4 py-2.5 text-sm ${mine ? "bg-primary text-primary-foreground" : "border bg-background"} ${deleted ? "italic opacity-80" : ""}`}
+        >
+          {deleted ? "This message was deleted" : message.body}
+        </p>
+
+        {step === "menu" ? (
+          <>
+            {interactive && !deleted && (
+              <div className="px-4 pt-4">
+                <div className="flex items-center justify-between gap-1 rounded-full border bg-background px-2 py-1.5 shadow-sm">
+                  {QUICK_REACTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => run(() => onReact(emoji))}
+                      aria-label={
+                        myReaction === emoji ? `Remove ${emoji} reaction` : `React with ${emoji}`
+                      }
+                      aria-pressed={myReaction === emoji}
+                      className={`grid size-10 place-items-center rounded-full text-2xl transition hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${myReaction === emoji ? "bg-secondary" : ""}`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setShowMore((value) => !value)}
+                    aria-label={showMore ? "Hide more reactions" : "Show more reactions"}
+                    aria-expanded={showMore}
+                    className="grid size-10 place-items-center rounded-full bg-secondary text-muted-foreground transition hover:text-primary"
+                  >
+                    <Plus className={`size-5 transition ${showMore ? "rotate-45" : ""}`} />
+                  </button>
+                </div>
+                {showMore && (
+                  <div className="mt-2 grid grid-cols-8 gap-1 rounded-2xl border bg-background p-2">
+                    {MORE_REACTIONS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => run(() => onReact(emoji))}
+                        aria-label={
+                          myReaction === emoji ? `Remove ${emoji} reaction` : `React with ${emoji}`
+                        }
+                        aria-pressed={myReaction === emoji}
+                        className={`grid aspect-square place-items-center rounded-full text-xl transition hover:scale-125 ${myReaction === emoji ? "bg-secondary" : ""}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-3 divide-y border-t">
+              {!deleted && (
+                <button
+                  ref={firstActionRef}
+                  type="button"
+                  className={itemClass}
+                  onClick={() => run(onReply)}
+                >
+                  <Reply className="size-5 text-primary" /> Reply
+                </button>
+              )}
+              {!deleted && (
+                <button type="button" className={itemClass} onClick={() => run(onCopy)}>
+                  <Copy className="size-5 text-primary" /> Copy
+                </button>
+              )}
+              {interactive && (
+                <button
+                  ref={deleted ? firstActionRef : undefined}
+                  type="button"
+                  className={`${itemClass} text-destructive`}
+                  onClick={() => setStep("delete")}
+                >
+                  <Trash2 className="size-5" /> Delete
+                </button>
+              )}
+              {!interactive && (
+                <p className="px-5 py-3 text-xs text-muted-foreground">
+                  Reactions and deleting become available once message interactions are enabled.
+                </p>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="mt-3 border-t">
+            <p className="px-5 pt-4 text-base font-bold">Delete message?</p>
+            <p className="px-5 pt-1 text-xs text-muted-foreground">
+              {mine && !deleted
+                ? "Delete it just from your inbox, or remove it for everyone in this chat."
+                : "This removes the message from your inbox only."}
+            </p>
+            <div className="mt-3 divide-y border-t">
+              {mine && !deleted && (
+                <button
+                  type="button"
+                  className={`${itemClass} text-destructive`}
+                  onClick={() => run(onDeleteForEveryone)}
+                >
+                  <Trash2 className="size-5" /> Delete for everyone
+                </button>
+              )}
+              <button
+                type="button"
+                className={`${itemClass} text-destructive`}
+                onClick={() => run(onDeleteForMe)}
+              >
+                <Trash2 className="size-5" /> Delete for me
+              </button>
+              <button type="button" className={itemClass} onClick={() => setStep("menu")}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -746,7 +1337,7 @@ async function loadConversations(userId: string): Promise<ConversationView[]> {
   const [
     { data: conversations, error: conversationError },
     { data: allParticipants, error: participantError },
-    { data: messages, error: messageError },
+    { messages, interactive },
   ] = await Promise.all([
     supabase
       .from("conversations")
@@ -757,30 +1348,28 @@ async function loadConversations(userId: string): Promise<ConversationView[]> {
       .from("conversation_participants")
       .select("conversation_id,user_id,last_read_at")
       .in("conversation_id", ids),
-    supabase
-      .from("messages")
-      .select("id,conversation_id,sender_id,body,created_at")
-      .in("conversation_id", ids)
-      .order("created_at", { ascending: true }),
+    loadMessageRows(ids),
   ]);
-  if (conversationError || participantError || messageError)
-    throw conversationError ?? participantError ?? messageError;
+  if (conversationError || participantError) throw conversationError ?? participantError;
+  const { reactions, hidden } = await loadMessageInteractions(userId, interactive);
 
   const participantIds = [
     ...new Set((allParticipants ?? []).map((row: Participant) => row.user_id)),
   ];
-  const [{ data: directoryUsers, error: directoryError }, conversationProfiles] = await Promise.all([
-    supabase.rpc("list_messaging_users", { _query: null }),
-    Promise.all(
-      participantIds.map(async (participantId) => {
-        const { data, error } = await supabase.rpc("get_messaging_member_profile", {
-          _user_id: participantId,
-        });
-        if (error) throw error;
-        return data?.[0] ?? null;
-      }),
-    ),
-  ]);
+  const [{ data: directoryUsers, error: directoryError }, conversationProfiles] = await Promise.all(
+    [
+      supabase.rpc("list_messaging_users", { _query: null }),
+      Promise.all(
+        participantIds.map(async (participantId) => {
+          const { data, error } = await supabase.rpc("get_messaging_member_profile", {
+            _user_id: participantId,
+          });
+          if (error) throw error;
+          return data?.[0] ?? null;
+        }),
+      ),
+    ],
+  );
   if (directoryError) throw directoryError;
   const roleMap = new Map(
     (directoryUsers ?? []).map((member) => [member.id, member.role] as const),
@@ -798,11 +1387,32 @@ async function loadConversations(userId: string): Promise<ConversationView[]> {
         },
       ]),
   );
+  const reactionMap = new Map<string, Reaction[]>();
+  for (const reaction of reactions) {
+    const existing = reactionMap.get(reaction.message_id) ?? [];
+    existing.push(reaction);
+    reactionMap.set(reaction.message_id, existing);
+  }
+  const rowsById = new Map(messages.map((row) => [row.id, row] as const));
   const messageMap = new Map<string, Message[]>();
-  for (const message of (messages ?? []) as Message[]) {
-    const existing = messageMap.get(message.conversation_id) ?? [];
+  for (const row of messages) {
+    if (hidden.has(row.id)) continue;
+    const quoted = row.reply_to_id ? rowsById.get(row.reply_to_id) : undefined;
+    const message: Message = {
+      ...row,
+      reply_to: quoted
+        ? {
+            id: quoted.id,
+            sender_id: quoted.sender_id,
+            body: quoted.body,
+            deleted: Boolean(quoted.deleted_at),
+          }
+        : null,
+      reactions: row.deleted_at ? [] : (reactionMap.get(row.id) ?? []),
+    };
+    const existing = messageMap.get(row.conversation_id) ?? [];
     existing.push(message);
-    messageMap.set(message.conversation_id, existing);
+    messageMap.set(row.conversation_id, existing);
   }
 
   return ((conversations ?? []) as Conversation[]).map((conversation) => {
@@ -834,8 +1444,57 @@ async function loadConversations(userId: string): Promise<ConversationView[]> {
       avatarPath: otherProfiles[0]?.avatar_path ?? null,
       otherUserId: otherProfiles.length === 1 ? (otherProfiles[0]?.id ?? null) : null,
       otherRole: otherProfiles.length === 1 ? (otherProfiles[0]?.role ?? null) : null,
+      interactive,
     };
   });
+}
+
+type MessageRow = Omit<Message, "reply_to" | "reactions">;
+
+async function loadMessageRows(
+  conversationIds: string[],
+): Promise<{ messages: MessageRow[]; interactive: boolean }> {
+  const extended = await supabase
+    .from("messages")
+    .select("id,conversation_id,sender_id,body,created_at,reply_to_id,deleted_at")
+    .in("conversation_id", conversationIds)
+    .order("created_at", { ascending: true });
+  if (!extended.error) return { messages: extended.data ?? [], interactive: true };
+  if (!isMissingSchemaError(extended.error)) throw extended.error;
+
+  // The interactions migration has not been applied yet: fall back to plain messages.
+  const basic = await supabase
+    .from("messages")
+    .select("id,conversation_id,sender_id,body,created_at")
+    .in("conversation_id", conversationIds)
+    .order("created_at", { ascending: true });
+  if (basic.error) throw basic.error;
+  return {
+    messages: (basic.data ?? []).map((row) => ({ ...row, reply_to_id: null, deleted_at: null })),
+    interactive: false,
+  };
+}
+
+async function loadMessageInteractions(userId: string, interactive: boolean) {
+  if (!interactive) return { reactions: [] as Reaction[], hidden: new Set<string>() };
+  // RLS limits both tables to messages in the signed-in user's conversations.
+  const [reactions, hidden] = await Promise.all([
+    supabase.from("message_reactions").select("message_id,user_id,emoji"),
+    supabase.from("message_hidden").select("message_id").eq("user_id", userId),
+  ]);
+  if (reactions.error && !isMissingSchemaError(reactions.error)) throw reactions.error;
+  if (hidden.error && !isMissingSchemaError(hidden.error)) throw hidden.error;
+  return {
+    reactions: (reactions.data ?? []) as Reaction[],
+    hidden: new Set((hidden.data ?? []).map((row) => row.message_id)),
+  };
+}
+
+function isMissingSchemaError(error: { code?: string; message?: string }) {
+  return (
+    ["42703", "42P01", "PGRST204", "PGRST205"].includes(error.code ?? "") ||
+    /column .* does not exist|relation .* does not exist|schema cache/i.test(error.message ?? "")
+  );
 }
 
 function conversationErrorMessage(error: unknown) {

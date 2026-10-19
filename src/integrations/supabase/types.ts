@@ -58,6 +58,8 @@ export type Database = {
           body: string;
           created_at: string;
           edited_at: string | null;
+          reply_to_id: string | null;
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
@@ -66,6 +68,8 @@ export type Database = {
           body: string;
           created_at?: string;
           edited_at?: string | null;
+          reply_to_id?: string | null;
+          deleted_at?: string | null;
         };
         Update: {
           id?: string;
@@ -74,6 +78,47 @@ export type Database = {
           body?: string;
           created_at?: string;
           edited_at?: string | null;
+          reply_to_id?: string | null;
+          deleted_at?: string | null;
+        };
+        Relationships: [];
+      };
+      message_reactions: {
+        Row: {
+          message_id: string;
+          user_id: string;
+          emoji: string;
+          created_at: string;
+        };
+        Insert: {
+          message_id: string;
+          user_id: string;
+          emoji: string;
+          created_at?: string;
+        };
+        Update: {
+          message_id?: string;
+          user_id?: string;
+          emoji?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      message_hidden: {
+        Row: {
+          message_id: string;
+          user_id: string;
+          hidden_at: string;
+        };
+        Insert: {
+          message_id: string;
+          user_id: string;
+          hidden_at?: string;
+        };
+        Update: {
+          message_id?: string;
+          user_id?: string;
+          hidden_at?: string;
         };
         Relationships: [];
       };
@@ -1568,6 +1613,14 @@ export type Database = {
       mark_conversation_read: {
         Args: { _conversation_id: string };
         Returns: undefined;
+      };
+      delete_message_for_everyone: {
+        Args: { _message_id: string };
+        Returns: undefined;
+      };
+      can_access_message: {
+        Args: { _message_id: string; _user_id?: string };
+        Returns: boolean;
       };
       list_messaging_users: {
         Args: { _query?: string | null };
