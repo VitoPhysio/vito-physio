@@ -1,0 +1,9 @@
+/* Keep author buttons from stretching to the full post height. */
+article[id^="post-"] button:has(> .vito-avatar),
+[role="dialog"] button[aria-label$="'s profile"]:has(> .vito-avatar) {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
