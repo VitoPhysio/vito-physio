@@ -3,6 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { updateLinkedPhoto, uploadPhoto, uploadSocialPostPhoto } from "@/lib/photo.functions";
 import { cn } from "@/lib/utils";
+import "./post-author.css";
 
 export function PhotoAvatar({
   path,
@@ -17,8 +18,10 @@ export function PhotoAvatar({
     queryKey: ["avatar", path],
     enabled: !!path,
     staleTime: 50 * 60 * 1000,
-    queryFn: async () =>
-      (await supabase.storage.from("avatars").createSignedUrl(path!, 3600)).data?.signedUrl ?? null,
+    queryFn: async () => {
+      if (!path) return null;
+      return (await supabase.storage.from("avatars").createSignedUrl(path, 3600)).data?.signedUrl ?? null;
+    },
   });
   const initials = (name ?? "?")
     .split(" ")
@@ -30,7 +33,7 @@ export function PhotoAvatar({
   return (
     <span
       className={cn(
-        "inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-xs font-bold text-primary",
+        "vito-avatar inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-xs font-bold text-primary",
         className,
       )}
     >
