@@ -10,6 +10,9 @@
 <!-- LOVABLE:END -->
 
 ## Rules
+- Chat gestures use a shared tested hook; messaging reads and writes use the signed-in Supabase client with participant-scoped policies. Why: preserve existing chats while avoiding actions during scrolling and access outside a conversation.
+- Non-athlete profile editing reuses shared community fields through user-scoped server functions and never calls the athlete-save RPC; profile kind comes from user_roles. Why: preserve athlete records and prevent identity or role escalation without schema changes.
+- Preserve the legacy /index preview address as a redirect to /. Why: saved editor navigation must open the existing homepage rather than a missing page.
 - Backend is the user-connected external Supabase project; never enable Lovable Cloud. Why: user owns the data there.
 - Roles live only in user_roles, assigned by the handle_new_user trigger. Why: prevents privilege escalation.
 - Profile/athlete/organisation photos live in the private 'avatars' bucket, uploaded via the uploadPhoto server fn and shown with signed URLs. Why: workspace blocks public buckets.

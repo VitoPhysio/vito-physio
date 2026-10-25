@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCanGoBack, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent, PointerEvent, Ref } from "react";
+import type { KeyboardEvent, Ref } from "react";
 import {
   ArrowLeft,
   Ban,
@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { Button } from "@/components/ui/button";
+import { useMessageGesture } from "@/hooks/use-message-gesture";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/_authenticated/messages")({
+  head: () => ({ meta: [{ title: "Messages — VITO Physio" }, { name: "description", content: "Your private VITO Physio conversations." }, { property: "og:title", content: "Messages — VITO Physio" }, { property: "og:description", content: "Your private VITO Physio conversations." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: MessagesPage,
 });
 
@@ -733,7 +735,7 @@ function ChatView({
           {conversation.otherUserId ? (
             <button
               type="button"
-              onClick={() => onOpenProfile(conversation.otherUserId!)}
+              onClick={() => conversation.otherUserId && onOpenProfile(conversation.otherUserId)}
               className="block max-w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <h2 className="truncate font-bold">{conversation.displayName}</h2>
@@ -915,10 +917,6 @@ const MORE_REACTIONS = [
   "🤝",
   "✅",
 ];
-const LONG_PRESS_MS = 450;
-const SWIPE_REPLY_THRESHOLD = 64;
-const SWIPE_MAX_OFFSET = 96;
-
 function MessageBubble({
   ref,
   message,
@@ -944,74 +942,8 @@ function MessageBubble({
   onJumpTo: (messageId: string) => void;
   onToggleReaction: (emoji: string) => void;
 }) {
-  const [offset, setOffset] = useState(0);
-  const gesture = useRef<{ x: number; y: number; swiping: boolean; offset: number } | null>(null);
-  const pressTimer = useRef<number | undefined>(undefined);
-  const suppressClick = useRef(false);
+  const { offset, progress, handlers } = useMessageGesture(canSwipe, onOpenActions, onReply);
   const deleted = Boolean(message.deleted_at);
-
-  useEffect(() => () => window.clearTimeout(pressTimer.current), []);
-
-  function cancelPress() {
-    window.clearTimeout(pressTimer.current);
-    pressTimer.current = undefined;
-  }
-
-  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    suppressClick.current = false;
-    gesture.current = { x: event.clientX, y: event.clientY, swiping: false, offset: 0 };
-    cancelPress();
-    pressTimer.current = window.setTimeout(() => {
-      pressTimer.current = undefined;
-      gesture.current = null;
-      suppressClick.current = true;
-      navigator.vibrate?.(15);
-      onOpenActions();
-    }, LONG_PRESS_MS);
-  }
-
-  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
-    const state = gesture.current;
-    if (!state) return;
-    const dx = event.clientX - state.x;
-    const dy = event.clientY - state.y;
-    if (!state.swiping) {
-      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) cancelPress();
-      if (canSwipe && dx > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-        state.swiping = true;
-        event.currentTarget.setPointerCapture(event.pointerId);
-      } else if (Math.abs(dy) > 10 || dx < -10) {
-        gesture.current = null;
-        return;
-      }
-    }
-    if (state.swiping) {
-      state.offset = Math.max(0, Math.min(dx, SWIPE_MAX_OFFSET));
-      setOffset(state.offset);
-    }
-  }
-
-  function finishGesture(commit: boolean) {
-    cancelPress();
-    const state = gesture.current;
-    gesture.current = null;
-    if (!state?.swiping) return;
-    suppressClick.current = true;
-    setOffset(0);
-    if (commit && state.offset >= SWIPE_REPLY_THRESHOLD) {
-      navigator.vibrate?.(10);
-      onReply();
-    }
-  }
-
-  function handleClick() {
-    if (suppressClick.current) {
-      suppressClick.current = false;
-      return;
-    }
-    onOpenActions();
-  }
 
   const reactionGroups = useMemo(() => {
     const groups = new Map<string, { count: number; mine: boolean }>();
@@ -1033,8 +965,8 @@ function MessageBubble({
         aria-hidden
         className="pointer-events-none absolute left-1 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full bg-secondary text-primary"
         style={{
-          opacity: Math.min(offset / SWIPE_REPLY_THRESHOLD, 1),
-          transform: `translateY(-50%) scale(${offset >= SWIPE_REPLY_THRESHOLD ? 1.1 : 0.8})`,
+          opacity: progress,
+          transform: `translateY(-50%) scale(${progress >= 1 ? 1.1 : 0.8})`,
         }}
       >
         <Reply className="size-4" />
@@ -1044,24 +976,7 @@ function MessageBubble({
         tabIndex={0}
         aria-haspopup="dialog"
         aria-label={`Message options for “${message.body.slice(0, 60)}”`}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={() => finishGesture(true)}
-        onPointerCancel={() => finishGesture(false)}
-        onPointerLeave={() => !gesture.current?.swiping && cancelPress()}
-        onClick={handleClick}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          cancelPress();
-          gesture.current = null;
-          onOpenActions();
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onOpenActions();
-          }
-        }}
+        {...handlers}
         style={{
           transform: offset ? `translateX(${offset}px)` : undefined,
           transition: offset ? "none" : "transform 180ms ease-out",
@@ -1073,7 +988,7 @@ function MessageBubble({
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              onJumpTo(message.reply_to!.id);
+              if (message.reply_to) onJumpTo(message.reply_to.id);
             }}
             className={`mb-1.5 block w-full rounded-lg border-l-4 px-2.5 py-1.5 text-left text-xs ${mine ? "border-primary-foreground/70 bg-primary-foreground/15" : "border-primary bg-secondary/70"}`}
           >
@@ -1180,7 +1095,7 @@ function MessageActionSheet({
 
   return (
     <div
-      className="fixed inset-0 z-[150] flex items-end justify-center bg-black/45 backdrop-blur-[2px] sm:items-center"
+      className="fixed inset-0 z-[150] flex items-end justify-center bg-foreground/45 backdrop-blur-[2px] sm:items-center"
       onClick={() => {
         // Ignore the release of the long press that opened the sheet.
         if (Date.now() - openedAt.current > 350) onClose();
@@ -1206,7 +1121,7 @@ function MessageActionSheet({
               <div className="px-4 pt-4">
                 <div className="flex items-center justify-between gap-1 rounded-full border bg-background px-2 py-1.5 shadow-sm">
                   {QUICK_REACTIONS.map((emoji) => (
-                    <button
+                    <Button variant="ghost"
                       key={emoji}
                       type="button"
                       onClick={() => run(() => onReact(emoji))}
@@ -1217,9 +1132,9 @@ function MessageActionSheet({
                       className={`grid size-10 place-items-center rounded-full text-2xl transition hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${myReaction === emoji ? "bg-secondary" : ""}`}
                     >
                       {emoji}
-                    </button>
+                    </Button>
                   ))}
-                  <button
+                  <Button variant="ghost"
                     type="button"
                     onClick={() => setShowMore((value) => !value)}
                     aria-label={showMore ? "Hide more reactions" : "Show more reactions"}
@@ -1227,12 +1142,12 @@ function MessageActionSheet({
                     className="grid size-10 place-items-center rounded-full bg-secondary text-muted-foreground transition hover:text-primary"
                   >
                     <Plus className={`size-5 transition ${showMore ? "rotate-45" : ""}`} />
-                  </button>
+                  </Button>
                 </div>
                 {showMore && (
                   <div className="mt-2 grid grid-cols-8 gap-1 rounded-2xl border bg-background p-2">
                     {MORE_REACTIONS.map((emoji) => (
-                      <button
+                      <Button variant="ghost"
                         key={emoji}
                         type="button"
                         onClick={() => run(() => onReact(emoji))}
@@ -1243,7 +1158,7 @@ function MessageActionSheet({
                         className={`grid aspect-square place-items-center rounded-full text-xl transition hover:scale-125 ${myReaction === emoji ? "bg-secondary" : ""}`}
                       >
                         {emoji}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
@@ -1252,29 +1167,29 @@ function MessageActionSheet({
 
             <div className="mt-3 divide-y border-t">
               {!deleted && (
-                <button
+                <Button variant="ghost"
                   ref={firstActionRef}
                   type="button"
                   className={itemClass}
                   onClick={() => run(onReply)}
                 >
                   <Reply className="size-5 text-primary" /> Reply
-                </button>
+                </Button>
               )}
               {!deleted && (
-                <button type="button" className={itemClass} onClick={() => run(onCopy)}>
+                <Button variant="ghost" type="button" className={itemClass} onClick={() => run(onCopy)}>
                   <Copy className="size-5 text-primary" /> Copy
-                </button>
+                </Button>
               )}
               {interactive && (
-                <button
+                <Button variant="ghost"
                   ref={deleted ? firstActionRef : undefined}
                   type="button"
                   className={`${itemClass} text-destructive`}
                   onClick={() => setStep("delete")}
                 >
                   <Trash2 className="size-5" /> Delete
-                </button>
+                </Button>
               )}
               {!interactive && (
                 <p className="px-5 py-3 text-xs text-muted-foreground">
@@ -1293,24 +1208,24 @@ function MessageActionSheet({
             </p>
             <div className="mt-3 divide-y border-t">
               {mine && !deleted && (
-                <button
+                <Button variant="ghost"
                   type="button"
                   className={`${itemClass} text-destructive`}
                   onClick={() => run(onDeleteForEveryone)}
                 >
                   <Trash2 className="size-5" /> Delete for everyone
-                </button>
+                </Button>
               )}
-              <button
+              <Button variant="ghost"
                 type="button"
                 className={`${itemClass} text-destructive`}
                 onClick={() => run(onDeleteForMe)}
               >
                 <Trash2 className="size-5" /> Delete for me
-              </button>
-              <button type="button" className={itemClass} onClick={() => setStep("menu")}>
+              </Button>
+              <Button variant="ghost" type="button" className={itemClass} onClick={() => setStep("menu")}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -1320,7 +1235,7 @@ function MessageActionSheet({
 }
 
 async function loadMessagingUsers(): Promise<MessagingUser[]> {
-  const { data, error } = await supabase.rpc("list_messaging_users", { _query: null });
+  const { data, error } = await supabase.rpc("list_messaging_users", {});
   if (error) throw error;
   return data ?? [];
 }
@@ -1358,7 +1273,7 @@ async function loadConversations(userId: string): Promise<ConversationView[]> {
   ];
   const [{ data: directoryUsers, error: directoryError }, conversationProfiles] = await Promise.all(
     [
-      supabase.rpc("list_messaging_users", { _query: null }),
+      supabase.rpc("list_messaging_users", {}),
       Promise.all(
         participantIds.map(async (participantId) => {
           const { data, error } = await supabase.rpc("get_messaging_member_profile", {
