@@ -4,7 +4,7 @@ export type ConsultationAlert = {
   id: string;
   contact_name: string;
   email: string;
-  phone?: string;
+  phone?: string | undefined;
   organisation_type: string;
   message: string;
 };
@@ -39,14 +39,14 @@ async function recordDelivery({
   providerMessageId,
   errorMessage,
 }: {
-  consultationRequestId?: string;
-  recipientUserId?: string;
+  consultationRequestId?: string | undefined;
+  recipientUserId?: string | undefined;
   source: DeliverySource;
   channel: DeliveryChannel;
-  subject?: string;
+  subject?: string | undefined;
   status: DeliveryStatus;
-  providerMessageId?: string;
-  errorMessage?: string;
+  providerMessageId?: string | undefined;
+  errorMessage?: string | undefined;
 }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { error } = await (supabaseAdmin as any).from("delivery_logs").insert({
@@ -63,8 +63,8 @@ async function recordDelivery({
 }
 
 function createGmailTransport() {
-  const user = process.env.GMAIL_SMTP_USER || COMPANY_EMAIL;
-  const password = process.env.GMAIL_SMTP_APP_PASSWORD;
+  const user = process.env["GMAIL_SMTP_USER"] || COMPANY_EMAIL;
+  const password = process.env["GMAIL_SMTP_APP_PASSWORD"];
   if (!password) return null;
   return nodemailer.createTransport({
     host: "smtp.gmail.com",
@@ -100,7 +100,7 @@ async function sendGmailEmail({
     return { status: "skipped" as const };
   }
   try {
-    const from = process.env.GMAIL_SMTP_USER || COMPANY_EMAIL;
+    const from = process.env["GMAIL_SMTP_USER"] || COMPANY_EMAIL;
     const result = await transport.sendMail({ from: `VITO Physio <${from}>`, to, subject, text });
     await recordDelivery({
       recipientUserId,
@@ -139,9 +139,9 @@ export async function sendConsultationAlerts(alert: ConsultationAlert) {
 }
 
 async function sendConsultationWhatsApp(alert: ConsultationAlert, message: string) {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_WHATSAPP_FROM;
+  const sid = process.env["TWILIO_ACCOUNT_SID"];
+  const token = process.env["TWILIO_AUTH_TOKEN"];
+  const from = process.env["TWILIO_WHATSAPP_FROM"];
   if (!sid || !token || !from) {
     await recordDelivery({
       consultationRequestId: alert.id,

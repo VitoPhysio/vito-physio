@@ -21,11 +21,13 @@ export function SimpleForm({
   submitLabel,
   onSubmit,
   initial,
+  resetOnSuccess = true,
 }: {
   fields: Field[];
   submitLabel: string;
   onSubmit: (values: Record<string, string>) => Promise<void>;
   initial?: Record<string, string>;
+  resetOnSuccess?: boolean;
 }) {
   const [values, setValues] = useState<Record<string, string>>(initial ?? {});
   const [busy, setBusy] = useState(false);
@@ -35,7 +37,7 @@ export function SimpleForm({
     setBusy(true);
     try {
       await onSubmit(values);
-      setValues(initial ?? {});
+      if (resetOnSuccess) setValues(initial ?? {});
     } finally {
       setBusy(false);
     }

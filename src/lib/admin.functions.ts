@@ -92,7 +92,7 @@ export const sendAdminEmail = createServerFn({ method: "POST" })
         (supabaseAdmin as any).from("user_roles").select("user_id, role"),
       ]);
     if (profileError || roleError) throw new Error("Recipients could not be loaded.");
-    const roleByUser = new Map(
+    const roleByUser = new Map<string, string>(
       (roles ?? []).map((role: { user_id: string; role: string }) => [role.user_id, role.role]),
     );
     const allowedRoles: Record<string, string[]> = {

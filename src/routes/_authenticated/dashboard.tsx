@@ -7,6 +7,9 @@ import { Compose } from "@/components/vito/Communications";
 import { AthletePortal } from "@/components/athlete/Portal";
 import { CareRequests } from "@/components/vito/CareRequests";
 import logo from "@/assets/vito-logo.png";
+import { useState } from "react";
+import { WorkspaceMenus } from "@/components/vito/WorkspaceMenus";
+import { groupCases, type CaseSort } from "@/lib/case-organisation";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -42,6 +45,8 @@ const STAFF = ["super_admin", "vito_admin", "clinical_professional", "clinical_s
 
 function Dashboard() {
   const { user } = Route.useRouteContext();
+  const [section, setSection] = useState("overview");
+  const [sort, setSort] = useState<CaseSort>("newest");
 
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard", user.id],
@@ -70,8 +75,7 @@ function Dashboard() {
           .select(
             "id, injury_code, body_region, status, created_at, athletes(first_name, surname, athlete_code, photo_path)",
           )
-          .order("updated_at", { ascending: false })
-          .limit(10),
+          .order("created_at", { ascending: false }),
         staff
           ? supabase.from("schools").select("id, name, school_code, school_type").order("name")
           : Promise.resolve({
@@ -134,18 +138,23 @@ function Dashboard() {
         </div>
       </section>
       <main className="mx-auto max-w-5xl space-y-8 px-5 py-8">
-        {data.staff && (
+        <WorkspaceMenus value={section} onSelect={setSection} menus={[
+          { label: "Overview", items: [{ label: "Summary", value: "overview" }, { label: "Caseload", value: "cases" }] },
+          { label: "Care & communication", items: [{ label: "Athlete requests", value: "requests" }, { label: "Staff messages", value: "messages" }] },
+          ...(isAdmin ? [{ label: "Organisation", items: [{ label: "Partners", value: "partners" }, { label: "Accounts & approvals", value: "accounts" }] }] : []),
+        ]} />
+        {(section === "overview" || section === "cases") && data.staff && (
           <Button asChild size="lg" className="w-full sm:w-auto">
             <Link to="/cases">Go to case workspace</Link>
           </Button>
         )}
-        {isAdmin && (
+        {isAdmin && (section === "overview" || section === "accounts") && (
           <Button asChild size="lg" variant="outline" className="ml-0 w-full sm:ml-3 sm:w-auto">
             <Link to="/admin">Accounts & approvals</Link>
           </Button>
         )}
-        {data.staff && (
-          <section className="rounded-2xl border bg-card p-5 shadow-sm">
+        {data.staff && section === "messages" && (
+          <section className="py-5">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
@@ -164,28 +173,29 @@ function Dashboard() {
             <Compose userId={user.id} staffOnly />
           </section>
         )}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {section === "overview" && <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {data.stats.map((s) => (
             <div key={s.label} className="rounded-2xl border bg-card p-5">
               <p className="text-sm text-muted-foreground">{s.label}</p>
               <p className="mt-1 text-3xl font-extrabold text-primary">{s.value}</p>
             </div>
           ))}
-        </div>
+        </div>}
 
-        {data.staff && (
+        {data.staff && section === "requests" && (
           <section>
             <h2 className="mb-3 text-lg font-bold">Athlete requests (from the athlete home page)</h2>
             <CareRequests staff userId={user.id} />
           </section>
         )}
-        <section>
+        {section === "cases" && <section>
+          <label className="mb-4 flex items-center gap-3 text-sm font-medium">Arrange cases<select aria-label="Arrange cases" value={sort} onChange={(event) => setSort(event.target.value as CaseSort)} className="rounded-md border border-input bg-background px-3 py-2"><option value="newest">Newest first</option><option value="alphabetical">Athlete name A–Z</option></select></label>
           <h2 className="mb-3 text-lg font-bold">
             {data.staff ? "Caseload & recovery monitoring" : "Injuries & recovery status"}
           </h2>
           {data.recent.length ? (
-            <ul className="space-y-2">
-              {data.recent.map((c) => (
+            <div className="space-y-4">{groupCases(data.recent, sort).map((group) => <details key={group.status} open><summary className="mb-2 cursor-pointer font-semibold capitalize">{group.status} ({group.cases.length})</summary><ul className="space-y-2">
+              {group.cases.map((c) => (
                 <li
                   key={c.id}
                   className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card p-3 text-sm"
@@ -202,13 +212,13 @@ function Dashboard() {
                   <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{c.status}</span>
                 </li>
               ))}
-            </ul>
+            </ul></details>)}</div>
           ) : (
             <p className="text-sm text-muted-foreground">No cases to show yet.</p>
           )}
-        </section>
+        </section>}
 
-        {isAdmin && (
+        {isAdmin && section === "partners" && (
           <section className="grid gap-4 md:grid-cols-3">
             {(["school", "academy", "club"] as const).map((t) => (
               <div key={t} className="rounded-2xl border bg-card p-4">
