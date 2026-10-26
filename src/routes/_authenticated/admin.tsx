@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { supabase } from "@/integrations/supabase/client";
 import { JoinRequests, AthleteRegistry } from "@/components/vito/AdminRegistry";
+import { WorkspaceMenus } from "@/components/vito/WorkspaceMenus";
 import { sendAdminEmail, approveAccount, removeAccount } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -39,7 +40,7 @@ const LABEL: Record<string, string> = {
 function DeliveryStatusPanel({
   delivery,
 }: {
-  delivery: ReturnType<typeof useQuery<Awaited<ReturnType<typeof listDeliveryLogs>>>>;
+  delivery: ReturnType<typeof useQuery<Awaited<ReturnType<typeof loadDeliveryLogs>>>>;
 }) {
   const summary = delivery.data?.summary;
   const statusStyle = (status: string) =>
@@ -394,6 +395,7 @@ function AdminPage() {
     retry: false,
   });
   const [q, setQ] = useState("");
+  const [section, setSection] = useState("pending");
   async function run(fn: () => Promise<unknown>, ok: string) {
     try {
       await fn();
@@ -435,7 +437,13 @@ function AdminPage() {
         </div>
       </header>
       <main className="mx-auto max-w-5xl space-y-8 px-5 py-8">
-        <section>
+        <WorkspaceMenus value={section} onSelect={setSection} menus={[
+          { label: "Accounts & approvals", items: [{ label: "Staff requests", value: "pending" }, { label: "Organisation join requests", value: "joins" }, { label: "Registered accounts", value: "accounts" }] },
+          { label: "Registry & cases", items: [{ label: "Athletes", value: "athletes" }, { label: "Case workspace", value: "cases" }] },
+          { label: "Communications", items: [{ label: "Send email", value: "email" }, { label: "Delivery status", value: "delivery" }] },
+        ]} />
+        {section === "cases" && <Button asChild><Link to="/cases">Open case workspace</Link></Button>}
+        {section === "pending" && <section>
           <h2 className="mb-3 text-lg font-bold">Pending staff requests ({pending.length})</h2>
           {pending.length ? (
             <ul className="space-y-2">
@@ -450,7 +458,7 @@ function AdminPage() {
                       <b>{a.full_name ?? "—"}</b>
                       <br />
                       <span className="text-xs text-muted-foreground">
-                        {a.email} · wants {LABEL[a.requested_role!]}
+                        {a.email} · wants {LABEL[a.requested_role ?? ""]}
                       </span>
                     </span>
                   </span>
@@ -479,12 +487,12 @@ function AdminPage() {
           ) : (
             <p className="text-sm text-muted-foreground">No pending requests.</p>
           )}
-        </section>
-        <JoinRequests userId={data.me} />
-        <DeliveryStatusPanel delivery={delivery} />
-        <AdminEmailComposer accounts={data.accounts} send={sendEmail} />
-        <AthleteRegistry />
-        <section>
+        </section>}
+        {section === "joins" && <JoinRequests userId={data.me} />}
+        {section === "delivery" && <DeliveryStatusPanel delivery={delivery} />}
+        {section === "email" && <AdminEmailComposer accounts={data.accounts} send={sendEmail} />}
+        {section === "athletes" && <AthleteRegistry />}
+        {section === "accounts" && <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-bold">Registered accounts ({data.accounts.length})</h2>
             <Input
@@ -531,7 +539,7 @@ function AdminPage() {
               </li>
             ))}
           </ul>
-        </section>
+        </section>}
       </main>
     </div>
   );

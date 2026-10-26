@@ -9,6 +9,10 @@ import { SimpleForm, clean, type Field } from "@/components/vito/SimpleForm";
 import { Compose } from "@/components/vito/Communications";
 import { PhotoAvatar, fileToPhotoPath } from "@/components/vito/Photo";
 import logo from "@/assets/vito-logo.png";
+import { WorkspaceMenus } from "@/components/vito/WorkspaceMenus";
+import { CaseRecordEdit } from "@/components/vito/CaseRecordEdit";
+import { CASE_STATUSES, groupCases, type CaseSort } from "@/lib/case-organisation";
+import { CASE_OPENING_FIELDS, type EditableCaseTable } from "@/lib/case-editing";
 
 export const Route = createFileRoute("/_authenticated/cases")({
   head: () => ({ meta: [{ title: "Case workspace — VITO Physio" }, { name: "description", content: "VITO Physio clinical case assessment, rehabilitation and recovery management." }, { property: "og:title", content: "Case workspace — VITO Physio" }, { property: "og:description", content: "Manage authorized athlete injury cases and clinical care." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -44,7 +48,7 @@ function useRegistry() {
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border bg-card p-5">
+    <section className="space-y-4 py-3">
       <h2 className="mb-4 text-lg font-bold text-foreground">{title}</h2>
       {children}
     </section>
@@ -52,7 +56,7 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function CasesPage() {
-  const [step, setStep] = useState<Step>("schools");
+  const [step, setStep] = useState<Step>("manage");
   const { user } = Route.useRouteContext();
   return (
     <div className="min-h-screen bg-background">
@@ -61,11 +65,10 @@ function CasesPage() {
           <h1 className="text-lg font-bold text-primary">Clinician case workspace</h1>
           <Button asChild variant="outline"><Link to="/dashboard">Return to dashboard</Link></Button>
         </div>
-        <nav className="mx-auto grid max-w-6xl grid-cols-2 gap-2 px-5 pb-4 sm:grid-cols-4">
-          {STEPS.map((s) => (
-            <Button key={s.v} variant={step === s.v ? "default" : "outline"} onClick={() => setStep(s.v)}>{s.l}</Button>
-          ))}
-        </nav>
+        <div className="mx-auto max-w-6xl px-5 pb-2"><WorkspaceMenus value={step} onSelect={(value) => setStep(value as Step)} menus={[
+          { label: "Registry", items: [{ label: "Schools, academies & clubs", value: "schools" }, { label: "Athletes", value: "athletes" }] },
+          { label: "Cases", items: [{ label: "Browse & manage cases", value: "manage" }, { label: "Open a case", value: "open" }] },
+        ]} /></div>
       </header>
       <main className="mx-auto max-w-6xl space-y-6 px-5 py-6">
         {step === "schools" && <SchoolsStep userId={user.id} />}
@@ -104,7 +107,7 @@ function SchoolsStep({ userId }: { userId: string }) {
       <Input placeholder="Search by name, ID or location" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="grid gap-4 md:grid-cols-3">
         {(["school", "academy", "club"] as const).map((t) => (
-          <Panel key={t} title={`${t[0]!.toUpperCase() + t.slice(1)}s registry`}>
+          <Panel key={t} title={`${(t[0] ?? "").toUpperCase() + t.slice(1)}s registry`}>
             <ul className="space-y-2">
               {list.filter((s) => s.school_type === t).map((s) => (
                 <li key={s.id} className="rounded-lg border p-3 text-sm">
@@ -194,14 +197,7 @@ function OpenCaseStep({ userId, onOpened }: { userId: string; onOpened: () => vo
   const [athleteId, setAthleteId] = useState("");
   const matches = (data?.athletes ?? []).filter((a) => `${a.first_name} ${a.surname} ${a.athlete_code}`.toLowerCase().includes(q.toLowerCase())).slice(0, 8);
   const selected = data?.athletes.find((a) => a.id === athleteId);
-  const fields: Field[] = [
-    { name: "body_region", label: "Body region", required: true },
-    { name: "mechanism", label: "Mechanism of injury" },
-    { name: "injury_date", label: "Date of injury", type: "date" },
-    { name: "pain_score", label: "Pain score (0-10)", type: "number" },
-    { name: "sport_context", label: "Sport context (training, match…)" },
-    { name: "notes", label: "Notes", type: "textarea" },
-  ];
+  const fields = CASE_OPENING_FIELDS;
   return (
     <Panel title="Open a new injury case">
       <Input placeholder="Search athlete by name or ID" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -235,7 +231,7 @@ function OpenCaseStep({ userId, onOpened }: { userId: string; onOpened: () => vo
 }
 
 /* ---------- Step 4: Manage a case ---------- */
-type Sub = "assessment" | "rehab" | "exercises" | "followup" | "recovery" | "referrals" | "documents" | "record";
+type Sub = "opening" | "assessment" | "rehab" | "exercises" | "followup" | "recovery" | "referrals" | "documents" | "record";
 const SUBS: { v: Sub; l: string }[] = [
   { v: "assessment", l: "Assessment" }, { v: "rehab", l: "Rehab plan" }, { v: "exercises", l: "Exercises" },
   { v: "followup", l: "Follow-up review" }, { v: "recovery", l: "Recovery status" }, { v: "referrals", l: "Referrals & appointments" },
@@ -245,6 +241,7 @@ const SUBS: { v: Sub; l: string }[] = [
 function ManageStep({ userId }: { userId: string }) {
   const [q, setQ] = useState("");
   const [caseId, setCaseId] = useState("");
+  const [sort, setSort] = useState<CaseSort>("newest");
   const [sub, setSub] = useState<Sub>("assessment");
   const { data: cases } = useQuery({
     queryKey: ["cases"],
@@ -259,27 +256,32 @@ function ManageStep({ userId }: { userId: string }) {
   const filtered = useMemo(() => (cases ?? []).filter((c) =>
     `${c.injury_code} ${c.body_region} ${c.status} ${c.athletes?.first_name} ${c.athletes?.surname} ${c.athletes?.athlete_code} ${c.athletes?.schools?.name ?? ""}`
       .toLowerCase().includes(q.toLowerCase())), [cases, q]);
+  const grouped = groupCases(filtered, sort);
   const current = cases?.find((c) => c.id === caseId);
 
   if (!current) {
     return (
-      <Panel title="Search a case">
+      <Panel title="Cases by status">
+        <label className="flex items-center gap-3 text-sm font-medium">Arrange cases<select aria-label="Arrange cases" value={sort} onChange={(event) => setSort(event.target.value as CaseSort)} className="rounded-md border border-input bg-background px-3 py-2"><option value="newest">Newest first</option><option value="alphabetical">Athlete name A–Z</option></select></label>
         <Input placeholder="Search by case ID, athlete name/ID, body region, school or status" value={q} onChange={(e) => setQ(e.target.value)} />
-        <ul className="mt-4 space-y-2">
-          {filtered.map((c) => (
+        {grouped.map((group) => <details key={group.status} open className="border-b border-border py-3">
+          <summary className="cursor-pointer text-sm font-semibold capitalize">{group.status} ({group.cases.length})</summary>
+          <ul className="mt-3 space-y-2">
+          {group.cases.map((c) => (
             <li key={c.id}>
-              <button onClick={() => { setCaseId(c.id); setSub("assessment"); }} className="w-full rounded-lg border p-3 text-left text-sm transition-colors hover:border-primary">
+              <Button variant="outline" onClick={() => { setCaseId(c.id); setSub("opening"); }} className="block h-auto w-full whitespace-normal p-3 text-left text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-semibold text-primary">{c.injury_code}</span>
                   <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{c.status}</span>
                 </div>
                 <p className="flex items-center gap-2 text-foreground"><PhotoAvatar path={c.athletes?.photo_path} name={`${c.athletes?.first_name} ${c.athletes?.surname}`} className="size-7" />{c.athletes?.first_name} {c.athletes?.surname} · {c.body_region}</p>
                 <p className="text-xs text-muted-foreground">{c.athletes?.athlete_code} · {c.athletes?.schools?.name ?? "Independent"}</p>
-              </button>
+              </Button>
             </li>
           ))}
-          {!filtered.length && <li className="text-sm text-muted-foreground">No cases found.</li>}
-        </ul>
+          </ul>
+        </details>)}
+        {!filtered.length && <p className="text-sm text-muted-foreground">No cases found.</p>}
       </Panel>
     );
   }
@@ -297,9 +299,12 @@ function ManageStep({ userId }: { userId: string }) {
         </div>
         <Button variant="secondary" onClick={() => setCaseId("")}>Choose another case</Button>
       </div>
-      <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4 print:hidden">
-        {SUBS.map((s) => <Button key={s.v} size="sm" variant={sub === s.v ? "default" : "outline"} onClick={() => setSub(s.v)}>{s.l}</Button>)}
-      </nav>
+      <WorkspaceMenus value={sub} onSelect={(value) => setSub(value as Sub)} menus={[
+        { label: "Case information", items: [{ label: "Opening information", value: "opening" }, { label: "Assessment", value: "assessment" }, { label: "Full record", value: "record" }] },
+        { label: "Treatment & recovery", items: SUBS.filter((s) => ["rehab", "exercises", "followup", "recovery"].includes(s.v)).map((s) => ({ label: s.l, value: s.v })) },
+        { label: "Coordination", items: SUBS.filter((s) => ["referrals", "documents"].includes(s.v)).map((s) => ({ label: s.l, value: s.v })) },
+      ]} />
+      {sub === "opening" && <Panel title="Case opening information"><div className="flex justify-end"><CaseRecordEdit table="injuries" row={current} injuryId={current.id} /></div>{CASE_OPENING_FIELDS.map((field) => <Row key={field.name} label={field.label} value={current[field.name as keyof typeof current]} />)}</Panel>}
       {sub === "assessment" && <AssessmentSub {...ctx} />}
       {sub === "rehab" && <RehabSub {...ctx} />}
       {sub === "exercises" && <ExercisesSub {...ctx} />}
@@ -349,9 +354,9 @@ function useSaver(injuryId: string) {
   };
 }
 
-function History({ items, render }: { items: Record<string, unknown>[]; render: (i: any) => ReactNode }) {
+function History({ items, render, table, injuryId }: { items: Record<string, unknown>[]; render: (i: any) => ReactNode; table?: EditableCaseTable; injuryId?: string }) {
   if (!items.length) return <p className="text-sm text-muted-foreground">Nothing saved yet.</p>;
-  return <ul className="space-y-2">{items.map((i) => <li key={i["id"] as string} className="rounded-lg border p-3 text-sm">{render(i)}</li>)}</ul>;
+  return <ul className="space-y-2">{items.map((i) => <li key={i["id"] as string} className="rounded-lg border p-3 text-sm"><div className="flex items-start justify-between gap-3"><div className="min-w-0">{render(i)}</div>{table && injuryId && <CaseRecordEdit table={table} row={i} injuryId={injuryId} />}</div></li>)}</ul>;
 }
 
 const ASM_FIELDS: Field[] = [
@@ -362,7 +367,7 @@ const ASM_FIELDS: Field[] = [
     ["pain", "Pain"], ["observation", "Observation"], ["range_of_motion", "Range of motion"], ["strength", "Strength"],
     ["balance", "Balance"], ["functional_tests", "Functional tests"], ["sport_specific_findings", "Sport-specific findings"],
     ["red_flags", "Red flags"], ["clinical_impression", "Clinical impression"], ["plan", "Plan"], ["referral_recommendation", "Referral recommendation"],
-  ].map(([name, label]) => ({ name: name!, label: label!, type: "textarea" as const })),
+  ].map(([name, label]) => ({ name: name ?? "", label: label ?? "", type: "textarea" as const })),
   { name: "follow_up_date", label: "Follow-up date", type: "date" },
 ];
 
@@ -374,7 +379,7 @@ function AssessmentSub({ userId, injuryId, athleteId }: Ctx) {
       <SimpleForm fields={ASM_FIELDS} submitLabel="Save assessment" onSubmit={(v) =>
         save("assessments", { ...clean(v), injury_id: injuryId, athlete_id: athleteId, created_by: userId }, "Assessment saved")} />
       <h3 className="mb-2 mt-6 font-semibold">Saved assessments</h3>
-      <History items={data?.assessments ?? []} render={(a) => <><b className="text-primary">{a.assessment_code}</b> · {a.assessment_type ?? "Assessment"} · {a.assessment_date}<p className="text-muted-foreground">{a.clinical_impression}</p></>} />
+      <History table="assessments" injuryId={injuryId} items={data?.assessments ?? []} render={(a) => <><b className="text-primary">{a.assessment_code}</b> · {a.assessment_type ?? "Assessment"} · {a.assessment_date}<p className="text-muted-foreground">{a.clinical_impression}</p></>} />
     </Panel>
   );
 }
@@ -392,7 +397,7 @@ function RehabSub({ userId, injuryId, athleteId }: Ctx) {
         { name: "notes", label: "Notes", type: "textarea" },
       ]} onSubmit={(v) => save("rehabilitation_plans", { ...clean(v), injury_id: injuryId, athlete_id: athleteId, created_by: userId }, "Rehab plan saved")} />
       <h3 className="mb-2 mt-6 font-semibold">Plans</h3>
-      <History items={data?.plans ?? []} render={(p) => <><b className="text-primary">{p.plan_code}</b> · {p.phase ?? ""} · target {p.target_return_date ?? "—"}<p>{p.goals}</p></>} />
+      <History table="rehabilitation_plans" injuryId={injuryId} items={data?.plans ?? []} render={(p) => <><b className="text-primary">{p.plan_code}</b> · {p.phase ?? ""} · target {p.target_return_date ?? "—"}<p>{p.goals}</p></>} />
     </Panel>
   );
 }
@@ -411,7 +416,7 @@ function ExercisesSub({ userId, injuryId, athleteId }: Ctx) {
         { name: "instructions", label: "Instructions", type: "textarea" },
       ]} onSubmit={(v) => save("exercises", { ...clean(v, ["sets"]), injury_id: injuryId, athlete_id: athleteId, created_by: userId }, "Exercise added")} />
       <h3 className="mb-2 mt-6 font-semibold">Assigned exercises</h3>
-      <History items={data?.exercises ?? []} render={(e) => <><b>{e.name}</b> · {e.sets ?? "—"} sets × {e.reps ?? "—"} · {e.frequency ?? ""}<p className="text-muted-foreground">{e.instructions}</p></>} />
+      <History table="exercises" injuryId={injuryId} items={data?.exercises ?? []} render={(e) => <><b>{e.name}</b> · {e.sets ?? "—"} sets × {e.reps ?? "—"} · {e.frequency ?? ""}<p className="text-muted-foreground">{e.instructions}</p></>} />
     </Panel>
   );
 }
@@ -429,14 +434,15 @@ function FollowUpSub({ userId, injuryId, athleteId }: Ctx) {
         { name: "next_steps", label: "Next steps", type: "textarea" },
       ]} onSubmit={(v) => save("follow_ups", { ...clean(v, ["pain_score"]), injury_id: injuryId, athlete_id: athleteId, created_by: userId }, "Follow-up saved")} />
       <h3 className="mb-2 mt-6 font-semibold">Reviews</h3>
-      <History items={data?.followUps ?? []} render={(f) => <><b>{f.review_date}</b> · pain {f.pain_score ?? "—"}/10<p>{f.progress}</p></>} />
+      <History table="follow_ups" injuryId={injuryId} items={data?.followUps ?? []} render={(f) => <><b>{f.review_date}</b> · pain {f.pain_score ?? "—"}/10<p>{f.progress}</p></>} />
     </Panel>
   );
 }
 
-const RECOVERY = ["new", "assessed", "in rehab", "modified training", "return to play", "recovered", "referred"];
+const RECOVERY = CASE_STATUSES;
 
 function RecoverySub({ userId, injuryId, athleteId }: Ctx) {
+  const qc = useQueryClient();
   const save = useSaver(injuryId);
   const { data } = useCaseRecord(injuryId);
   return (
@@ -446,10 +452,14 @@ function RecoverySub({ userId, injuryId, athleteId }: Ctx) {
         { name: "notes", label: "Notes", type: "textarea" },
       ]} onSubmit={async (v) => {
         await save("recovery_updates", { ...clean(v), injury_id: injuryId, athlete_id: athleteId, created_by: userId }, "Status updated");
-        await supabase.from("injuries").update({ status: v["status"]! }).eq("id", injuryId);
+        const status = v["status"];
+        if (!status) return;
+        const { error } = await supabase.from("injuries").update({ status }).eq("id", injuryId).select("id").single();
+        if (error) { toast.error(error.message); throw error; }
+        await Promise.all([qc.invalidateQueries({ queryKey: ["cases"] }), qc.invalidateQueries({ queryKey: ["case-record", injuryId] }), qc.invalidateQueries({ queryKey: ["dashboard"] })]);
       }} />
       <h3 className="mb-2 mt-6 font-semibold">Status history</h3>
-      <History items={data?.recovery ?? []} render={(r) => <><b className="text-primary">{r.status}</b> · {new Date(r.created_at).toLocaleDateString()}<p>{r.notes}</p></>} />
+      <History table="recovery_updates" injuryId={injuryId} items={data?.recovery ?? []} render={(r) => <><b className="text-primary">{r.status}</b> · {new Date(r.created_at).toLocaleDateString()}<p>{r.notes}</p></>} />
     </Panel>
   );
 }
@@ -464,15 +474,15 @@ function ReferralsSub({ userId, injuryId, athleteId }: Ctx) {
           { name: "referred_to", label: "Referred to", required: true, full: true },
           { name: "reason", label: "Reason", type: "textarea" },
         ]} onSubmit={(v) => save("referrals", { ...clean(v), injury_id: injuryId, athlete_id: athleteId, created_by: userId }, "Referral added")} />
-        <div className="mt-4"><History items={data?.referrals ?? []} render={(r) => <><b className="text-primary">{r.referral_code}</b> · {r.referred_to} · {r.status}<p>{r.reason}</p></>} /></div>
+        <div className="mt-4"><History table="referrals" injuryId={injuryId} items={data?.referrals ?? []} render={(r) => <><b className="text-primary">{r.referral_code}</b> · {r.referred_to} · {r.status}<p>{r.reason}</p></>} /></div>
       </Panel>
       <Panel title="Appointments">
         <SimpleForm submitLabel="Schedule" fields={[
           { name: "scheduled_at", label: "Date & time", type: "datetime-local", required: true, full: true },
           { name: "location", label: "Location" },
           { name: "purpose", label: "Purpose" },
-        ]} onSubmit={(v) => save("appointments", { ...clean(v), scheduled_at: new Date(v["scheduled_at"]!).toISOString(), injury_id: injuryId, athlete_id: athleteId, created_by: userId }, "Appointment scheduled")} />
-        <div className="mt-4"><History items={data?.appointments ?? []} render={(a) => <><b className="text-primary">{a.appointment_code}</b> · {new Date(a.scheduled_at).toLocaleString()}<p>{a.purpose} {a.location && `@ ${a.location}`}</p></>} /></div>
+        ]} onSubmit={(v) => save("appointments", { ...clean(v), scheduled_at: new Date(v["scheduled_at"] ?? "").toISOString(), injury_id: injuryId, athlete_id: athleteId, created_by: userId }, "Appointment scheduled")} />
+        <div className="mt-4"><History table="appointments" injuryId={injuryId} items={data?.appointments ?? []} render={(a) => <><b className="text-primary">{a.appointment_code}</b> · {new Date(a.scheduled_at).toLocaleString()}<p>{a.purpose} {a.location && `@ ${a.location}`}</p></>} /></div>
       </Panel>
     </div>
   );
@@ -514,7 +524,7 @@ function DocumentsSub({ userId, injuryId, athleteId }: Ctx) {
         <Button onClick={upload} disabled={busy}>{busy ? "Uploading…" : "Upload PDF"}</Button>
       </div>
       <div className="mt-4">
-        <History items={data?.documents ?? []} render={(d) => (
+        <History table="documents" injuryId={injuryId} items={data?.documents ?? []} render={(d) => (
           <div className="flex items-center justify-between gap-2">
             <span><b>{d.title}</b> · {new Date(d.created_at).toLocaleDateString()}</span>
             <Button size="sm" variant="outline" onClick={() => open(d.storage_path)}>Open</Button>
@@ -561,6 +571,7 @@ function RecordSub({ userId, injuryId, athleteId, schoolId, caseCode }: Ctx & { 
           <Row label="School" value={a?.schools?.name ?? "Independent"} /><Row label="Date of birth" value={a?.date_of_birth} />
         </Section>
         <Section title="Injury">
+          <CaseRecordEdit table="injuries" row={injury} injuryId={injuryId} />
           <Row label="Body region" value={injury.body_region} /><Row label="Mechanism" value={injury.mechanism} />
           <Row label="Date" value={injury.injury_date} /><Row label="Pain" value={injury.pain_score != null ? `${injury.pain_score}/10` : null} />
           <Row label="Sport context" value={injury.sport_context} /><Row label="Status" value={injury.status} /><Row label="Notes" value={injury.notes} />

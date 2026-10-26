@@ -432,7 +432,6 @@ export function SocialFeed({ viewerId }: { viewerId: string }) {
     queryKey: ["social-posts", "feed", viewerId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("list_social_posts", {
-        _profile_id: null,
         _tab: "feed",
         _limit: 40,
         _offset: 0,
@@ -507,9 +506,8 @@ export function SocialComposerDialog({
     try {
       const mediaPath = file ? await fileToSocialPostPhotoPath(file) : null;
       const { error } = await supabase.rpc("create_social_post", {
-        _body: body.trim() || null,
-        _media_path: mediaPath,
-        _parent_post_id: null,
+        ...(body.trim() ? { _body: body.trim() } : {}),
+        ...(mediaPath ? { _media_path: mediaPath } : {}),
       });
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["social-posts"] });

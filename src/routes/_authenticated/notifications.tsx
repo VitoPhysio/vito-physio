@@ -29,6 +29,14 @@ import { useHealth, STAGE_LABEL } from "@/components/athlete/data";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/notifications")({
+  head: () => ({ meta: [
+    { title: "Care notifications — VITO Physio" },
+    { name: "description", content: "Your VITO Physio care updates and notifications." },
+    { property: "og:title", content: "Care notifications — VITO Physio" },
+    { property: "og:description", content: "Your VITO Physio care updates and notifications." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: NotificationsPage,
 });
 
@@ -38,13 +46,13 @@ type NotificationData = {
   phone?: string;
   organisation_type?: string;
   message?: string;
-  sender?: string;
+  sender?: string | undefined;
   sender_id?: string;
-  subject?: string | null;
-  audience?: string | null;
-  recipient?: string | null;
+  subject?: string | null | undefined;
+  audience?: string | null | undefined;
+  recipient?: string | null | undefined;
   is_mine?: boolean;
-  injury_id?: string;
+  injury_id?: string | null;
   status?: string;
   source?: string;
 };
@@ -474,6 +482,7 @@ function ConversationSection({
           <div className="divide-y dark:divide-white/10">
             {groups.map((group, index) => {
               const latest = group.items[0];
+              if (!latest) return null;
               const unread = group.items.some((item) => !item.data.is_mine);
               return (
                 <button
@@ -708,7 +717,7 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
-function Detail({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value?: string }) {
+function Detail({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value?: string | undefined }) {
   return (
     <div className="flex items-start gap-2">
       <Icon className="mt-0.5 size-4 shrink-0 text-primary" />
