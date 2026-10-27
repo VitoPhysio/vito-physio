@@ -21,11 +21,17 @@ function AuthenticatedLayout() {
 
   return (
     <>
-      {!isMessages && <AppHeader user={user} />}
-      <div
-        className={isMessages || isWorkspace ? "" : "pb-[calc(5rem+env(safe-area-inset-bottom))]"}
-      >
-        <Outlet />
+      <div className={isWorkspace ? "" : "side:pl-20"}>
+        {!isMessages && <AppHeader user={user} />}
+        <div
+          className={
+            isMessages || isWorkspace
+              ? ""
+              : "pb-[calc(5rem+env(safe-area-inset-bottom))] side:pb-0"
+          }
+        >
+          <Outlet />
+        </div>
       </div>
       {!isWorkspace && <SignedInBottomNavigation userId={user.id} />}
     </>

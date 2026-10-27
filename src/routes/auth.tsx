@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhotoPicker, fileToPhotoPath } from "@/components/vito/Photo";
-import { signInWithIdentifier } from "@/lib/auth.functions";
+import { setupAthleteIdLogin, signInWithIdentifier } from "@/lib/auth.functions";
 import { useQuery } from "@tanstack/react-query";
 import { listOrganisations } from "@/lib/intake.functions";
 import { selectClass } from "@/components/vito/SimpleForm";
@@ -45,6 +45,8 @@ function AuthPage() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [setup, setSetup] = useState(false);
+  const [surname, setSurname] = useState("");
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const orgs = useQuery({ queryKey: ["org-list"], queryFn: () => listOrganisations() });
 
@@ -153,9 +155,21 @@ function AuthPage() {
       );
     } else {
       try {
-        const session = await signInWithIdentifier({
-          data: { identifier: identifier.trim(), password },
-        });
+        if (setup) {
+          if (password.length < 8) throw new Error("Choose a password of at least 8 characters.");
+          const confirm = new FormData(e.currentTarget as HTMLFormElement).get("confirm");
+          if (confirm !== password) throw new Error("Passwords do not match.");
+        }
+        const session = setup
+          ? await setupAthleteIdLogin({ data: { code: identifier.trim(), surname, password } })
+          : await signInWithIdentifier({ data: { identifier: identifier.trim(), password } });
+        if ("needsPassword" in session) {
+          setSetup(true);
+          setPassword("");
+          setMsg({ kind: "ok", text: "Welcome! Your clinician registered this athlete ID. Confirm your surname and create a password to finish setting up your login." });
+          setBusy(false);
+          return;
+        }
         const { error } = await supabase.auth.setSession(session);
         if (error) throw error;
         navigate({ to: "/" });
@@ -278,16 +292,16 @@ function AuthPage() {
           )}
           <div className="space-y-1">
             <Label htmlFor="email">
-              {mode === "signin" ? "Email or VITO account ID" : "Email"}
+              {mode === "signin" ? "Email, athlete ID or VITO account ID" : "Email"}
             </Label>
             <Input
               id="email"
               type={mode === "signin" ? "text" : "email"}
               required
               value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              onChange={(e) => { setIdentifier(e.target.value); setSetup(false); }}
               placeholder={
-                mode === "signin" ? "name@example.com or VITO-ACC-…" : "name@example.com"
+                mode === "signin" ? "name@example.com or VITO-ATH-…" : "name@example.com"
               }
               autoComplete="username"
             />
@@ -298,12 +312,18 @@ function AuthPage() {
               id="pw"
               type="password"
               required
-              minLength={mode === "signup" ? 8 : 1}
+              minLength={mode === "signup" || setup ? 8 : 1}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          {mode === "signup" && (
+          {mode === "signin" && setup && (
+            <div className="space-y-1">
+              <Label htmlFor="surname">Surname</Label>
+              <Input id="surname" required value={surname} onChange={(e) => setSurname(e.target.value)} />
+            </div>
+          )}
+          {(mode === "signup" || setup) && (
             <div className="space-y-1">
               <Label htmlFor="confirm">Confirm password</Label>
               <Input id="confirm" name="confirm" type="password" required minLength={8} />

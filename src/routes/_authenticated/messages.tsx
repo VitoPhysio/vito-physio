@@ -221,7 +221,7 @@ function MessagesPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-foreground">
+    <div className="fixed inset-0 z-[100] side:left-20 flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-foreground">
       {!selected && (
         <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-3 shadow-sm sm:px-6">
           <div className="flex min-w-0 items-center gap-3">

@@ -3,6 +3,7 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant side (@media (min-width: 768px), (orientation: landscape) and (min-width: 560px));
 
 /*
  * Design system definition.

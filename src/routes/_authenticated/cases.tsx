@@ -138,17 +138,11 @@ function AthletesStep({ userId }: { userId: string }) {
     { name: "date_of_birth", label: "Date of birth", type: "date" },
     { name: "gender", label: "Gender", type: "select", options: [{ value: "male", label: "Male" }, { value: "female", label: "Female" }] },
     { name: "phone", label: "Phone" },
-    { name: "athlete_number", label: "Athlete number" },
     { name: "school_id", label: "School / academy / club (leave empty if independent)", type: "select",
       options: (data?.schools ?? []).map((s) => ({ value: s.id, label: `${s.name} (${s.school_type})` })) },
   ];
   const list = (data?.athletes ?? []).filter((a) =>
     `${a.first_name} ${a.surname} ${a.athlete_code} ${a.sport ?? ""} ${a.schools?.name ?? "independent"}`.toLowerCase().includes(q.toLowerCase()));
-
-  async function saveNumber(id: string, value: string) {
-    const { error } = await supabase.from("athletes").update({ athlete_number: value || null }).eq("id", id);
-    if (error) toast.error(error.message); else { toast.success("Athlete number saved"); qc.invalidateQueries({ queryKey: ["registry"] }); }
-  }
 
   return (
     <>
@@ -165,7 +159,7 @@ function AthletesStep({ userId }: { userId: string }) {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase text-muted-foreground">
-              <tr><th className="p-2">ID</th><th className="p-2">Photo</th><th className="p-2">Name</th><th className="p-2">Sport</th><th className="p-2">School</th><th className="p-2">Athlete no.</th></tr>
+              <tr><th className="p-2">ID</th><th className="p-2">Photo</th><th className="p-2">Name</th><th className="p-2">Sport</th><th className="p-2">School</th></tr>
             </thead>
             <tbody>
               {list.map((a) => (
@@ -175,9 +169,6 @@ function AthletesStep({ userId }: { userId: string }) {
                   <td className="p-2 font-medium">{a.first_name} {a.surname}</td>
                   <td className="p-2">{a.sport ?? "—"}</td>
                   <td className="p-2">{a.schools?.name ?? "Independent"}</td>
-                  <td className="p-2">
-                    <Input defaultValue={a.athlete_number ?? ""} className="h-8 w-28" onBlur={(e) => e.target.value !== (a.athlete_number ?? "") && saveNumber(a.id, e.target.value)} />
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -567,7 +558,7 @@ function RecordSub({ userId, injuryId, athleteId, schoolId, caseCode }: Ctx & { 
         <Section title="Athlete">
           {a?.photo_path && <div className="col-span-full"><PhotoAvatar path={a.photo_path} name={`${a.first_name} ${a.surname}`} className="size-20" /></div>}
           <Row label="Name" value={`${a?.first_name} ${a?.surname}`} /><Row label="Athlete ID" value={a?.athlete_code} />
-          <Row label="Athlete no." value={a?.athlete_number} /><Row label="Sport" value={a?.sport} />
+          <Row label="Sport" value={a?.sport} />
           <Row label="School" value={a?.schools?.name ?? "Independent"} /><Row label="Date of birth" value={a?.date_of_birth} />
         </Section>
         <Section title="Injury">
