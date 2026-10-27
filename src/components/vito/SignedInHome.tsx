@@ -319,13 +319,13 @@ export function SignedInBottomNavigation({ userId }: { userId: string }) {
     <>
       <nav
         aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 z-[70] border-t bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-background/85 print:hidden"
+        className="fixed inset-x-0 bottom-0 z-[70] border-t side:inset-y-0 side:right-auto side:w-20 side:border-t-0 side:border-r side:pt-[env(safe-area-inset-top)] bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-background/85 print:hidden"
       >
-        <div className="mx-auto grid h-16 max-w-xl grid-cols-4 px-2 sm:h-[4.5rem] sm:px-4">
+        <div className="mx-auto grid h-16 max-w-xl grid-cols-4 px-2 sm:h-[4.5rem] sm:px-4 side:flex side:h-full side:flex-col side:justify-center side:gap-3 side:px-1">
           <Link
             to="/"
             aria-current={onHome ? "page" : undefined}
-            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${onHome ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl side:py-3 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${onHome ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Home aria-hidden="true" className={`size-5 ${onHome ? "fill-primary/10" : ""}`} />
             <span>Home</span>
@@ -335,7 +335,7 @@ export function SignedInBottomNavigation({ userId }: { userId: string }) {
             onClick={() => setComposerOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={composerOpen}
-            className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl side:py-3 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span className="grid size-7 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm">
               <Plus aria-hidden="true" className="size-5" />
@@ -345,7 +345,7 @@ export function SignedInBottomNavigation({ userId }: { userId: string }) {
           <Link
             to="/messages"
             aria-current={onMessages ? "page" : undefined}
-            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${onMessages ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl side:py-3 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${onMessages ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
             <MessageCircle aria-hidden="true" className="size-5" />
             <span>Messages</span>
@@ -353,7 +353,7 @@ export function SignedInBottomNavigation({ userId }: { userId: string }) {
           <Link
             to="/profile"
             aria-current={onProfile ? "page" : undefined}
-            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${onProfile ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl side:py-3 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${onProfile ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
             <UserRound aria-hidden="true" className="size-5" />
             <span>My Profile</span>

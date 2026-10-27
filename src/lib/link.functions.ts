@@ -14,6 +14,18 @@ export const linkAccount = createServerFn({ method: 'POST' })
       if (!/^VITO-ATH-\d{6,8}$/.test(data.code) || !data.surname) return false;
       const { data: athlete } = await supabaseAdmin.from('athletes').select('id').eq('athlete_code', data.code).ilike('surname', data.surname).maybeSingle();
       if (!athlete) return false;
+      if (role === 'athlete') {
+        // Avoid the same athlete appearing twice: move this login from its self-registered record to the clinician's record.
+        const { data: claimed } = await supabaseAdmin.from('athlete_guardians').select('user_id').eq('athlete_id', athlete.id).eq('relationship', 'self').neq('user_id', context.userId).limit(1).maybeSingle();
+        if (claimed) throw new Error('This athlete ID is already linked to another login.');
+        const { data: own } = await supabaseAdmin.from('athlete_guardians').select('id, athlete_id, athletes(self_registered)').eq('user_id', context.userId).eq('relationship', 'self').neq('athlete_id', athlete.id);
+        for (const row of own ?? []) {
+          if (!row.athletes?.self_registered) continue;
+          await supabaseAdmin.from('athlete_guardians').delete().eq('id', row.id);
+          const { count } = await supabaseAdmin.from('injuries').select('id', { count: 'exact', head: true }).eq('athlete_id', row.athlete_id);
+          if (!count) await supabaseAdmin.from('athletes').delete().eq('id', row.athlete_id);
+        }
+      }
       const { error } = await supabaseAdmin.from('athlete_guardians').upsert({ user_id: context.userId, athlete_id: athlete.id, relationship: role === 'parent' ? 'parent' : 'self' }, { onConflict: 'user_id,athlete_id' });
       if (error) throw error;
       return true;
