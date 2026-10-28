@@ -197,7 +197,7 @@ function Index() {
   return (
     <div
       className={`min-h-screen bg-background text-foreground ${
-        currentUser ? "pb-[calc(5rem+env(safe-area-inset-bottom))]" : ""
+        currentUser ? "pb-[calc(5rem+env(safe-area-inset-bottom))] side:pl-20 side:pb-0" : ""
       }`}
     >
       {currentUser ? (

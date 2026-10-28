@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/rea
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/vito/AppHeader";
 import { SignedInBottomNavigation } from "@/components/vito/SignedInHome";
+import { isWorkspacePath } from "@/lib/workspace-navigation";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -17,7 +18,7 @@ function AuthenticatedLayout() {
   const { user } = Route.useRouteContext();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const isMessages = pathname === "/messages";
-  const isWorkspace = pathname === "/dashboard";
+  const isWorkspace = isWorkspacePath(pathname);
 
   return (
     <>
