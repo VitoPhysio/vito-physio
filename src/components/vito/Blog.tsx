@@ -3,20 +3,28 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import ReactMarkdown from "react-markdown";
+import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import {
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
+  Bold,
+  Bookmark,
   BookOpen,
   Check,
   Clock3,
   FileText,
   HeartPulse,
   ImagePlus,
+  Palette,
+  Type,
+  Eraser,
   PenLine,
   Search,
+  Share2,
   Sparkles,
+  Underline,
   Tag,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -370,6 +378,20 @@ export function BlogArticlePage({ user, slug }: { user: User; slug: string }) {
     },
   });
   const article = articleQuery.data;
+  const bookmarkQuery = useQuery({
+    queryKey: ["blog-bookmark", user.id, article?.id],
+    enabled: Boolean(article?.id && article.status === "published"),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("blog_bookmarks")
+        .select("article_id")
+        .eq("user_id", user.id)
+        .eq("article_id", article!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return Boolean(data);
+    },
+  });
   const related = useQuery({
     queryKey: ["blog-related", article?.id, article?.category],
     enabled: Boolean(article && article.status === "published"),
@@ -386,6 +408,40 @@ export function BlogArticlePage({ user, slug }: { user: User; slug: string }) {
       return data ?? [];
     },
   });
+
+  async function toggleBookmark() {
+    if (!article) return;
+    const currentlySaved = Boolean(bookmarkQuery.data);
+    const result = currentlySaved
+      ? await supabase
+          .from("blog_bookmarks")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("article_id", article.id)
+      : await supabase.from("blog_bookmarks").insert({ user_id: user.id, article_id: article.id });
+    if (result.error) {
+      toast.error("Your bookmark could not be updated. Please try again.");
+      return;
+    }
+    await bookmarkQuery.refetch();
+    toast.success(currentlySaved ? "Bookmark removed." : "Article bookmarked.");
+  }
+
+  async function shareArticle() {
+    if (!article || typeof window === "undefined") return;
+    const shareData = { title: article.title, text: article.excerpt, url: window.location.href };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success("Article link copied.");
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      toast.error("Could not share the article. You can copy its link from the address bar.");
+    }
+  }
 
   if (articleQuery.isLoading || access.isLoading) {
     return (
@@ -473,6 +529,34 @@ export function BlogArticlePage({ user, slug }: { user: User; slug: string }) {
               {formatDate(article.published_at ?? article.created_at)}
             </time>
           </div>
+          {article.status === "published" && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={() => void shareArticle()}
+              >
+                <Share2 className="mr-2 size-4" /> Share article
+              </Button>
+              <Button
+                type="button"
+                variant={bookmarkQuery.data ? "secondary" : "outline"}
+                size="sm"
+                className="rounded-full"
+                disabled={bookmarkQuery.isLoading}
+                aria-pressed={Boolean(bookmarkQuery.data)}
+                onClick={() => void toggleBookmark()}
+              >
+                <Bookmark
+                  className="mr-2 size-4"
+                  fill={bookmarkQuery.data ? "currentColor" : "none"}
+                />
+                {bookmarkQuery.data ? "Bookmarked" : "Bookmark"}
+              </Button>
+            </div>
+          )}
         </header>
         {article.cover_image_url && (
           <div className="mx-auto mb-10 max-w-4xl overflow-hidden rounded-3xl border">
@@ -553,6 +637,8 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [formatColor, setFormatColor] = useState("violet");
+  const [formatSize, setFormatSize] = useState("18");
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [initialized, setInitialized] = useState(false);
@@ -614,6 +700,53 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   function updateTitle(value: string) {
     setTitle(value);
     if (!articleId || !initialized) setSlug(slugify(value));
+  }
+
+  function formatSelectedText(format: "bold" | "underline" | "color" | "size" | "clear") {
+    const textarea = contentRef.current;
+    const start = textarea?.selectionStart ?? 0;
+    const end = textarea?.selectionEnd ?? 0;
+    if (!textarea || start === end) {
+      toast.error("Select some text in your story first.");
+      return;
+    }
+    let replaceStart = start;
+    let replaceEnd = end;
+    let selected = content.slice(start, end);
+    const before = content.slice(0, start);
+    const after = content.slice(end);
+    const directivePrefix = before.match(/:(?:color|size|underline|plain)\[$/);
+    const directiveSuffix = after.match(/^\](?:\{\.blog-(?:color|size)-[a-z0-9-]+\})?/);
+    const hasBoldWrapper = before.endsWith("**") && after.startsWith("**");
+    if (directivePrefix && directiveSuffix) {
+      replaceStart -= directivePrefix[0].length;
+      replaceEnd += directiveSuffix[0].length;
+    } else if (hasBoldWrapper) {
+      replaceStart -= 2;
+      replaceEnd += 2;
+      selected = `**${selected}**`;
+    }
+    const cleaned = selected
+      .replace(
+        new RegExp(String.raw`:(?:color|size|underline|plain)\[([^\]]*)\](?:\{[^}]*\})?`, "g"),
+        "$1",
+      )
+      .replace(/<\/?u>/gi, "")
+      .replace(/\*\*(.*?)\*\*/gs, "$1")
+      .replace(/__(.*?)__/gs, "$1")
+      .replace(/~~(.*?)~~/gs, "$1");
+    let replacement: string;
+    if (format === "bold") replacement = `**${cleaned}**`;
+    else if (format === "underline") replacement = `:underline[${cleaned}]`;
+    else if (format === "color") replacement = `:color[${cleaned}]{.blog-color-${formatColor}}`;
+    else if (format === "size") replacement = `:size[${cleaned}]{.blog-size-${formatSize}}`;
+    else replacement = `:plain[${cleaned}]`;
+    const next = `${content.slice(0, replaceStart)}${replacement}${content.slice(replaceEnd)}`;
+    setContent(next);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(replaceStart, replaceStart + replacement.length);
+    });
   }
 
   async function insertArticlePhoto(file: File, input: HTMLInputElement) {
@@ -914,6 +1047,94 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                       </Button>
                     </div>
                   </div>
+                  <div
+                    className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/30 p-2"
+                    role="toolbar"
+                    aria-label="Text formatting"
+                  >
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-3"
+                      aria-label="Bold selected text"
+                      onClick={() => formatSelectedText("bold")}
+                    >
+                      <Bold className="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-3"
+                      aria-label="Underline selected text"
+                      onClick={() => formatSelectedText("underline")}
+                    >
+                      <Underline className="size-4" />
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      <select
+                        aria-label="Choose text color"
+                        value={formatColor}
+                        onChange={(event) => setFormatColor(event.target.value)}
+                        className="h-9 rounded-md border bg-background px-2 text-sm"
+                      >
+                        <option value="violet">Violet</option>
+                        <option value="blue">Blue</option>
+                        <option value="teal">Teal</option>
+                        <option value="rose">Rose</option>
+                        <option value="amber">Amber</option>
+                      </select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-3"
+                        aria-label="Apply text color"
+                        onClick={() => formatSelectedText("color")}
+                      >
+                        <Palette className="mr-1 size-4" /> Color
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <select
+                        aria-label="Choose font size"
+                        value={formatSize}
+                        onChange={(event) => setFormatSize(event.target.value)}
+                        className="h-9 rounded-md border bg-background px-2 text-sm"
+                      >
+                        {[12, 14, 16, 18, 20, 24, 28, 32].map((size) => (
+                          <option key={size} value={size}>
+                            {size}px
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 px-3"
+                        aria-label="Apply font size"
+                        onClick={() => formatSelectedText("size")}
+                      >
+                        <Type className="mr-1 size-4" /> Size
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 px-3 text-muted-foreground"
+                      aria-label="Remove formatting and automatic highlight from selected text"
+                      onClick={() => formatSelectedText("clear")}
+                    >
+                      <Eraser className="mr-1 size-4" /> Clear
+                    </Button>
+                  </div>
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    Select words or a phrase, then apply formatting. Clear removes styling and turns
+                    off automatic highlighting for that selection.
+                  </p>
                   <Textarea
                     ref={contentRef}
                     disabled={uploadingPhoto}
@@ -993,6 +1214,47 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   );
 }
 
+type BlogDirectiveNode = {
+  type?: string;
+  name?: string;
+  attributes?: Record<string, string | null | undefined>;
+  data?: { hName?: string; hProperties?: Record<string, unknown> };
+  children?: unknown[];
+};
+
+const blogFormattingPlugin =
+  () =>
+  (tree: unknown): void => {
+    const transform = (value: unknown): void => {
+      if (!value || typeof value !== "object") return;
+      const node = value as BlogDirectiveNode;
+      if (node.type === "textDirective" && node.name) {
+        const classes = ["blog-manual-format"];
+        const attributes = node.attributes ?? {};
+        const rawClasses = attributes["class"] ?? attributes["className"];
+        if (typeof rawClasses === "string") classes.push(...rawClasses.split(/\s+/));
+
+        if (node.name === "underline") {
+          node.data = { hName: "u", hProperties: { className: classes } };
+        } else if (node.name === "plain") {
+          node.data = { hName: "span", hProperties: { className: [...classes, "blog-no-auto"] } };
+        } else if (node.name === "color" || node.name === "size") {
+          const allowedClasses = classes.filter((name) =>
+            node.name === "color"
+              ? /^blog-color-(violet|blue|teal|rose|amber)$/.test(name)
+              : /^blog-size-(12|14|16|18|20|24|28|32)$/.test(name),
+          );
+          node.data = {
+            hName: "span",
+            hProperties: { className: ["blog-manual-format", ...allowedClasses] },
+          };
+        }
+      }
+      node.children?.forEach(transform);
+    };
+    transform(tree);
+  };
+
 const BLOG_KEYWORD_PATTERN = new RegExp(
   String.raw`\b(?:sports performance|sports injury|return to sport|return to play|injury prevention|strength training|physical therapy|warm-up|warm up|rehabilitation|physiotherapy|flexibility|performance|movement|mobility|recovery|balance|strength|training|sports?|athletes?|coach|injuries|injury)\b`,
   "gi",
@@ -1019,8 +1281,15 @@ function highlightKeywordText(text: string): ReactNode {
 function highlightMarkdownChildren(children: ReactNode): ReactNode {
   return Children.map(children, (child) => {
     if (typeof child === "string") return highlightKeywordText(child);
-    if (!isValidElement<{ children?: ReactNode }>(child)) return child;
+    if (!isValidElement<{ children?: ReactNode; className?: string }>(child)) return child;
+    if (child.props.className?.includes("blog-manual-format")) return child;
     if (child.type === "code" || child.type === "pre" || child.type === "mark") return child;
+    if (
+      typeof child.type === "string" &&
+      child.type === "span" &&
+      child.props.className?.includes?.("blog-no-auto")
+    )
+      return child;
     if (
       typeof child.type === "string" &&
       ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "td", "th"].includes(child.type)
@@ -1033,9 +1302,9 @@ function highlightMarkdownChildren(children: ReactNode): ReactNode {
 
 export function BlogMarkdown({ content }: { content: string }) {
   return (
-    <div className="space-y-5 break-words text-[1.0625rem] leading-8 text-foreground/90 [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/30 [&_a]:underline-offset-4 hover:[&_a]:decoration-primary [&_blockquote]:my-7 [&_blockquote]:border-l-4 [&_blockquote]:border-accent [&_blockquote]:pl-5 [&_blockquote]:font-serif [&_blockquote]:text-xl [&_blockquote]:italic [&_code]:rounded [&_code]:bg-secondary [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.9em] [&_h2]:mb-3 [&_h2]:mt-10 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:leading-tight sm:[&_h2]:text-3xl [&_h3]:mb-2 [&_h3]:mt-8 [&_h3]:font-serif [&_h3]:text-xl [&_h3]:font-bold [&_img]:mx-auto [&_img]:my-8 [&_img]:max-h-[40rem] [&_img]:rounded-2xl [&_img]:object-contain [&_li]:my-2 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6 [&_p]:my-5 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-foreground [&_pre]:p-4 [&_pre]:text-background [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_hr]:my-8 [&_hr]:border-border [&_mark]:rounded-sm [&_mark]:bg-violet-100 [&_mark]:px-1 [&_mark]:py-0.5 [&_mark]:font-semibold [&_mark]:text-violet-950 dark:[&_mark]:bg-violet-900/70 dark:[&_mark]:text-violet-100">
+    <div className="space-y-5 break-words text-[1.0625rem] leading-8 text-foreground/90 [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/30 [&_a]:underline-offset-4 hover:[&_a]:decoration-primary [&_blockquote]:my-7 [&_blockquote]:border-l-4 [&_blockquote]:border-accent [&_blockquote]:pl-5 [&_blockquote]:font-serif [&_blockquote]:text-xl [&_blockquote]:italic [&_code]:rounded [&_code]:bg-secondary [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.9em] [&_h2]:mb-3 [&_h2]:mt-10 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:leading-tight sm:[&_h2]:text-3xl [&_h3]:mb-2 [&_h3]:mt-8 [&_h3]:font-serif [&_h3]:text-xl [&_h3]:font-bold [&_img]:mx-auto [&_img]:my-8 [&_img]:max-h-[40rem] [&_img]:rounded-2xl [&_img]:object-contain [&_li]:my-2 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6 [&_p]:my-5 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-foreground [&_pre]:p-4 [&_pre]:text-background [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_hr]:my-8 [&_hr]:border-border [&_mark]:rounded-sm [&_mark]:bg-violet-100 [&_mark]:px-1 [&_mark]:py-0.5 [&_mark]:font-semibold [&_mark]:text-violet-950 dark:[&_mark]:bg-violet-900/70 dark:[&_mark]:text-violet-100 [&_.blog-color-violet]:text-violet-700 dark:[&_.blog-color-violet]:text-violet-300 [&_.blog-color-blue]:text-blue-700 dark:[&_.blog-color-blue]:text-blue-300 [&_.blog-color-teal]:text-teal-700 dark:[&_.blog-color-teal]:text-teal-300 [&_.blog-color-rose]:text-rose-700 dark:[&_.blog-color-rose]:text-rose-300 [&_.blog-color-amber]:text-amber-700 dark:[&_.blog-color-amber]:text-amber-300 [&_.blog-size-12]:text-[12px] [&_.blog-size-14]:text-[14px] [&_.blog-size-16]:text-[16px] [&_.blog-size-18]:text-[18px] [&_.blog-size-20]:text-[20px] [&_.blog-size-24]:text-[24px] [&_.blog-size-28]:text-[28px] [&_.blog-size-32]:text-[32px]">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkDirective, blogFormattingPlugin]}
         components={{
           p: ({ children, ...props }) => <p {...props}>{highlightMarkdownChildren(children)}</p>,
           h1: ({ children, ...props }) => <h1 {...props}>{highlightMarkdownChildren(children)}</h1>,
@@ -1047,6 +1316,18 @@ export function BlogMarkdown({ content }: { content: string }) {
           li: ({ children, ...props }) => <li {...props}>{highlightMarkdownChildren(children)}</li>,
           td: ({ children, ...props }) => <td {...props}>{highlightMarkdownChildren(children)}</td>,
           th: ({ children, ...props }) => <th {...props}>{highlightMarkdownChildren(children)}</th>,
+          span: ({ children, className, ...props }) => (
+            <span className={className} {...props}>
+              {String(className ?? "").includes("blog-manual-format")
+                ? children
+                : highlightMarkdownChildren(children)}
+            </span>
+          ),
+          u: ({ children, className, ...props }) => (
+            <u className={className} {...props}>
+              {children}
+            </u>
+          ),
         }}
       >
         {content}
