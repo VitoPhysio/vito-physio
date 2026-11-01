@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhotoPicker, fileToPhotoPath } from "@/components/vito/Photo";
-import { setupAthleteIdLogin, signInWithIdentifier } from "@/lib/auth.functions";
+import { claimGoogleSignupRole, setupAthleteIdLogin, signInWithIdentifier } from "@/lib/auth.functions";
+import { googleSignupRole } from "@/lib/google-signup";
 import { useQuery } from "@tanstack/react-query";
 import { listOrganisations } from "@/lib/intake.functions";
 import { selectClass } from "@/components/vito/SimpleForm";
@@ -39,6 +41,7 @@ const NEEDS_APPROVAL = ["vito_admin", "clinical_professional"];
 
 function AuthPage() {
   const navigate = useNavigate();
+  const claimRole = useServerFn(claimGoogleSignupRole);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [role, setRole] = useState("athlete");
   const [fullName, setFullName] = useState("");
@@ -49,6 +52,53 @@ function AuthPage() {
   const [surname, setSurname] = useState("");
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const orgs = useQuery({ queryKey: ["org-list"], queryFn: () => listOrganisations() });
+
+  // Landing back from Google: claim the role chosen before the redirect, then go home.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const callbackError = new URLSearchParams(window.location.search).get("error_description")
+          ?? new URLSearchParams(window.location.hash.slice(1)).get("error_description");
+        if (callbackError) {
+          setMsg({ kind: "err", text: "Google sign-in was not completed. Please try again." });
+          return;
+        }
+        const { data } = await supabase.auth.getUser();
+        if (cancelled || !data.user) return;
+        setBusy(true);
+        const pending = googleSignupRole(sessionStorage.getItem("vito:pending-role") ?? "athlete");
+        await claimRole({ data: { role: pending ?? "athlete" } });
+        if (cancelled) return;
+        sessionStorage.removeItem("vito:pending-role");
+        await navigate({ to: "/" });
+      } catch {
+        if (!cancelled) setMsg({ kind: "err", text: "Your account type could not be saved. Reload this page to try again." });
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, claimRole]);
+
+  async function google() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      sessionStorage.setItem("vito:pending-role", mode === "signup" ? googleSignupRole(role) ?? "athlete" : "athlete");
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth` },
+      });
+      if (error) throw error;
+    } catch {
+      sessionStorage.removeItem("vito:pending-role");
+      setMsg({ kind: "err", text: "Google sign-in is unavailable. Try your email or ID, or contact VITO." });
+      setBusy(false);
+    }
+  }
 
   async function extra(kind: "reset" | "resend") {
     if (!identifier.includes("@")) {
@@ -355,6 +405,19 @@ function AuthPage() {
           <Button type="submit" className="w-full" disabled={busy}>
             {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
           </Button>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={google}>
+            Continue with Google
+          </Button>
+          {mode === "signup" && (
+            <p className="text-center text-xs text-muted-foreground">
+              Google sign-up registers you as: {CATEGORIES.find((c) => c.value === role)?.label}
+            </p>
+          )}
         </form>
       </div>
     </div>
