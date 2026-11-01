@@ -1,3 +1,4 @@
+import { Children, cloneElement, isValidElement, type ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -40,6 +41,7 @@ const CATEGORY_OPTIONS = [
   "Rehab & recovery",
   "Injury prevention",
   "Athlete stories",
+  "Sporting stories",
   "Team culture",
 ];
 
@@ -353,6 +355,8 @@ function ArticleCard({ article, draft = false }: { article: BlogArticle; draft?:
 
 export function BlogArticlePage({ user, slug }: { user: User; slug: string }) {
   const access = useBlogAccess(user.id);
+  const [showFullArticle, setShowFullArticle] = useState(false);
+  useEffect(() => setShowFullArticle(false), [slug]);
   const articleQuery = useQuery({
     queryKey: ["blog-article", slug],
     queryFn: async () => {
@@ -480,7 +484,26 @@ export function BlogArticlePage({ user, slug }: { user: User; slug: string }) {
           </div>
         )}
         <div className="mx-auto max-w-[70ch]">
-          <BlogMarkdown content={article.content_markdown} />
+          {showFullArticle ? (
+            <BlogMarkdown content={article.content_markdown} />
+          ) : (
+            <div>
+              <BlogMarkdown
+                content={article.excerpt || excerptFromMarkdown(article.content_markdown)}
+              />
+              <div className="mt-7 flex justify-center border-t border-border/70 pt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full border-primary/30 px-5 text-primary hover:bg-primary/5 hover:text-primary"
+                  aria-expanded={false}
+                  onClick={() => setShowFullArticle(true)}
+                >
+                  Continue reading <ArrowRight className="ml-2 size-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </article>
       {related.data && related.data.length > 0 && (
@@ -970,10 +993,64 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   );
 }
 
+const BLOG_KEYWORD_PATTERN = new RegExp(
+  String.raw`\b(?:sports performance|sports injury|return to sport|return to play|injury prevention|strength training|physical therapy|warm-up|warm up|rehabilitation|physiotherapy|flexibility|performance|movement|mobility|recovery|balance|strength|training|sports?|athletes?|coach|injuries|injury)\b`,
+  "gi",
+);
+
+function highlightKeywordText(text: string): ReactNode {
+  const matcher = new RegExp(BLOG_KEYWORD_PATTERN.source, "gi");
+  const pieces: ReactNode[] = [];
+  let offset = 0;
+  let part = 0;
+
+  for (const match of text.matchAll(matcher)) {
+    const start = match.index ?? 0;
+    if (start > offset) pieces.push(text.slice(offset, start));
+    pieces.push(<mark key={`${start}-${part++}`}>{match[0]}</mark>);
+    offset = start + match[0].length;
+  }
+
+  if (offset === 0) return text;
+  if (offset < text.length) pieces.push(text.slice(offset));
+  return pieces;
+}
+
+function highlightMarkdownChildren(children: ReactNode): ReactNode {
+  return Children.map(children, (child) => {
+    if (typeof child === "string") return highlightKeywordText(child);
+    if (!isValidElement<{ children?: ReactNode }>(child)) return child;
+    if (child.type === "code" || child.type === "pre" || child.type === "mark") return child;
+    if (
+      typeof child.type === "string" &&
+      ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "td", "th"].includes(child.type)
+    ) {
+      return child;
+    }
+    return cloneElement(child, {}, highlightMarkdownChildren(child.props.children));
+  });
+}
+
 export function BlogMarkdown({ content }: { content: string }) {
   return (
-    <div className="space-y-5 break-words text-[1.0625rem] leading-8 text-foreground/90 [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/30 [&_a]:underline-offset-4 hover:[&_a]:decoration-primary [&_blockquote]:my-7 [&_blockquote]:border-l-4 [&_blockquote]:border-accent [&_blockquote]:pl-5 [&_blockquote]:font-serif [&_blockquote]:text-xl [&_blockquote]:italic [&_code]:rounded [&_code]:bg-secondary [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.9em] [&_h2]:mb-3 [&_h2]:mt-10 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:leading-tight sm:[&_h2]:text-3xl [&_h3]:mb-2 [&_h3]:mt-8 [&_h3]:font-serif [&_h3]:text-xl [&_h3]:font-bold [&_img]:mx-auto [&_img]:my-8 [&_img]:max-h-[40rem] [&_img]:rounded-2xl [&_img]:object-contain [&_li]:my-2 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6 [&_p]:my-5 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-foreground [&_pre]:p-4 [&_pre]:text-background [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_hr]:my-8 [&_hr]:border-border">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+    <div className="space-y-5 break-words text-[1.0625rem] leading-8 text-foreground/90 [&_a]:font-semibold [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/30 [&_a]:underline-offset-4 hover:[&_a]:decoration-primary [&_blockquote]:my-7 [&_blockquote]:border-l-4 [&_blockquote]:border-accent [&_blockquote]:pl-5 [&_blockquote]:font-serif [&_blockquote]:text-xl [&_blockquote]:italic [&_code]:rounded [&_code]:bg-secondary [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.9em] [&_h2]:mb-3 [&_h2]:mt-10 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:leading-tight sm:[&_h2]:text-3xl [&_h3]:mb-2 [&_h3]:mt-8 [&_h3]:font-serif [&_h3]:text-xl [&_h3]:font-bold [&_img]:mx-auto [&_img]:my-8 [&_img]:max-h-[40rem] [&_img]:rounded-2xl [&_img]:object-contain [&_li]:my-2 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6 [&_p]:my-5 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-foreground [&_pre]:p-4 [&_pre]:text-background [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_hr]:my-8 [&_hr]:border-border [&_mark]:rounded-sm [&_mark]:bg-violet-100 [&_mark]:px-1 [&_mark]:py-0.5 [&_mark]:font-semibold [&_mark]:text-violet-950 dark:[&_mark]:bg-violet-900/70 dark:[&_mark]:text-violet-100">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children, ...props }) => <p {...props}>{highlightMarkdownChildren(children)}</p>,
+          h1: ({ children, ...props }) => <h1 {...props}>{highlightMarkdownChildren(children)}</h1>,
+          h2: ({ children, ...props }) => <h2 {...props}>{highlightMarkdownChildren(children)}</h2>,
+          h3: ({ children, ...props }) => <h3 {...props}>{highlightMarkdownChildren(children)}</h3>,
+          h4: ({ children, ...props }) => <h4 {...props}>{highlightMarkdownChildren(children)}</h4>,
+          h5: ({ children, ...props }) => <h5 {...props}>{highlightMarkdownChildren(children)}</h5>,
+          h6: ({ children, ...props }) => <h6 {...props}>{highlightMarkdownChildren(children)}</h6>,
+          li: ({ children, ...props }) => <li {...props}>{highlightMarkdownChildren(children)}</li>,
+          td: ({ children, ...props }) => <td {...props}>{highlightMarkdownChildren(children)}</td>,
+          th: ({ children, ...props }) => <th {...props}>{highlightMarkdownChildren(children)}</th>,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }
