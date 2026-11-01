@@ -16,7 +16,7 @@
 - Non-athlete profile editing reuses shared community fields through user-scoped server functions and never calls the athlete-save RPC; profile kind comes from user_roles. Why: preserve athlete records and prevent identity or role escalation without schema changes.
 - Preserve the legacy /index preview address as a redirect to /. Why: saved editor navigation must open the existing homepage rather than a missing page.
 - Backend is the user-connected external Supabase project; never enable Lovable Cloud. Why: user owns the data there.
-- Roles live only in user_roles, assigned by the handle_new_user trigger. Why: prevents privilege escalation.
+- Roles live only in user_roles, assigned by handle_new_user; Google signup claims require a server-verified initial Google session and a server-owned completion marker, preserve existing roles, and never grant approval-gated staff roles. Why: limit account-type selection to signup and prevent privilege escalation.
 - Profile/athlete/organisation photos live in the private 'avatars' bucket, uploaded via the uploadPhoto server fn and shown with signed URLs. Why: workspace blocks public buckets.
 - Sign-in aliases use each profile's unique VITO account ID; athlete and organisation IDs remain record-linking identifiers. Why: shared record IDs cannot safely identify one login account.
 

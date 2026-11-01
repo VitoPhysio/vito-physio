@@ -2,7 +2,9 @@ import { createServerFn } from '@tanstack/react-start';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import type { Database } from '@/integrations/supabase/types';
+import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware';
 import { athleteLoginEmail, isAthleteCode } from '@/lib/athlete-login';
+import { GOOGLE_SIGNUP_ROLES, isFirstGoogleSignup, planGoogleSignupRole } from '@/lib/google-signup';
 
 type SignInResult = { access_token: string; refresh_token: string } | { needsPassword: true };
 
@@ -67,4 +69,59 @@ export const setupAthleteIdLogin = createServerFn({ method: 'POST' })
     const { error: linkError } = await supabaseAdmin.from('athlete_guardians').insert({ user_id: created.user.id, athlete_id: athlete.id, relationship: 'self' });
     if (linkError) { await supabaseAdmin.auth.admin.deleteUser(created.user.id); throw new Error('Could not link your athlete record.'); }
     return passwordSignIn(email, data.password);
+  });
+
+/**
+ * After a Google sign-in, apply the role the person chose on the signup form.
+ * Google OAuth cannot carry signup metadata, so handle_new_user has already
+ * given them the default athlete role; this mirrors what the trigger would
+ * have done had the chosen role reached it. Staff roles stay approval-gated:
+ * only the request is recorded.
+ */
+export const claimGoogleSignupRole = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ role: z.enum(GOOGLE_SIGNUP_ROLES) }).parse(input))
+  .handler(async ({ data, context: { supabase, userId } }) => {
+    const { data: auth, error: authError } = await supabase.auth.getUser();
+    if (authError || !auth.user || auth.user.id !== userId) throw new Error('Your Google account could not be checked.');
+    if (!isFirstGoogleSignup(auth.user)) return { ok: true };
+    const { data: roleRows, error } = await supabase.from('user_roles').select('role').eq('user_id', userId);
+    if (error) throw new Error('Your account role could not be checked.');
+    const plan = planGoogleSignupRole(data.role, (roleRows ?? []).map((r) => r.role), true);
+
+    const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
+    const finish = async () => {
+      const { error: finishError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        app_metadata: { ...auth.user.app_metadata, vito_google_signup_complete: true },
+      });
+      if (finishError) throw new Error('Your Google signup could not be completed. Please try again.');
+      return { ok: true };
+    };
+    if (plan.kind === 'none') return finish();
+    if (plan.kind === 'request-staff') {
+      const { error: requestError } = await supabaseAdmin.from('profiles').update({ requested_role: plan.role }).eq('id', userId);
+      if (requestError) throw new Error('Your staff access request could not be saved.');
+      return finish();
+    }
+
+    // Remove the default athlete role and its empty self-registered athlete
+    // record (kept when it already has injury cases), then grant the chosen role.
+    const { data: links, error: linksError } = await supabaseAdmin.from('athlete_guardians').select('athlete_id').eq('user_id', userId).eq('relationship', 'self');
+    if (linksError) throw new Error('Your signup record could not be checked.');
+    for (const link of links ?? []) {
+      const { count, error: casesError } = await supabaseAdmin.from('injuries').select('id', { count: 'exact', head: true }).eq('athlete_id', link.athlete_id);
+      if (casesError) throw new Error('Your existing case records could not be checked.');
+      if ((count ?? 0) > 0) continue;
+      const { data: athlete } = await supabaseAdmin.from('athletes').select('self_registered').eq('id', link.athlete_id).maybeSingle();
+      if (!athlete?.self_registered) continue;
+      await supabaseAdmin.from('athlete_guardians').delete().eq('user_id', userId).eq('athlete_id', link.athlete_id);
+      await supabaseAdmin.from('athletes').delete().eq('id', link.athlete_id);
+    }
+    const { error: grantError } = await supabaseAdmin.from('user_roles').upsert({ user_id: userId, role: plan.role }, { onConflict: 'user_id,role' });
+    if (grantError) throw new Error('Your selected account type could not be saved.');
+    const { error: removeError } = await supabaseAdmin.from('user_roles').delete().eq('user_id', userId).eq('role', 'athlete');
+    if (removeError) throw new Error('Your account type could not be completed.');
+    const { error: profileError } = await supabaseAdmin.from('profiles').update({ requested_role: plan.role }).eq('id', userId);
+    if (profileError) throw new Error('Your account request could not be saved.');
+    return finish();
   });
