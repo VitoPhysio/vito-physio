@@ -2,6 +2,9 @@ import { Children, cloneElement, isValidElement, type ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { Marked } from "marked";
+import DOMPurify from "dompurify";
+import TurndownService from "turndown";
 import ReactMarkdown from "react-markdown";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
@@ -639,8 +642,12 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [formatColor, setFormatColor] = useState("violet");
   const [formatSize, setFormatSize] = useState("18");
-  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const savedSelectionRef = useRef<Range | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const markdownContentRef = useRef(content);
+  markdownContentRef.current = content;
+  const [editorReady, setEditorReady] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const existing = articleQuery.data;
 
@@ -654,6 +661,13 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
     setContent(existing.content_markdown);
     setInitialized(true);
   }, [existing, initialized]);
+
+  useEffect(() => {
+    if (!preview && editorRef.current) {
+      editorRef.current.innerHTML = markdownToEditorHtml(markdownContentRef.current);
+      savedSelectionRef.current = null;
+    }
+  }, [preview, initialized, editorReady]);
 
   const hasWriteAccess = Boolean(access.data?.canWrite);
   if (access.isLoading || (articleId && articleQuery.isLoading)) {
@@ -702,51 +716,65 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
     if (!articleId || !initialized) setSlug(slugify(value));
   }
 
+  function captureEditorSelection() {
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection?.rangeCount) return;
+    const range = selection.getRangeAt(0);
+    if (editor.contains(range.commonAncestorContainer)) {
+      savedSelectionRef.current = range.cloneRange();
+    }
+  }
+
+  function restoreEditorSelection() {
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    const range = savedSelectionRef.current;
+    if (!editor || !selection || !range || !editor.contains(range.commonAncestorContainer))
+      return null;
+    editor.focus();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return range;
+  }
+
   function formatSelectedText(format: "bold" | "underline" | "color" | "size" | "clear") {
-    const textarea = contentRef.current;
-    const start = textarea?.selectionStart ?? 0;
-    const end = textarea?.selectionEnd ?? 0;
-    if (!textarea || start === end) {
-      toast.error("Select some text in your story first.");
+    const editor = editorRef.current;
+    const range = restoreEditorSelection();
+    if (!editor || !range || range.collapsed) {
+      toast.error("Select a word or phrase in your story first.");
       return;
     }
-    let replaceStart = start;
-    let replaceEnd = end;
-    let selected = content.slice(start, end);
-    const before = content.slice(0, start);
-    const after = content.slice(end);
-    const directivePrefix = before.match(/:(?:color|size|underline|plain)\[$/);
-    const directiveSuffix = after.match(/^\](?:\{\.blog-(?:color|size)-[a-z0-9-]+\})?/);
-    const hasBoldWrapper = before.endsWith("**") && after.startsWith("**");
-    if (directivePrefix && directiveSuffix) {
-      replaceStart -= directivePrefix[0].length;
-      replaceEnd += directiveSuffix[0].length;
-    } else if (hasBoldWrapper) {
-      replaceStart -= 2;
-      replaceEnd += 2;
-      selected = `**${selected}**`;
+
+    const selected = range.extractContents();
+    let wrapper: HTMLElement;
+    if (format === "clear") {
+      removeInlineFormatting(selected);
+      wrapper = document.createElement("span");
+      wrapper.className = "blog-manual-format blog-no-auto";
+    } else if (format === "bold") {
+      wrapper = document.createElement("strong");
+      wrapper.className = "blog-manual-format";
+    } else {
+      wrapper = document.createElement(format === "underline" ? "u" : "span");
+      const styleClass =
+        format === "underline"
+          ? "blog-underline"
+          : format === "color"
+            ? `blog-color-${formatColor}`
+            : `blog-size-${formatSize}`;
+      wrapper.className = `blog-manual-format ${styleClass}`;
     }
-    const cleaned = selected
-      .replace(
-        new RegExp(String.raw`:(?:color|size|underline|plain)\[([^\]]*)\](?:\{[^}]*\})?`, "g"),
-        "$1",
-      )
-      .replace(/<\/?u>/gi, "")
-      .replace(/\*\*(.*?)\*\*/gs, "$1")
-      .replace(/__(.*?)__/gs, "$1")
-      .replace(/~~(.*?)~~/gs, "$1");
-    let replacement: string;
-    if (format === "bold") replacement = `**${cleaned}**`;
-    else if (format === "underline") replacement = `:underline[${cleaned}]`;
-    else if (format === "color") replacement = `:color[${cleaned}]{.blog-color-${formatColor}}`;
-    else if (format === "size") replacement = `:size[${cleaned}]{.blog-size-${formatSize}}`;
-    else replacement = `:plain[${cleaned}]`;
-    const next = `${content.slice(0, replaceStart)}${replacement}${content.slice(replaceEnd)}`;
-    setContent(next);
-    requestAnimationFrame(() => {
-      textarea.focus();
-      textarea.setSelectionRange(replaceStart, replaceStart + replacement.length);
-    });
+    wrapper.append(selected);
+    range.insertNode(wrapper);
+    const selection = window.getSelection();
+    const appliedRange = document.createRange();
+    appliedRange.selectNodeContents(wrapper);
+    selection?.removeAllRanges();
+    selection?.addRange(appliedRange);
+    savedSelectionRef.current = appliedRange.cloneRange();
+    setContent(editorHtmlToMarkdown(editor.innerHTML));
+    editor.focus();
   }
 
   async function insertArticlePhoto(file: File, input: HTMLInputElement) {
@@ -772,9 +800,8 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
           contentType: file.type as "image/jpeg" | "image/png" | "image/webp",
         },
       });
-      const textarea = contentRef.current;
-      const start = textarea?.selectionStart ?? content.length;
-      const end = textarea?.selectionEnd ?? content.length;
+      const editor = editorRef.current;
+      if (!editor) throw new Error("The article editor is not ready.");
       const extensionIndex = file.name.lastIndexOf(".");
       const alt =
         (extensionIndex > 0 ? file.name.slice(0, extensionIndex) : file.name)
@@ -782,18 +809,34 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
           .replaceAll("[", "")
           .replaceAll("]", "")
           .trim() || "Article photo";
-      const imageMarkdown = `![${alt}](${url})`;
-      const before = content.slice(0, start);
-      const after = content.slice(end);
-      const prefix = before && !before.endsWith("\n") ? "\n\n" : "";
-      const next = `${before}${prefix}${imageMarkdown}\n\n${after}`;
-      setContent(next);
+      const selection = window.getSelection();
+      const range = savedSelectionRef.current?.cloneRange();
+      const insertion =
+        range && editor.contains(range.commonAncestorContainer)
+          ? range
+          : (() => {
+              const fallback = document.createRange();
+              fallback.selectNodeContents(editor);
+              fallback.collapse(false);
+              return fallback;
+            })();
+      insertion.deleteContents();
+      const image = document.createElement("img");
+      image.src = url;
+      image.alt = alt;
+      image.className = "blog-article-image";
+      insertion.insertNode(image);
+      const spacer = document.createElement("br");
+      image.after(spacer);
+      const nextRange = document.createRange();
+      nextRange.setStartAfter(spacer);
+      nextRange.collapse(true);
+      selection?.removeAllRanges();
+      selection?.addRange(nextRange);
+      savedSelectionRef.current = nextRange.cloneRange();
+      editor.focus();
+      setContent(editorHtmlToMarkdown(editor.innerHTML));
       toast.success("Photo added to your story.");
-      requestAnimationFrame(() => {
-        textarea?.focus();
-        const cursor = before.length + prefix.length + imageMarkdown.length + 2;
-        textarea?.setSelectionRange(cursor, cursor);
-      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The photo could not be uploaded.");
     } finally {
@@ -1021,7 +1064,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                     <Label htmlFor="blog-content">Your story</Label>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">
-                        Markdown · PNG/JPG/WEBP up to 6 MB
+                        Rich text · PNG/JPG/WEBP up to 6 MB
                       </span>
                       <input
                         ref={photoInputRef}
@@ -1058,6 +1101,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                       size="sm"
                       className="h-9 px-3"
                       aria-label="Bold selected text"
+                      onMouseDown={(event) => event.preventDefault()}
                       onClick={() => formatSelectedText("bold")}
                     >
                       <Bold className="size-4" />
@@ -1068,6 +1112,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                       size="sm"
                       className="h-9 px-3"
                       aria-label="Underline selected text"
+                      onMouseDown={(event) => event.preventDefault()}
                       onClick={() => formatSelectedText("underline")}
                     >
                       <Underline className="size-4" />
@@ -1076,6 +1121,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                       <select
                         aria-label="Choose text color"
                         value={formatColor}
+                        onMouseDown={captureEditorSelection}
                         onChange={(event) => setFormatColor(event.target.value)}
                         className="h-9 rounded-md border bg-background px-2 text-sm"
                       >
@@ -1091,6 +1137,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                         size="sm"
                         className="h-9 px-3"
                         aria-label="Apply text color"
+                        onMouseDown={(event) => event.preventDefault()}
                         onClick={() => formatSelectedText("color")}
                       >
                         <Palette className="mr-1 size-4" /> Color
@@ -1100,6 +1147,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                       <select
                         aria-label="Choose font size"
                         value={formatSize}
+                        onMouseDown={captureEditorSelection}
                         onChange={(event) => setFormatSize(event.target.value)}
                         className="h-9 rounded-md border bg-background px-2 text-sm"
                       >
@@ -1115,6 +1163,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                         size="sm"
                         className="h-9 px-3"
                         aria-label="Apply font size"
+                        onMouseDown={(event) => event.preventDefault()}
                         onClick={() => formatSelectedText("size")}
                       >
                         <Type className="mr-1 size-4" /> Size
@@ -1126,6 +1175,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                       size="sm"
                       className="h-9 px-3 text-muted-foreground"
                       aria-label="Remove formatting and automatic highlight from selected text"
+                      onMouseDown={(event) => event.preventDefault()}
                       onClick={() => formatSelectedText("clear")}
                     >
                       <Eraser className="mr-1 size-4" /> Clear
@@ -1135,17 +1185,80 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                     Select words or a phrase, then apply formatting. Clear removes styling and turns
                     off automatic highlighting for that selection.
                   </p>
-                  <Textarea
-                    ref={contentRef}
-                    disabled={uploadingPhoto}
+                  <div
+                    ref={(node) => {
+                      editorRef.current = node;
+                      if (node) setEditorReady(true);
+                    }}
                     id="blog-content"
-                    value={content}
-                    onChange={(event) => setContent(event.target.value)}
-                    rows={20}
-                    placeholder={
-                      "Start with a welcoming introduction…\n\n## A helpful section\n\nShare practical, easy-to-follow ideas. Use **bold** for emphasis, lists for steps, and [links](https://example.com) to connect readers with trusted resources."
-                    }
-                    className="min-h-[28rem] resize-y font-mono text-sm leading-6"
+                    role="textbox"
+                    aria-label="Your article story"
+                    aria-multiline="true"
+                    data-placeholder="Start with a welcoming introduction… Select text to format it."
+                    contentEditable={!uploadingPhoto && !saving}
+                    suppressContentEditableWarning
+                    onMouseUp={captureEditorSelection}
+                    onKeyUp={captureEditorSelection}
+                    onInput={(event) => {
+                      captureEditorSelection();
+                      setContent(editorHtmlToMarkdown(event.currentTarget.innerHTML));
+                    }}
+                    onPaste={(event) => {
+                      event.preventDefault();
+                      const editor = event.currentTarget;
+                      const clipboard = event.clipboardData;
+                      const pastedHtml = clipboard.getData("text/html");
+                      const safeHtml = pastedHtml
+                        ? DOMPurify.sanitize(pastedHtml, {
+                            ALLOWED_TAGS: [
+                              "p",
+                              "br",
+                              "strong",
+                              "b",
+                              "em",
+                              "i",
+                              "u",
+                              "h1",
+                              "h2",
+                              "h3",
+                              "h4",
+                              "ul",
+                              "ol",
+                              "li",
+                              "blockquote",
+                              "a",
+                              "img",
+                              "hr",
+                              "del",
+                              "code",
+                              "pre",
+                            ],
+                            ALLOWED_ATTR: ["href", "src", "alt", "title"],
+                          })
+                        : "";
+                      const container = document.createElement("div");
+                      if (safeHtml) container.innerHTML = safeHtml;
+                      else
+                        container.append(document.createTextNode(clipboard.getData("text/plain")));
+                      const selection = window.getSelection();
+                      const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+                      if (!range || !editor.contains(range.commonAncestorContainer)) return;
+                      range.deleteContents();
+                      const fragment = document.createDocumentFragment();
+                      while (container.firstChild) fragment.append(container.firstChild);
+                      const lastInserted = fragment.lastChild;
+                      range.insertNode(fragment);
+                      if (lastInserted) {
+                        range.setStartAfter(lastInserted);
+                        range.collapse(true);
+                        selection?.removeAllRanges();
+                        selection?.addRange(range);
+                      }
+                      captureEditorSelection();
+                      setContent(editorHtmlToMarkdown(editor.innerHTML));
+                    }}
+                    onBlur={captureEditorSelection}
+                    className="blog-rich-editor min-h-[28rem] w-full resize-y overflow-auto rounded-md border border-input bg-background px-3 py-3 text-base leading-7 text-foreground shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_h1]:my-4 [&_h1]:font-serif [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:my-3 [&_h3]:text-xl [&_h3]:font-semibold [&_p]:my-3 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-7 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-7 [&_li]:my-1 [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-primary/30 [&_blockquote]:pl-4 [&_blockquote]:italic [&_a]:text-primary [&_a]:underline [&_img]:my-4 [&_img]:max-h-[28rem] [&_img]:rounded-xl [&_.blog-color-violet]:text-violet-700 dark:[&_.blog-color-violet]:text-violet-300 [&_.blog-color-blue]:text-blue-700 dark:[&_.blog-color-blue]:text-blue-300 [&_.blog-color-teal]:text-teal-700 dark:[&_.blog-color-teal]:text-teal-300 [&_.blog-color-rose]:text-rose-700 dark:[&_.blog-color-rose]:text-rose-300 [&_.blog-color-amber]:text-amber-700 dark:[&_.blog-color-amber]:text-amber-300 [&_.blog-size-12]:text-[12px] [&_.blog-size-14]:text-[14px] [&_.blog-size-16]:text-[16px] [&_.blog-size-18]:text-[18px] [&_.blog-size-20]:text-[20px] [&_.blog-size-24]:text-[24px] [&_.blog-size-28]:text-[28px] [&_.blog-size-32]:text-[32px] [&_mark]:rounded-sm [&_mark]:bg-violet-100 [&_mark]:font-semibold [&_mark]:text-violet-950 dark:[&_mark]:bg-violet-900/70 dark:[&_mark]:text-violet-100"
                   />
                 </div>
               </div>
@@ -1212,6 +1325,157 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
       </div>
     </main>
   );
+}
+
+const BLOG_KEYWORDS_FOR_EDITOR =
+  /\b(?:sports performance|sports injury|return to sport|return to play|injury prevention|strength training|physical therapy|warm-up|warm up|rehabilitation|physiotherapy|flexibility|performance|movement|mobility|recovery|balance|strength|training|sports?|athletes?|coach|injuries|injury)\b/gi;
+
+function removeInlineFormatting(fragment: DocumentFragment) {
+  fragment.querySelectorAll("*").forEach((element) => {
+    if (element.tagName === "BR" || element.tagName === "IMG") return;
+    element.replaceWith(...Array.from(element.childNodes));
+  });
+}
+
+function markdownToEditorHtml(markdown: string): string {
+  const marked = new Marked({ gfm: true });
+  const wrappers: Array<{ open: string; close: string; htmlOpen: string; htmlClose: string }> = [];
+  const nonce = `VITOFMT${Math.random().toString(36).slice(2)}X`;
+  const expanded = markdown.replace(
+    /:(color|size|underline|plain)\[([^\]]*)\](?:\{\.([a-z0-9-]+)\})?/g,
+    (_whole, kind: string, inner: string, className?: string) => {
+      const id = wrappers.length;
+      const open = `${nonce}OPEN${id}X`;
+      const close = `${nonce}CLOSE${id}X`;
+      let tag = "span";
+      let classes = "blog-manual-format";
+      if (kind === "underline") {
+        tag = "u";
+        classes += " blog-underline";
+      } else if (kind === "plain") {
+        classes += " blog-no-auto";
+      } else if (kind === "color" || kind === "size") {
+        const valid =
+          kind === "color"
+            ? /^blog-color-(violet|blue|teal|rose|amber)$/.test(className ?? "")
+            : /^blog-size-(12|14|16|18|20|24|28|32)$/.test(className ?? "");
+        if (valid) classes += ` ${className}`;
+      }
+      wrappers.push({
+        open,
+        close,
+        htmlOpen: `<${tag} class="${classes}">`,
+        htmlClose: `</${tag}>`,
+      });
+      return `${open}${inner}${close}`;
+    },
+  );
+  let html = String(marked.parse(expanded));
+  for (const wrapper of wrappers) {
+    html = html.replace(wrapper.open, wrapper.htmlOpen).replace(wrapper.close, wrapper.htmlClose);
+  }
+  html = DOMPurify.sanitize(html, { ADD_ATTR: ["class"] });
+  const parsed = new DOMParser().parseFromString(html, "text/html");
+  const walker = document.createTreeWalker(parsed.body, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
+  for (const textNode of textNodes) {
+    const parent = textNode.parentElement;
+    if (!parent || parent.closest("code, pre, a, mark, .blog-manual-format")) continue;
+    const text = textNode.textContent ?? "";
+    const matches = [...text.matchAll(new RegExp(BLOG_KEYWORDS_FOR_EDITOR.source, "gi"))];
+    if (!matches.length) continue;
+    const fragment = document.createDocumentFragment();
+    let offset = 0;
+    for (const match of matches) {
+      const start = match.index ?? 0;
+      if (start > offset) fragment.append(document.createTextNode(text.slice(offset, start)));
+      const mark = document.createElement("mark");
+      mark.className = "blog-auto-highlight";
+      mark.textContent = match[0];
+      fragment.append(mark);
+      offset = start + match[0].length;
+    }
+    if (offset < text.length) fragment.append(document.createTextNode(text.slice(offset)));
+    textNode.replaceWith(fragment);
+  }
+  return DOMPurify.sanitize(parsed.body.innerHTML, { ADD_ATTR: ["class"] });
+}
+
+function editorHtmlToMarkdown(html: string): string {
+  const safeHtml = DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "p",
+      "br",
+      "strong",
+      "b",
+      "em",
+      "i",
+      "u",
+      "span",
+      "mark",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "ul",
+      "ol",
+      "li",
+      "blockquote",
+      "a",
+      "img",
+      "hr",
+      "del",
+      "code",
+      "pre",
+    ],
+    ALLOWED_ATTR: ["href", "src", "alt", "title", "class"],
+    ALLOW_DATA_ATTR: false,
+  });
+  const turndown = new TurndownService({
+    headingStyle: "atx",
+    bulletListMarker: "-",
+    codeBlockStyle: "fenced",
+  });
+  turndown.addRule("blogManualFormatting", {
+    filter: (node) => node instanceof HTMLElement && node.classList.contains("blog-manual-format"),
+    replacement: (inner, node) => {
+      if (!(node instanceof HTMLElement)) return inner;
+      const classes = node.classList;
+      if (classes.contains("blog-no-auto")) return `:plain[${inner}]`;
+      if (classes.contains("blog-underline") || node.tagName === "U") return `:underline[${inner}]`;
+      const color = [...classes].find((name) =>
+        /^blog-color-(violet|blue|teal|rose|amber)$/.test(name),
+      );
+      if (color) return `:color[${inner}]{.${color}}`;
+      const size = [...classes].find((name) => /^blog-size-(12|14|16|18|20|24|28|32)$/.test(name));
+      if (size) return `:size[${inner}]{.${size}}`;
+      if (node.tagName === "STRONG" || node.tagName === "B") return `**${inner}**`;
+      return inner;
+    },
+  });
+  turndown.addRule("blogImages", {
+    filter: "img",
+    replacement: (_inner, node) => {
+      const image = node as HTMLImageElement;
+      if (!image.src || !/^https?:/i.test(image.src)) return "";
+      const alt = image.alt.replace(/[\\[\\]]/g, "");
+      return `\n\n![${alt}](${image.src})\n\n`;
+    },
+  });
+  turndown.addRule("blogUnderline", {
+    filter: "u",
+    replacement: (inner, node) =>
+      node instanceof HTMLElement && node.classList.contains("blog-manual-format")
+        ? inner
+        : `:underline[${inner}]`,
+  });
+  return turndown
+    .turndown(safeHtml)
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 type BlogDirectiveNode = {
