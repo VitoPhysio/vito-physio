@@ -726,25 +726,58 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
     }
   }
 
-  function restoreEditorSelection() {
+  function getEditorRange(): Range | null {
     const editor = editorRef.current;
+    if (!editor) return null;
     const selection = window.getSelection();
-    const range = savedSelectionRef.current;
-    if (!editor || !selection || !range || !editor.contains(range.commonAncestorContainer))
-      return null;
-    editor.focus();
-    selection.removeAllRanges();
-    selection.addRange(range);
+    let range = savedSelectionRef.current;
+    if (!range || !editor.contains(range.commonAncestorContainer)) {
+      range = selection?.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+    }
+    if (!range || !editor.contains(range.commonAncestorContainer)) {
+      range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+    }
+    if (range.collapsed) {
+      const node = range.startContainer;
+      if (node.nodeType === Node.TEXT_NODE && node.textContent) {
+        const text = node.textContent;
+        let start = range.startOffset;
+        let end = range.startOffset;
+        while (start > 0 && /[\p{L}\p{N}_'-]/u.test(text[start - 1] ?? "")) start--;
+        while (end < text.length && /[\p{L}\p{N}_'-]/u.test(text[end] ?? "")) end++;
+        if (start === end && start > 0) start--;
+        if (start === end && end < text.length) end++;
+        if (start !== end) {
+          range.setStart(node, start);
+          range.setEnd(node, end);
+        }
+      }
+      if (range.collapsed) {
+        const element =
+          node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+        const block = element?.closest("p, li, h1, h2, h3, h4, h5, h6, blockquote");
+        if (block && editor.contains(block)) range.selectNodeContents(block);
+        else if (editor.textContent?.trim()) range.selectNodeContents(editor);
+      }
+    }
     return range;
   }
 
   function formatSelectedText(format: "bold" | "underline" | "color" | "size" | "clear") {
     const editor = editorRef.current;
-    const range = restoreEditorSelection();
+    const range = getEditorRange();
     if (!editor || !range || range.collapsed) {
-      toast.error("Select a word or phrase in your story first.");
+      toast.error(
+        "Write a few words first, then place your cursor in the text or select a phrase.",
+      );
       return;
     }
+    editor.focus();
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
 
     const selected = range.extractContents();
     let wrapper: HTMLElement;
@@ -767,7 +800,6 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
     }
     wrapper.append(selected);
     range.insertNode(wrapper);
-    const selection = window.getSelection();
     const appliedRange = document.createRange();
     appliedRange.selectNodeContents(wrapper);
     selection?.removeAllRanges();
@@ -1094,6 +1126,8 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                     className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/30 p-2"
                     role="toolbar"
                     aria-label="Text formatting"
+                    onMouseDownCapture={captureEditorSelection}
+                    onTouchStartCapture={captureEditorSelection}
                   >
                     <Button
                       type="button"
