@@ -308,7 +308,13 @@ function EmptyCommunityPanel({
 }
 
 /** Fixed app navigation. Home is the sole parent of the horizontal Home tabs above. */
-export function SignedInBottomNavigation({ userId }: { userId: string }) {
+export function SignedInBottomNavigation({
+  userId,
+  hideMobileTabs = false,
+}: {
+  userId: string;
+  hideMobileTabs?: boolean;
+}) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [composerOpen, setComposerOpen] = useState(false);
   const onHome = pathname === "/";
@@ -319,7 +325,7 @@ export function SignedInBottomNavigation({ userId }: { userId: string }) {
     <>
       <nav
         aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 z-[70] border-t side:inset-y-0 side:right-auto side:w-20 side:border-t-0 side:border-r side:pt-[env(safe-area-inset-top)] bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-background/85 print:hidden"
+        className={`fixed inset-x-0 bottom-0 z-[70] border-t side:inset-y-0 side:right-auto side:w-20 side:border-t-0 side:border-r side:pt-[env(safe-area-inset-top)] bg-background/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-background/85 print:hidden ${hideMobileTabs ? "hidden side:block" : ""}`}
       >
         <div className="mx-auto grid h-16 max-w-xl grid-cols-4 px-2 sm:h-[4.5rem] sm:px-4 side:flex side:h-full side:flex-col side:justify-center side:gap-3 side:px-1">
           <Link
