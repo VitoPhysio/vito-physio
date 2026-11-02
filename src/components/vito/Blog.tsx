@@ -1,4 +1,3 @@
-import { Children, cloneElement, isValidElement, type ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -303,10 +302,12 @@ function FeaturedArticle({ article }: { article: BlogArticle }) {
           </span>
         </div>
         <h2 className="mt-5 font-serif text-3xl font-bold leading-tight tracking-tight group-hover:text-primary sm:text-4xl">
-          {article.title}
+          <BlogInlineMarkdown content={article.title} />
         </h2>
         <p className="mt-4 line-clamp-3 text-sm leading-7 text-muted-foreground sm:text-base">
-          {article.excerpt || excerptFromMarkdown(article.content_markdown)}
+          <BlogInlineMarkdown
+            content={article.excerpt || excerptFromMarkdown(article.content_markdown)}
+          />
         </p>
         <span className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-primary">
           Read the story{" "}
@@ -350,10 +351,12 @@ function ArticleCard({ article, draft = false }: { article: BlogArticle; draft?:
           </span>
         </p>
         <h3 className="mt-3 font-serif text-xl font-bold leading-snug group-hover:text-primary">
-          {article.title}
+          <BlogInlineMarkdown content={article.title} />
         </h3>
         <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
-          {article.excerpt || excerptFromMarkdown(article.content_markdown)}
+          <BlogInlineMarkdown
+            content={article.excerpt || excerptFromMarkdown(article.content_markdown)}
+          />
         </p>
         <span className="mt-auto flex items-center gap-1 pt-4 text-xs font-bold text-primary">
           {draft ? "Continue editing" : "Read article"}{" "}
@@ -515,11 +518,11 @@ export function BlogArticlePage({ user, slug }: { user: User; slug: string }) {
             </span>
           </div>
           <h1 className="mt-5 font-serif text-4xl font-bold leading-[1.08] tracking-tight sm:text-6xl">
-            {article.title}
+            <BlogInlineMarkdown content={article.title} />
           </h1>
           {article.excerpt && (
             <p className="mt-5 text-lg leading-8 text-muted-foreground sm:text-xl">
-              {article.excerpt}
+              <BlogInlineMarkdown content={article.excerpt} />
             </p>
           )}
           <div className="mt-7 flex flex-wrap items-center gap-x-3 gap-y-1 border-y py-4 text-sm">
@@ -643,11 +646,20 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   const [formatColor, setFormatColor] = useState("violet");
   const [formatSize, setFormatSize] = useState("18");
   const editorRef = useRef<HTMLDivElement>(null);
+  const titleEditorRef = useRef<HTMLDivElement>(null);
+  const excerptEditorRef = useRef<HTMLDivElement>(null);
+  const activeEditorRef = useRef<HTMLDivElement | null>(null);
+  const activeFieldRef = useRef<"title" | "excerpt" | "body">("body");
   const savedSelectionRef = useRef<Range | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const markdownContentRef = useRef(content);
+  const titleValueRef = useRef(title);
+  const excerptValueRef = useRef(excerpt);
   markdownContentRef.current = content;
+  titleValueRef.current = title;
+  excerptValueRef.current = excerpt;
   const [editorReady, setEditorReady] = useState(false);
+  const [activeWritingField, setActiveWritingField] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const existing = articleQuery.data;
 
@@ -663,8 +675,13 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   }, [existing, initialized]);
 
   useEffect(() => {
-    if (!preview && editorRef.current) {
-      editorRef.current.innerHTML = markdownToEditorHtml(markdownContentRef.current);
+    if (!preview) {
+      if (editorRef.current)
+        editorRef.current.innerHTML = markdownToEditorHtml(markdownContentRef.current);
+      if (titleEditorRef.current)
+        titleEditorRef.current.innerHTML = markdownToEditorHtml(titleValueRef.current);
+      if (excerptEditorRef.current)
+        excerptEditorRef.current.innerHTML = markdownToEditorHtml(excerptValueRef.current);
       savedSelectionRef.current = null;
     }
   }, [preview, initialized, editorReady]);
@@ -711,13 +728,13 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
     );
   }
 
-  function updateTitle(value: string) {
+  function updateTitle(value: string, plainText = value) {
     setTitle(value);
-    if (!articleId || !initialized) setSlug(slugify(value));
+    if (!articleId || !initialized) setSlug(slugify(plainText));
   }
 
   function captureEditorSelection() {
-    const editor = editorRef.current;
+    const editor = activeEditorRef.current ?? editorRef.current;
     const selection = window.getSelection();
     if (!editor || !selection?.rangeCount) return;
     const range = selection.getRangeAt(0);
@@ -727,7 +744,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   }
 
   function getEditorRange(): Range | null {
-    const editor = editorRef.current;
+    const editor = activeEditorRef.current ?? editorRef.current;
     if (!editor) return null;
     const selection = window.getSelection();
     let range = savedSelectionRef.current;
@@ -766,7 +783,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   }
 
   function formatSelectedText(format: "bold" | "underline" | "color" | "size" | "clear") {
-    const editor = editorRef.current;
+    const editor = activeEditorRef.current ?? editorRef.current;
     const range = getEditorRange();
     if (!editor || !range || range.collapsed) {
       toast.error(
@@ -805,7 +822,11 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
     selection?.removeAllRanges();
     selection?.addRange(appliedRange);
     savedSelectionRef.current = appliedRange.cloneRange();
-    setContent(editorHtmlToMarkdown(editor.innerHTML));
+    const formattedMarkdown = editorHtmlToMarkdown(editor.innerHTML);
+    if (activeFieldRef.current === "title")
+      updateTitle(formattedMarkdown, editor.textContent ?? "");
+    else if (activeFieldRef.current === "excerpt") setExcerpt(formattedMarkdown);
+    else setContent(formattedMarkdown);
     editor.focus();
   }
 
@@ -950,7 +971,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   return (
     <main className="min-h-screen bg-background pb-24 text-foreground">
       <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8 sm:py-10">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="sticky top-0 z-40 -mx-5 flex flex-wrap items-center justify-between gap-3 border-b bg-background/95 px-5 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-8 sm:px-8">
           <Button
             asChild
             variant="ghost"
@@ -995,7 +1016,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
         </div>
         <div className="mt-7 grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem]">
           <section className="min-w-0 rounded-3xl border bg-card p-5 shadow-sm sm:p-8">
-            <div className="flex items-center justify-between gap-3 border-b pb-4">
+            <div className="sticky top-[4.25rem] z-30 -mx-5 flex items-center justify-between gap-3 border-b bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85 sm:-mx-8 sm:px-8">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
                   VITO journal editor
@@ -1025,13 +1046,36 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
               <div className="mt-6 space-y-5">
                 <div className="space-y-2">
                   <Label htmlFor="blog-title">Headline</Label>
-                  <Input
+                  <div
+                    ref={titleEditorRef}
                     id="blog-title"
-                    value={title}
-                    onChange={(event) => updateTitle(event.target.value)}
-                    maxLength={120}
-                    placeholder="A clear, inviting headline"
-                    className="h-12 font-serif text-xl sm:text-2xl"
+                    role="textbox"
+                    aria-label="Headline"
+                    aria-multiline="false"
+                    contentEditable={!saving}
+                    suppressContentEditableWarning
+                    data-placeholder="A clear, inviting headline"
+                    onFocus={(event) => {
+                      activeEditorRef.current = event.currentTarget;
+                      activeFieldRef.current = "title";
+                      setActiveWritingField(true);
+                    }}
+                    onBlur={() =>
+                      window.setTimeout(() => {
+                        if (!document.activeElement?.closest('[role="toolbar"]'))
+                          setActiveWritingField(false);
+                      }, 180)
+                    }
+                    onMouseUp={captureEditorSelection}
+                    onKeyUp={captureEditorSelection}
+                    onInput={(event) => {
+                      captureEditorSelection();
+                      updateTitle(
+                        editorHtmlToMarkdown(event.currentTarget.innerHTML).replace(/\n/g, " "),
+                        event.currentTarget.textContent ?? "",
+                      );
+                    }}
+                    className="min-h-12 rounded-md border border-input bg-background px-3 py-2 font-serif text-xl leading-8 shadow-sm outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring sm:text-2xl [&_.blog-color-violet]:text-violet-700 dark:[&_.blog-color-violet]:text-violet-300 [&_.blog-color-blue]:text-blue-700 dark:[&_.blog-color-blue]:text-blue-300 [&_.blog-color-teal]:text-teal-700 dark:[&_.blog-color-teal]:text-teal-300 [&_.blog-color-rose]:text-rose-700 dark:[&_.blog-color-rose]:text-rose-300 [&_.blog-color-amber]:text-amber-700 dark:[&_.blog-color-amber]:text-amber-300 [&_.blog-size-12]:text-[12px] [&_.blog-size-14]:text-[14px] [&_.blog-size-16]:text-[16px] [&_.blog-size-18]:text-[18px] [&_.blog-size-20]:text-[20px] [&_.blog-size-24]:text-[24px] [&_.blog-size-28]:text-[28px] [&_.blog-size-32]:text-[32px]"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1054,13 +1098,37 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                       (shown on article cards)
                     </span>
                   </Label>
-                  <Textarea
+                  <div
+                    ref={excerptEditorRef}
                     id="blog-excerpt"
-                    value={excerpt}
-                    onChange={(event) => setExcerpt(event.target.value)}
-                    maxLength={260}
-                    rows={3}
-                    placeholder="Give readers a friendly reason to keep reading…"
+                    role="textbox"
+                    aria-label="Short introduction"
+                    aria-multiline="true"
+                    contentEditable={!saving}
+                    suppressContentEditableWarning
+                    data-placeholder="Give readers a friendly reason to keep reading…"
+                    onFocus={(event) => {
+                      activeEditorRef.current = event.currentTarget;
+                      activeFieldRef.current = "excerpt";
+                      setActiveWritingField(true);
+                    }}
+                    onBlur={() =>
+                      window.setTimeout(() => {
+                        if (!document.activeElement?.closest('[role="toolbar"]'))
+                          setActiveWritingField(false);
+                      }, 180)
+                    }
+                    onMouseUp={captureEditorSelection}
+                    onKeyUp={captureEditorSelection}
+                    onInput={(event) => {
+                      captureEditorSelection();
+                      setExcerpt(
+                        editorHtmlToMarkdown(event.currentTarget.innerHTML)
+                          .replace(/\n/g, " ")
+                          .slice(0, 260),
+                      );
+                    }}
+                    className="min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm leading-6 shadow-sm outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring [&_.blog-color-violet]:text-violet-700 dark:[&_.blog-color-violet]:text-violet-300 [&_.blog-color-blue]:text-blue-700 dark:[&_.blog-color-blue]:text-blue-300 [&_.blog-color-teal]:text-teal-700 dark:[&_.blog-color-teal]:text-teal-300 [&_.blog-color-rose]:text-rose-700 dark:[&_.blog-color-rose]:text-rose-300 [&_.blog-color-amber]:text-amber-700 dark:[&_.blog-color-amber]:text-amber-300 [&_.blog-size-12]:text-[12px] [&_.blog-size-14]:text-[14px] [&_.blog-size-16]:text-[16px] [&_.blog-size-18]:text-[18px] [&_.blog-size-20]:text-[20px] [&_.blog-size-24]:text-[24px] [&_.blog-size-28]:text-[28px] [&_.blog-size-32]:text-[32px]"
                   />
                   <p className="text-right text-xs text-muted-foreground">{excerpt.length}/260</p>
                 </div>
@@ -1123,7 +1191,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                     </div>
                   </div>
                   <div
-                    className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/30 p-2"
+                    className={`z-50 flex flex-wrap items-center gap-2 rounded-xl border bg-background/95 p-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/90 sm:sticky sm:top-[8.5rem] sm:z-20 sm:shadow-sm ${activeWritingField ? "fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)]" : "hidden"} sm:fixed sm:left-1/2 sm:top-[8.5rem] sm:z-50 sm:w-fit sm:max-w-[94vw] sm:-translate-x-1/2 sm:flex`}
                     role="toolbar"
                     aria-label="Text formatting"
                     onMouseDownCapture={captureEditorSelection}
@@ -1231,11 +1299,23 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                     data-placeholder="Start with a welcoming introduction… Select text to format it."
                     contentEditable={!uploadingPhoto && !saving}
                     suppressContentEditableWarning
+                    onFocus={(event) => {
+                      activeEditorRef.current = event.currentTarget;
+                      activeFieldRef.current = "body";
+                      setActiveWritingField(true);
+                    }}
                     onMouseUp={captureEditorSelection}
                     onKeyUp={captureEditorSelection}
                     onInput={(event) => {
                       captureEditorSelection();
                       setContent(editorHtmlToMarkdown(event.currentTarget.innerHTML));
+                    }}
+                    onBlur={() => {
+                      captureEditorSelection();
+                      window.setTimeout(() => {
+                        if (!document.activeElement?.closest('[role="toolbar"]'))
+                          setActiveWritingField(false);
+                      }, 180);
                     }}
                     onPaste={(event) => {
                       event.preventDefault();
@@ -1291,7 +1371,14 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                       captureEditorSelection();
                       setContent(editorHtmlToMarkdown(editor.innerHTML));
                     }}
-                    onBlur={captureEditorSelection}
+                    onBlur={() => {
+                      captureEditorSelection();
+                      window.setTimeout(() => {
+                        if (!editorRef.current?.contains(document.activeElement)) {
+                          setActiveWritingField(false);
+                        }
+                      }, 150);
+                    }}
                     className="blog-rich-editor min-h-[28rem] w-full resize-y overflow-auto rounded-md border border-input bg-background px-3 py-3 text-base leading-7 text-foreground shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_h1]:my-4 [&_h1]:font-serif [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:my-3 [&_h3]:text-xl [&_h3]:font-semibold [&_p]:my-3 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-7 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-7 [&_li]:my-1 [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-primary/30 [&_blockquote]:pl-4 [&_blockquote]:italic [&_a]:text-primary [&_a]:underline [&_img]:my-4 [&_img]:max-h-[28rem] [&_img]:rounded-xl [&_.blog-color-violet]:text-violet-700 dark:[&_.blog-color-violet]:text-violet-300 [&_.blog-color-blue]:text-blue-700 dark:[&_.blog-color-blue]:text-blue-300 [&_.blog-color-teal]:text-teal-700 dark:[&_.blog-color-teal]:text-teal-300 [&_.blog-color-rose]:text-rose-700 dark:[&_.blog-color-rose]:text-rose-300 [&_.blog-color-amber]:text-amber-700 dark:[&_.blog-color-amber]:text-amber-300 [&_.blog-size-12]:text-[12px] [&_.blog-size-14]:text-[14px] [&_.blog-size-16]:text-[16px] [&_.blog-size-18]:text-[18px] [&_.blog-size-20]:text-[20px] [&_.blog-size-24]:text-[24px] [&_.blog-size-28]:text-[28px] [&_.blog-size-32]:text-[32px] [&_mark]:rounded-sm [&_mark]:bg-violet-100 [&_mark]:font-semibold [&_mark]:text-violet-950 dark:[&_mark]:bg-violet-900/70 dark:[&_mark]:text-violet-100"
                   />
                 </div>
@@ -1299,12 +1386,16 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
             ) : (
               <div className="mt-6 rounded-2xl bg-background p-4 sm:p-8">
                 {title ? (
-                  <h1 className="font-serif text-3xl font-bold sm:text-4xl">{title}</h1>
+                  <h1 className="font-serif text-3xl font-bold sm:text-4xl">
+                    <BlogInlineMarkdown content={title} />
+                  </h1>
                 ) : (
                   <p className="text-muted-foreground">Your headline will appear here.</p>
                 )}
                 {excerpt && (
-                  <p className="mt-4 text-lg leading-7 text-muted-foreground">{excerpt}</p>
+                  <div className="mt-4 text-lg leading-7 text-muted-foreground">
+                    <BlogInlineMarkdown content={excerpt} />
+                  </div>
                 )}
                 <div className="mt-6 border-t pt-6">
                   <BlogMarkdown content={content || "_Your article preview will appear here._"} />
@@ -1361,9 +1452,6 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   );
 }
 
-const BLOG_KEYWORDS_FOR_EDITOR =
-  /\b(?:sports performance|sports injury|return to sport|return to play|injury prevention|strength training|physical therapy|warm-up|warm up|rehabilitation|physiotherapy|flexibility|performance|movement|mobility|recovery|balance|strength|training|sports?|athletes?|coach|injuries|injury)\b/gi;
-
 function removeInlineFormatting(fragment: DocumentFragment) {
   fragment.querySelectorAll("*").forEach((element) => {
     if (element.tagName === "BR" || element.tagName === "IMG") return;
@@ -1408,32 +1496,7 @@ function markdownToEditorHtml(markdown: string): string {
   for (const wrapper of wrappers) {
     html = html.replace(wrapper.open, wrapper.htmlOpen).replace(wrapper.close, wrapper.htmlClose);
   }
-  html = DOMPurify.sanitize(html, { ADD_ATTR: ["class"] });
-  const parsed = new DOMParser().parseFromString(html, "text/html");
-  const walker = document.createTreeWalker(parsed.body, NodeFilter.SHOW_TEXT);
-  const textNodes: Text[] = [];
-  while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
-  for (const textNode of textNodes) {
-    const parent = textNode.parentElement;
-    if (!parent || parent.closest("code, pre, a, mark, .blog-manual-format")) continue;
-    const text = textNode.textContent ?? "";
-    const matches = [...text.matchAll(new RegExp(BLOG_KEYWORDS_FOR_EDITOR.source, "gi"))];
-    if (!matches.length) continue;
-    const fragment = document.createDocumentFragment();
-    let offset = 0;
-    for (const match of matches) {
-      const start = match.index ?? 0;
-      if (start > offset) fragment.append(document.createTextNode(text.slice(offset, start)));
-      const mark = document.createElement("mark");
-      mark.className = "blog-auto-highlight";
-      mark.textContent = match[0];
-      fragment.append(mark);
-      offset = start + match[0].length;
-    }
-    if (offset < text.length) fragment.append(document.createTextNode(text.slice(offset)));
-    textNode.replaceWith(fragment);
-  }
-  return DOMPurify.sanitize(parsed.body.innerHTML, { ADD_ATTR: ["class"] });
+  return DOMPurify.sanitize(html, { ADD_ATTR: ["class"] });
 }
 
 function editorHtmlToMarkdown(html: string): string {
@@ -1553,49 +1616,29 @@ const blogFormattingPlugin =
     transform(tree);
   };
 
-const BLOG_KEYWORD_PATTERN = new RegExp(
-  String.raw`\b(?:sports performance|sports injury|return to sport|return to play|injury prevention|strength training|physical therapy|warm-up|warm up|rehabilitation|physiotherapy|flexibility|performance|movement|mobility|recovery|balance|strength|training|sports?|athletes?|coach|injuries|injury)\b`,
-  "gi",
-);
-
-function highlightKeywordText(text: string): ReactNode {
-  const matcher = new RegExp(BLOG_KEYWORD_PATTERN.source, "gi");
-  const pieces: ReactNode[] = [];
-  let offset = 0;
-  let part = 0;
-
-  for (const match of text.matchAll(matcher)) {
-    const start = match.index ?? 0;
-    if (start > offset) pieces.push(text.slice(offset, start));
-    pieces.push(<mark key={`${start}-${part++}`}>{match[0]}</mark>);
-    offset = start + match[0].length;
-  }
-
-  if (offset === 0) return text;
-  if (offset < text.length) pieces.push(text.slice(offset));
-  return pieces;
-}
-
-function highlightMarkdownChildren(children: ReactNode): ReactNode {
-  return Children.map(children, (child) => {
-    if (typeof child === "string") return highlightKeywordText(child);
-    if (!isValidElement<{ children?: ReactNode; className?: string }>(child)) return child;
-    if (child.props.className?.includes("blog-manual-format")) return child;
-    if (child.type === "code" || child.type === "pre" || child.type === "mark") return child;
-    if (
-      typeof child.type === "string" &&
-      child.type === "span" &&
-      child.props.className?.includes?.("blog-no-auto")
-    )
-      return child;
-    if (
-      typeof child.type === "string" &&
-      ["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "td", "th"].includes(child.type)
-    ) {
-      return child;
-    }
-    return cloneElement(child, {}, highlightMarkdownChildren(child.props.children));
-  });
+function BlogInlineMarkdown({ content }: { content: string }) {
+  return (
+    <span className="[&_.blog-color-violet]:text-violet-700 dark:[&_.blog-color-violet]:text-violet-300 [&_.blog-color-blue]:text-blue-700 dark:[&_.blog-color-blue]:text-blue-300 [&_.blog-color-teal]:text-teal-700 dark:[&_.blog-color-teal]:text-teal-300 [&_.blog-color-rose]:text-rose-700 dark:[&_.blog-color-rose]:text-rose-300 [&_.blog-color-amber]:text-amber-700 dark:[&_.blog-color-amber]:text-amber-300 [&_.blog-size-12]:text-[12px] [&_.blog-size-14]:text-[14px] [&_.blog-size-16]:text-[16px] [&_.blog-size-18]:text-[18px] [&_.blog-size-20]:text-[20px] [&_.blog-size-24]:text-[24px] [&_.blog-size-28]:text-[28px] [&_.blog-size-32]:text-[32px]">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkDirective, blogFormattingPlugin]}
+        components={{
+          p: ({ children }) => <>{children}</>,
+          span: ({ children, className, ...props }) => (
+            <span className={className} {...props}>
+              {children}
+            </span>
+          ),
+          u: ({ children, className, ...props }) => (
+            <u className={className} {...props}>
+              {children}
+            </u>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </span>
+  );
 }
 
 export function BlogMarkdown({ content }: { content: string }) {
@@ -1604,21 +1647,9 @@ export function BlogMarkdown({ content }: { content: string }) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkDirective, blogFormattingPlugin]}
         components={{
-          p: ({ children, ...props }) => <p {...props}>{highlightMarkdownChildren(children)}</p>,
-          h1: ({ children, ...props }) => <h1 {...props}>{highlightMarkdownChildren(children)}</h1>,
-          h2: ({ children, ...props }) => <h2 {...props}>{highlightMarkdownChildren(children)}</h2>,
-          h3: ({ children, ...props }) => <h3 {...props}>{highlightMarkdownChildren(children)}</h3>,
-          h4: ({ children, ...props }) => <h4 {...props}>{highlightMarkdownChildren(children)}</h4>,
-          h5: ({ children, ...props }) => <h5 {...props}>{highlightMarkdownChildren(children)}</h5>,
-          h6: ({ children, ...props }) => <h6 {...props}>{highlightMarkdownChildren(children)}</h6>,
-          li: ({ children, ...props }) => <li {...props}>{highlightMarkdownChildren(children)}</li>,
-          td: ({ children, ...props }) => <td {...props}>{highlightMarkdownChildren(children)}</td>,
-          th: ({ children, ...props }) => <th {...props}>{highlightMarkdownChildren(children)}</th>,
           span: ({ children, className, ...props }) => (
             <span className={className} {...props}>
-              {String(className ?? "").includes("blog-manual-format")
-                ? children
-                : highlightMarkdownChildren(children)}
+              {children}
             </span>
           ),
           u: ({ children, className, ...props }) => (
