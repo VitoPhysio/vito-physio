@@ -115,20 +115,8 @@ export function BlogFeed({ user }: { user: User }) {
   return (
     <main className="min-h-[calc(100dvh-4rem)] bg-background pb-24 text-foreground">
       <section className="relative overflow-hidden bg-hero-glow">
-        <div className="mx-auto max-w-6xl px-5 pb-10 pt-10 sm:px-8 sm:pb-14 sm:pt-14">
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <div className="max-w-3xl">
-              <p className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-card px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-primary shadow-sm">
-                <BookOpen className="size-3.5" /> The VITO journal
-              </p>
-              <h1 className="mt-5 font-serif text-4xl font-bold leading-[1.08] tracking-tight sm:text-6xl">
-                Better care, <span className="text-primary">one story</span> at a time.
-              </h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Practical ideas from the people who keep sport moving: clinicians, coaches and
-                athletes sharing what helps bodies recover and teams thrive.
-              </p>
-            </div>
+        <div className="mx-auto max-w-6xl px-5 py-4 sm:px-8">
+          <div className="flex justify-end">
             {access.data?.canWrite && (
               <Button asChild className="rounded-full bg-brand-gradient px-5 shadow-glow">
                 <Link to="/blog/write">
@@ -137,7 +125,7 @@ export function BlogFeed({ user }: { user: User }) {
               </Button>
             )}
           </div>
-          <div className="mt-8 flex flex-col gap-3 border-t border-primary/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-4 flex flex-col gap-3 border-t border-primary/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               {access.data?.canWrite && (
                 <div className="mr-2 flex rounded-full border bg-card p-1 shadow-sm">
@@ -659,7 +647,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
   titleValueRef.current = title;
   excerptValueRef.current = excerpt;
   const [editorReady, setEditorReady] = useState(false);
-  const [activeWritingField, setActiveWritingField] = useState(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const [initialized, setInitialized] = useState(false);
   const existing = articleQuery.data;
 
@@ -673,6 +661,24 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
     setContent(existing.content_markdown);
     setInitialized(true);
   }, [existing, initialized]);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const updateKeyboardInset = () => {
+      const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      setKeyboardInset(inset > 100 ? inset : 0);
+    };
+    updateKeyboardInset();
+    viewport.addEventListener("resize", updateKeyboardInset);
+    viewport.addEventListener("scroll", updateKeyboardInset);
+    window.addEventListener("resize", updateKeyboardInset);
+    return () => {
+      viewport.removeEventListener("resize", updateKeyboardInset);
+      viewport.removeEventListener("scroll", updateKeyboardInset);
+      window.removeEventListener("resize", updateKeyboardInset);
+    };
+  }, []);
 
   useEffect(() => {
     if (!preview) {
@@ -1014,17 +1020,9 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
             </Button>
           </div>
         </div>
-        <div className="mt-7 grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="mt-4 grid gap-8">
           <section className="min-w-0 rounded-3xl border bg-card p-5 shadow-sm sm:p-8">
-            <div className="sticky top-[4.25rem] z-30 -mx-5 flex items-center justify-between gap-3 border-b bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85 sm:-mx-8 sm:px-8">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-                  VITO journal editor
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Shape a useful story, then share it with your community.
-                </p>
-              </div>
+            <div className="sticky top-[4.25rem] z-30 -mx-5 flex items-center justify-end gap-3 border-b bg-card/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/85 sm:-mx-8 sm:px-8">
               <div className="flex rounded-full border bg-background p-1">
                 <button
                   type="button"
@@ -1054,18 +1052,11 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                     aria-multiline="false"
                     contentEditable={!saving}
                     suppressContentEditableWarning
-                    data-placeholder="A clear, inviting headline"
+                    data-placeholder="Headline"
                     onFocus={(event) => {
                       activeEditorRef.current = event.currentTarget;
                       activeFieldRef.current = "title";
-                      setActiveWritingField(true);
                     }}
-                    onBlur={() =>
-                      window.setTimeout(() => {
-                        if (!document.activeElement?.closest('[role="toolbar"]'))
-                          setActiveWritingField(false);
-                      }, 180)
-                    }
                     onMouseUp={captureEditorSelection}
                     onKeyUp={captureEditorSelection}
                     onInput={(event) => {
@@ -1092,12 +1083,7 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="blog-excerpt">
-                    Short introduction{" "}
-                    <span className="font-normal text-muted-foreground">
-                      (shown on article cards)
-                    </span>
-                  </Label>
+                  <Label htmlFor="blog-excerpt">Short introduction</Label>
                   <div
                     ref={excerptEditorRef}
                     id="blog-excerpt"
@@ -1106,18 +1092,11 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                     aria-multiline="true"
                     contentEditable={!saving}
                     suppressContentEditableWarning
-                    data-placeholder="Give readers a friendly reason to keep reading…"
+                    data-placeholder="Short introduction"
                     onFocus={(event) => {
                       activeEditorRef.current = event.currentTarget;
                       activeFieldRef.current = "excerpt";
-                      setActiveWritingField(true);
                     }}
-                    onBlur={() =>
-                      window.setTimeout(() => {
-                        if (!document.activeElement?.closest('[role="toolbar"]'))
-                          setActiveWritingField(false);
-                      }, 180)
-                    }
                     onMouseUp={captureEditorSelection}
                     onKeyUp={captureEditorSelection}
                     onInput={(event) => {
@@ -1163,9 +1142,6 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                   <div className="flex flex-wrap items-end justify-between gap-3">
                     <Label htmlFor="blog-content">Your story</Label>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        Rich text · PNG/JPG/WEBP up to 6 MB
-                      </span>
                       <input
                         ref={photoInputRef}
                         type="file"
@@ -1191,7 +1167,10 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                     </div>
                   </div>
                   <div
-                    className={`z-50 flex flex-wrap items-center gap-2 rounded-xl border bg-background/95 p-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/90 sm:sticky sm:top-[8.5rem] sm:z-20 sm:shadow-sm ${activeWritingField ? "fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.5rem)]" : "hidden"} sm:fixed sm:left-1/2 sm:top-[8.5rem] sm:z-50 sm:w-fit sm:max-w-[94vw] sm:-translate-x-1/2 sm:flex`}
+                    className="fixed inset-x-3 z-[80] flex flex-wrap items-center justify-center gap-2 rounded-xl border bg-background/95 p-2 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/90 sm:inset-x-auto sm:left-1/2 sm:w-fit sm:max-w-[94vw] sm:-translate-x-1/2"
+                    style={{
+                      bottom: `calc(${keyboardInset}px + env(safe-area-inset-bottom) + 0.5rem)`,
+                    }}
                     role="toolbar"
                     aria-label="Text formatting"
                     onMouseDownCapture={captureEditorSelection}
@@ -1276,17 +1255,13 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                       variant="ghost"
                       size="sm"
                       className="h-9 px-3 text-muted-foreground"
-                      aria-label="Remove formatting and automatic highlight from selected text"
+                      aria-label="Clear formatting from selected text"
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => formatSelectedText("clear")}
                     >
                       <Eraser className="mr-1 size-4" /> Clear
                     </Button>
                   </div>
-                  <p className="text-xs leading-5 text-muted-foreground">
-                    Select words or a phrase, then apply formatting. Clear removes styling and turns
-                    off automatic highlighting for that selection.
-                  </p>
                   <div
                     ref={(node) => {
                       editorRef.current = node;
@@ -1296,26 +1271,18 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                     role="textbox"
                     aria-label="Your article story"
                     aria-multiline="true"
-                    data-placeholder="Start with a welcoming introduction… Select text to format it."
+                    data-placeholder="Write your article…"
                     contentEditable={!uploadingPhoto && !saving}
                     suppressContentEditableWarning
                     onFocus={(event) => {
                       activeEditorRef.current = event.currentTarget;
                       activeFieldRef.current = "body";
-                      setActiveWritingField(true);
                     }}
                     onMouseUp={captureEditorSelection}
                     onKeyUp={captureEditorSelection}
                     onInput={(event) => {
                       captureEditorSelection();
                       setContent(editorHtmlToMarkdown(event.currentTarget.innerHTML));
-                    }}
-                    onBlur={() => {
-                      captureEditorSelection();
-                      window.setTimeout(() => {
-                        if (!document.activeElement?.closest('[role="toolbar"]'))
-                          setActiveWritingField(false);
-                      }, 180);
                     }}
                     onPaste={(event) => {
                       event.preventDefault();
@@ -1371,81 +1338,30 @@ export function BlogEditor({ user, articleId }: { user: User; articleId?: string
                       captureEditorSelection();
                       setContent(editorHtmlToMarkdown(editor.innerHTML));
                     }}
-                    onBlur={() => {
-                      captureEditorSelection();
-                      window.setTimeout(() => {
-                        if (!editorRef.current?.contains(document.activeElement)) {
-                          setActiveWritingField(false);
-                        }
-                      }, 150);
-                    }}
                     className="blog-rich-editor min-h-[28rem] w-full resize-y overflow-auto rounded-md border border-input bg-background px-3 py-3 text-base leading-7 text-foreground shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-ring empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground [&_h1]:my-4 [&_h1]:font-serif [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:font-bold [&_h3]:my-3 [&_h3]:text-xl [&_h3]:font-semibold [&_p]:my-3 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-7 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-7 [&_li]:my-1 [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-primary/30 [&_blockquote]:pl-4 [&_blockquote]:italic [&_a]:text-primary [&_a]:underline [&_img]:my-4 [&_img]:max-h-[28rem] [&_img]:rounded-xl [&_.blog-color-violet]:text-violet-700 dark:[&_.blog-color-violet]:text-violet-300 [&_.blog-color-blue]:text-blue-700 dark:[&_.blog-color-blue]:text-blue-300 [&_.blog-color-teal]:text-teal-700 dark:[&_.blog-color-teal]:text-teal-300 [&_.blog-color-rose]:text-rose-700 dark:[&_.blog-color-rose]:text-rose-300 [&_.blog-color-amber]:text-amber-700 dark:[&_.blog-color-amber]:text-amber-300 [&_.blog-size-12]:text-[12px] [&_.blog-size-14]:text-[14px] [&_.blog-size-16]:text-[16px] [&_.blog-size-18]:text-[18px] [&_.blog-size-20]:text-[20px] [&_.blog-size-24]:text-[24px] [&_.blog-size-28]:text-[28px] [&_.blog-size-32]:text-[32px] [&_mark]:rounded-sm [&_mark]:bg-violet-100 [&_mark]:font-semibold [&_mark]:text-violet-950 dark:[&_mark]:bg-violet-900/70 dark:[&_mark]:text-violet-100"
                   />
                 </div>
               </div>
             ) : (
               <div className="mt-6 rounded-2xl bg-background p-4 sm:p-8">
-                {title ? (
+                {title && (
                   <h1 className="font-serif text-3xl font-bold sm:text-4xl">
                     <BlogInlineMarkdown content={title} />
                   </h1>
-                ) : (
-                  <p className="text-muted-foreground">Your headline will appear here.</p>
                 )}
                 {excerpt && (
                   <div className="mt-4 text-lg leading-7 text-muted-foreground">
                     <BlogInlineMarkdown content={excerpt} />
                   </div>
                 )}
-                <div className="mt-6 border-t pt-6">
-                  <BlogMarkdown content={content || "_Your article preview will appear here._"} />
-                </div>
+                {content && (
+                  <div className="mt-6 border-t pt-6">
+                    <BlogMarkdown content={content} />
+                  </div>
+                )}
               </div>
             )}
           </section>
-          <aside className="space-y-4">
-            <div className="rounded-3xl border bg-secondary/35 p-5">
-              <span className="grid size-10 place-items-center rounded-xl bg-card text-primary shadow-sm">
-                <Sparkles className="size-5" />
-              </span>
-              <h2 className="mt-4 font-bold">A few good-story habits</h2>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
-                <li>• Keep one clear idea at the heart of the article.</li>
-                <li>• Break up long passages with descriptive headings.</li>
-                <li>• Use short paragraphs, examples and practical takeaways.</li>
-                <li>• Link to sources readers can trust.</li>
-              </ul>
-            </div>
-            <div className="rounded-3xl border bg-card p-5">
-              <h2 className="font-bold">Quick formatting</h2>
-              <div className="mt-3 space-y-2 text-xs text-muted-foreground">
-                <p>
-                  <code className="rounded bg-muted px-1.5 py-0.5">## Section title</code> creates a
-                  subheading
-                </p>
-                <p>
-                  <code className="rounded bg-muted px-1.5 py-0.5">**important**</code> adds
-                  emphasis
-                </p>
-                <p>
-                  <code className="rounded bg-muted px-1.5 py-0.5">- list item</code> creates a list
-                </p>
-                <p>
-                  <code className="rounded bg-muted px-1.5 py-0.5">[source](url)</code> adds a link
-                </p>
-              </div>
-            </div>
-            <div className="rounded-3xl border bg-card p-5">
-              <div className="flex items-center gap-2 text-primary">
-                <Clock3 className="size-4" />
-                <p className="text-sm font-semibold">Reader-first design</p>
-              </div>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                Headlines, subheads, spacing and readable line lengths are built into the published
-                story view.
-              </p>
-            </div>
-          </aside>
         </div>
       </div>
     </main>

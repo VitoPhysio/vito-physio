@@ -19,6 +19,7 @@ function AuthenticatedLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const isMessages = pathname === "/messages";
   const isWorkspace = isWorkspacePath(pathname);
+  const isBlogEditor = pathname === "/blog/write" || pathname.startsWith("/blog/edit/");
 
   return (
     <>
@@ -28,13 +29,15 @@ function AuthenticatedLayout() {
           className={
             isMessages || isWorkspace
               ? ""
-              : "pb-[calc(5rem+env(safe-area-inset-bottom))] side:pb-0"
+              : isBlogEditor
+                ? "pb-32 side:pb-0"
+                : "pb-[calc(5rem+env(safe-area-inset-bottom))] side:pb-0"
           }
         >
           <Outlet />
         </div>
       </div>
-      {!isWorkspace && <SignedInBottomNavigation userId={user.id} />}
+      {!isWorkspace && <SignedInBottomNavigation userId={user.id} hideMobileTabs={isBlogEditor} />}
     </>
   );
 }
