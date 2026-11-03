@@ -58,7 +58,7 @@ export function AppDownloadPrompt() {
 
       <div className="mt-3 flex items-center gap-2 pl-14">
         <Button asChild size="sm" className="gap-2">
-          <a href={APK_URL} download="vito-physio.apk">
+          <a href={APK_URL} download="Vito-physio.apk">
             <Download className="size-4" aria-hidden="true" />
             Download app
           </a>
