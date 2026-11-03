@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
+import { AppDownloadPrompt } from "@/components/vito/AppDownloadPrompt";
 import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { AppHeader } from "@/components/vito/AppHeader";
@@ -457,6 +458,7 @@ function Index() {
       </main>
       {currentUser && homeStage >= 5 && <SignedInBottomNavigation userId={currentUser.id} />}
       {currentUser && !headerReady && <VitoLoadingOverlay />}
+      <AppDownloadPrompt />
     </div>
   );
 }

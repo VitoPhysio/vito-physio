@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/vito/AppHeader";
 import { SignedInBottomNavigation } from "@/components/vito/SignedInHome";
 import { isWorkspacePath } from "@/lib/workspace-navigation";
+import { AppDownloadPrompt } from "@/components/vito/AppDownloadPrompt";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -38,6 +39,7 @@ function AuthenticatedLayout() {
         </div>
       </div>
       {!isWorkspace && <SignedInBottomNavigation userId={user.id} hideMobileTabs={isBlogEditor} />}
+      <AppDownloadPrompt />
     </>
   );
 }
