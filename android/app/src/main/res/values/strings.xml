@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Vito Physio</string>
+    <string name="title_activity_main">Vito Physio</string>
+    <string name="package_name">com.vitophysio.app</string>
+    <string name="custom_url_scheme">com.vitophysio.app</string>
+</resources>

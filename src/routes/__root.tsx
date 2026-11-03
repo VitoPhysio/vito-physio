@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SplashScreen } from "@capacitor/splash-screen";
 import {
   Outlet,
   Link,
@@ -13,7 +14,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
-import { applyTheme, getStoredTheme } from "@/lib/theme";
+import { applyTheme, getStoredTheme, watchSystemTheme } from "@/lib/theme";
 
 function NotFoundComponent() {
   return (
@@ -125,7 +126,16 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
-    applyTheme(getStoredTheme());
+    const theme = getStoredTheme();
+    const refreshTheme = () => applyTheme(theme);
+
+    refreshTheme();
+    if (theme !== "system") return;
+    return watchSystemTheme(refreshTheme);
+  }, []);
+
+  useEffect(() => {
+    void SplashScreen.hide({ fadeOutDuration: 200 });
   }, []);
 
   return (
