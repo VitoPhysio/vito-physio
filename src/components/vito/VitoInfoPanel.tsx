@@ -61,7 +61,7 @@ export function VitoInfoPanel({
           <img
             src={logo}
             alt="VITO Physio"
-            className={cn("size-10 rounded-lg bg-card object-contain p-0.5", imageClassName)}
+            className={cn("size-10 object-contain", imageClassName)}
           />
         </button>
       </SheetTrigger>
@@ -87,7 +87,7 @@ export function VitoInfoPanel({
               <img
                 src={logo}
                 alt="VITO Physio logo"
-                className="size-20 rounded-2xl bg-brand-gradient object-contain p-1 shadow-glow sm:size-24"
+                className="size-20 object-contain sm:size-24"
               />
             </div>
             <SheetTitle className="mt-6 text-3xl font-black tracking-tight text-white sm:text-4xl">

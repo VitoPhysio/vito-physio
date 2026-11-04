@@ -3,9 +3,9 @@ import { Download, Smartphone, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { APK_DOWNLOAD_URL } from "@/lib/app-release";
 
-const APK_URL =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663441912362/RdxiRTIexVPxHWhx.apk";
+const APK_URL = APK_DOWNLOAD_URL;
 const DISMISS_KEY = "vito-android-download-prompt-dismissed";
 
 function isAndroidBrowser() {
