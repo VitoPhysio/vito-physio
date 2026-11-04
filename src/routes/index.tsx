@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useScrollVisibility } from "@/hooks/use-scroll-visibility";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 import type { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,6 +123,7 @@ function Index() {
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const scrollHidden = useScrollVisibility(Boolean(currentUser));
+  const isOnline = useOnlineStatus();
   const matches = publicSearchItems.filter((item) =>
     `${item.label} ${item.description}`.toLowerCase().includes(search.trim().toLowerCase()),
   );
@@ -194,6 +196,7 @@ function Index() {
   }, [activeUserId, headerReady]);
 
   if (!authReady) return <VitoLoadingScreen />;
+  if (!isOnline) return <OfflineLimitedHome currentUser={currentUser} />;
 
   return (
     <div
@@ -460,6 +463,35 @@ function Index() {
       {currentUser && !headerReady && <VitoLoadingOverlay />}
       <AppDownloadPrompt />
     </div>
+  );
+}
+
+function OfflineLimitedHome({ currentUser }: { currentUser: User | null }) {
+  return (
+    <main className="grid min-h-[100svh] place-items-center overflow-hidden bg-background px-5 py-8 text-foreground">
+      <section className="w-full max-w-md rounded-3xl border bg-card p-6 text-center shadow-lg">
+        <VitoBrandLockup compact showTagline={false} imageClassName="object-contain" />
+        <p className="mt-5 text-sm text-muted-foreground">
+          You are offline. Vito Physio is showing saved essentials only; new content and additional loading are paused until you reconnect.
+        </p>
+        <div className="mt-6 grid gap-2">
+          {currentUser ? (
+            <>
+              <Button asChild className="w-full">
+                <Link to="/messages">Open saved messages</Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/profile">Open saved profile</Link>
+              </Button>
+            </>
+          ) : (
+            <Button asChild className="w-full">
+              <Link to="/">View saved home</Link>
+            </Button>
+          )}
+        </div>
+      </section>
+    </main>
   );
 }
 
