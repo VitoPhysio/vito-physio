@@ -3,9 +3,9 @@ import { Download, Smartphone, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { APK_DOWNLOAD_URL } from "@/lib/app-release";
 
-const APK_URL =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663441912362/AkexISahKaAOMSVN.apk";
+const APK_URL = APK_DOWNLOAD_URL;
 const DISMISS_KEY = "vito-android-download-prompt-dismissed";
 
 function isAndroidBrowser() {
@@ -58,7 +58,7 @@ export function AppDownloadPrompt() {
 
       <div className="mt-3 flex items-center gap-2 pl-14">
         <Button asChild size="sm" className="gap-2">
-          <a href={APK_URL} download="vito-physio.apk">
+          <a href={APK_URL} download="Vito-physio.apk">
             <Download className="size-4" aria-hidden="true" />
             Download app
           </a>

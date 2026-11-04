@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirm your Vito Physio account</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      background: #f7f4fb;
+      color: #211b32;
+      font-family: Arial, Helvetica, sans-serif;
+    "
+  >
+    <div style="width: 100%; padding: 32px 16px; box-sizing: border-box">
+      <table
+        role="presentation"
+        width="100%"
+        cellspacing="0"
+        cellpadding="0"
+        style="
+          max-width: 620px;
+          margin: 0 auto;
+          background: #ffffff;
+          border: 1px solid #e9e0f4;
+          border-radius: 20px;
+          overflow: hidden;
+        "
+      >
+        <tr>
+          <td
+            style="
+              padding: 28px 28px 22px;
+              background: linear-gradient(135deg, #6d22c9 0%, #4b1690 68%, #f36b21 150%);
+              text-align: center;
+            "
+          >
+            <img
+              src="{{ .SiteURL }}/vito-logo.png"
+              width="76"
+              height="76"
+              alt="Vito Physio"
+              style="
+                display: block;
+                width: 76px;
+                height: 76px;
+                object-fit: contain;
+                margin: 0 auto 12px;
+              "
+            />
+            <div style="color: #ffffff; font-size: 22px; font-weight: 800; letter-spacing: -0.02em">
+              Vito Physio
+            </div>
+            <div style="margin-top: 5px; color: #ffffff; font-size: 13px; opacity: 0.92">
+              From injury to return
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 30px 28px 34px">
+            <h1 style="margin: 0; color: #211b32; font-size: 26px; line-height: 1.2">
+              Confirm your email first
+            </h1>
+            <p style="margin: 14px 0 0; color: #5f566c; font-size: 16px; line-height: 1.6">
+              Welcome to Vito Physio. Tap the button below to verify your email and activate your
+              account.
+            </p>
+            <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 24px 0 22px">
+              <tr>
+                <td style="border-radius: 10px; background: #6d22c9">
+                  <a
+                    href="{{ .ConfirmationURL }}"
+                    style="
+                      display: inline-block;
+                      padding: 16px 24px;
+                      border-radius: 10px;
+                      color: #ffffff;
+                      background: #6d22c9;
+                      font-size: 17px;
+                      font-weight: 800;
+                      line-height: 1;
+                      text-decoration: none;
+                    "
+                    >Verify my Vito Physio email</a
+                  >
+                </td>
+              </tr>
+            </table>
+            <p style="margin: 0; color: #5f566c; font-size: 14px; line-height: 1.6">
+              If the button does not work, copy and paste this link into your browser:
+            </p>
+            <p style="margin: 8px 0 22px; word-break: break-all; font-size: 13px; line-height: 1.5">
+              <a href="{{ .ConfirmationURL }}" style="color: #6d22c9; font-weight: 700"
+                >{{ .ConfirmationURL }}</a
+              >
+            </p>
+            <div style="height: 1px; background: #eee8f5"></div>
+            <p style="margin: 20px 0 0; color: #7a7187; font-size: 13px; line-height: 1.6">
+              If you did not create a Vito Physio account, you can safely ignore this email.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td
+            style="
+              padding: 18px 28px;
+              background: #fbf9fd;
+              color: #7a7187;
+              font-size: 12px;
+              line-height: 1.5;
+              text-align: center;
+            "
+          >
+            Vito Physio · Sports physiotherapy care
+          </td>
+        </tr>
+      </table>
+    </div>
+  </body>
+</html>

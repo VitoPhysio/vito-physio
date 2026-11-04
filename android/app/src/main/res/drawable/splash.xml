@@ -2,8 +2,8 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@android:color/white" />
     <item
-        android:width="84dp"
-        android:height="84dp"
+        android:width="72dp"
+        android:height="72dp"
         android:gravity="center">
         <bitmap
             android:src="@drawable/vito_logo"

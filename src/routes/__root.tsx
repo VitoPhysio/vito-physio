@@ -16,7 +16,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
-import { applyTheme, getStoredTheme, watchSystemTheme } from "@/lib/theme";
+import { AppUpdatePrompt } from "@/components/vito/AppUpdatePrompt";
+import { applyTheme, getStoredTheme } from "@/lib/theme";
 
 const queryPersister = createSyncStoragePersister({
   storage: typeof window === "undefined" ? undefined : window.localStorage,
@@ -152,16 +153,7 @@ function RootComponent() {
   }, []);
 
   useEffect(() => {
-    const theme = getStoredTheme();
-    const refreshTheme = () => applyTheme(theme);
-
-    refreshTheme();
-    if (theme !== "system") return;
-    return watchSystemTheme(refreshTheme);
-  }, []);
-
-  useEffect(() => {
-    void SplashScreen.hide({ fadeOutDuration: 200 });
+    applyTheme(getStoredTheme());
   }, []);
 
   return (
@@ -179,6 +171,7 @@ function RootComponent() {
           Limited offline mode: showing saved Vito Physio content. New data will load when you reconnect.
         </div>
       )}
+      <AppUpdatePrompt />
       <Toaster richColors position="top-center" />
     </PersistQueryClientProvider>
   );
