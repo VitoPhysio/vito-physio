@@ -1,1 +1,5 @@
 project_id = "braetdfvznctpncwxvdk"
+
+[auth.email.template.confirmation]
+subject = "Confirm your Vito Physio email"
+content_path = "./supabase/templates/confirmation.html"
