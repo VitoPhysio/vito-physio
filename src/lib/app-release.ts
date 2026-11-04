@@ -1,7 +1,7 @@
 export const APP_NAME = "Vito Physio";
-export const CURRENT_APP_VERSION = "1.3.0";
+export const CURRENT_APP_VERSION = "1.4";
 export const APK_DOWNLOAD_URL =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663441912362/RdxiRTIexVPxHWhx.apk";
+  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663441912362/TIKvJunOHigcegKD.apk";
 export const APP_VERSION_MANIFEST_URL = "/app-version.json";
 
 export function compareVersions(left: string, right: string) {
