@@ -14,6 +14,8 @@ export function PhotoAvatar({
   name?: string | null | undefined;
   className?: string;
 }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
   const { data: url } = useQuery({
     queryKey: ["avatar", path],
     enabled: !!path,
@@ -30,6 +32,8 @@ export function PhotoAvatar({
     .slice(0, 2)
     .join("")
     .toUpperCase();
+  const showImage = Boolean(url) && !imageFailed;
+
   return (
     <span
       className={cn(
@@ -37,7 +41,22 @@ export function PhotoAvatar({
         className,
       )}
     >
-      {url ? <img src={url} alt={name ?? "Photo"} className="size-full object-cover" /> : initials}
+      {showImage ? (
+        <img
+          src={url ?? undefined}
+          alt={name ?? "Photo"}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageFailed(true)}
+          className={cn(
+            "size-full object-cover transition-[filter,opacity] duration-500 ease-out",
+            imageLoaded ? "opacity-100 blur-0" : "opacity-80 blur-md",
+          )}
+        />
+      ) : (
+        initials
+      )}
     </span>
   );
 }

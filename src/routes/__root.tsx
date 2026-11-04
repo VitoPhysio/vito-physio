@@ -1,4 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { SplashScreen } from "@capacitor/splash-screen";
 import {
   Outlet,
@@ -9,12 +11,18 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { applyTheme, getStoredTheme, watchSystemTheme } from "@/lib/theme";
+
+const queryPersister = createSyncStoragePersister({
+  storage: typeof window === "undefined" ? undefined : window.localStorage,
+  key: "vito-query-cache-v2",
+  throttleTime: 1000,
+});
 
 function NotFoundComponent() {
   return (
@@ -124,6 +132,24 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    setIsOnline(typeof navigator === "undefined" ? true : navigator.onLine);
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const theme = getStoredTheme();
@@ -139,10 +165,21 @@ function RootComponent() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: queryPersister,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      }}
+    >
+      {/* Required: nested routes render here; removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      {!isOnline && (
+        <div className="fixed inset-x-3 bottom-3 z-[110] mx-auto max-w-lg rounded-xl border border-accent/30 bg-card/95 px-4 py-3 text-center text-sm font-medium text-card-foreground shadow-xl backdrop-blur print:hidden">
+          Limited offline mode: showing saved Vito Physio content. New data will load when you reconnect.
+        </div>
+      )}
       <Toaster richColors position="top-center" />
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }

@@ -4,7 +4,17 @@ import { routeTree } from "./routeTree.gen";
 import { VitoLoadingScreen } from "@/components/vito/VitoBrandLockup";
 
 export const getRouter = () => {
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        networkMode: "offlineFirst",
+        staleTime: 5 * 60 * 1000,
+        gcTime: 7 * 24 * 60 * 60 * 1000,
+        retry: 1,
+        refetchOnReconnect: true,
+      },
+    },
+  });
 
   const router = createRouter({
     routeTree,

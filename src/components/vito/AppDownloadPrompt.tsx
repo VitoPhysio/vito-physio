@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 const APK_URL =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663441912362/RdxiRTIexVPxHWhx.apk";
+  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663441912362/AkexISahKaAOMSVN.apk";
 const DISMISS_KEY = "vito-android-download-prompt-dismissed";
 
 function isAndroidBrowser() {
