@@ -8,6 +8,7 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
+  useCanGoBack,
   useRouter,
   HeadContent,
   Scripts,
@@ -135,6 +136,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
   const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
@@ -158,9 +161,9 @@ function RootComponent() {
     if (!Capacitor.isNativePlatform()) return;
 
     let listener: { remove: () => Promise<void> } | undefined;
-    void App.addListener("backButton", ({ canGoBack }) => {
-      if (canGoBack && window.history.length > 1) {
-        window.history.back();
+    void App.addListener("backButton", () => {
+      if (canGoBack) {
+        router.history.back();
       } else {
         void App.exitApp();
       }
@@ -171,7 +174,7 @@ function RootComponent() {
     return () => {
       void listener?.remove();
     };
-  }, []);
+  }, [canGoBack, router]);
 
   useEffect(() => {
     const theme = getStoredTheme();
