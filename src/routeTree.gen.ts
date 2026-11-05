@@ -22,6 +22,7 @@ import { Route as AuthenticatedLinkAccountRouteImport } from './routes/_authenti
 import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticated/messages'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedResearchRouteImport } from './routes/_authenticated/research'
 import { Route as AuthenticatedBlogIndexRouteImport } from './routes/_authenticated/blog/index'
 import { Route as AuthenticatedBlogSlugRouteImport } from './routes/_authenticated/blog/$slug'
 import { Route as AuthenticatedBlogWriteRouteImport } from './routes/_authenticated/blog/write'
@@ -94,6 +95,11 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedResearchRoute = AuthenticatedResearchRouteImport.update({
+  id: '/research',
+  path: '/research',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedBlogIndexRoute = AuthenticatedBlogIndexRouteImport.update({
   id: '/blog/',
   path: '/blog/',
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/messages': typeof AuthenticatedMessagesRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/research': typeof AuthenticatedResearchRoute
   '/blog/$slug': typeof AuthenticatedBlogSlugRoute
   '/blog/write': typeof AuthenticatedBlogWriteRoute
   '/members/$memberId': typeof AuthenticatedMembersMemberIdRoute
@@ -154,6 +161,7 @@ export interface FileRoutesByTo {
   '/messages': typeof AuthenticatedMessagesRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/research': typeof AuthenticatedResearchRoute
   '/blog/$slug': typeof AuthenticatedBlogSlugRoute
   '/blog/write': typeof AuthenticatedBlogWriteRoute
   '/members/$memberId': typeof AuthenticatedMembersMemberIdRoute
@@ -175,6 +183,7 @@ export interface FileRoutesById {
   '/_authenticated/messages': typeof AuthenticatedMessagesRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/research': typeof AuthenticatedResearchRoute
   '/_authenticated/blog/$slug': typeof AuthenticatedBlogSlugRoute
   '/_authenticated/blog/write': typeof AuthenticatedBlogWriteRoute
   '/_authenticated/members/$memberId': typeof AuthenticatedMembersMemberIdRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/profile'
+    | '/research'
     | '/blog/$slug'
     | '/blog/write'
     | '/members/$memberId'
@@ -215,6 +225,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/profile'
+    | '/research'
     | '/blog/$slug'
     | '/blog/write'
     | '/members/$memberId'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
     | '/_authenticated/messages'
     | '/_authenticated/notifications'
     | '/_authenticated/profile'
+    | '/_authenticated/research'
     | '/_authenticated/blog/$slug'
     | '/_authenticated/blog/write'
     | '/_authenticated/members/$memberId'
@@ -344,6 +356,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/research': {
+      id: '/_authenticated/research'
+      path: '/research'
+      fullPath: '/research'
+      preLoaderRoute: typeof AuthenticatedResearchRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/blog/': {
       id: '/_authenticated/blog/'
       path: '/blog'
@@ -390,6 +409,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMessagesRoute: typeof AuthenticatedMessagesRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedResearchRoute: typeof AuthenticatedResearchRoute
   AuthenticatedBlogSlugRoute: typeof AuthenticatedBlogSlugRoute
   AuthenticatedBlogWriteRoute: typeof AuthenticatedBlogWriteRoute
   AuthenticatedMembersMemberIdRoute: typeof AuthenticatedMembersMemberIdRoute
@@ -405,6 +425,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMessagesRoute: AuthenticatedMessagesRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedResearchRoute: AuthenticatedResearchRoute,
   AuthenticatedBlogSlugRoute: AuthenticatedBlogSlugRoute,
   AuthenticatedBlogWriteRoute: AuthenticatedBlogWriteRoute,
   AuthenticatedMembersMemberIdRoute: AuthenticatedMembersMemberIdRoute,

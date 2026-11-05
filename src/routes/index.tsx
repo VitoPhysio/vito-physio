@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Activity,
   Bell,
+  ChartColumn,
   Dumbbell,
   CalendarCheck2,
   HeartPulse,
@@ -472,7 +473,8 @@ function OfflineLimitedHome({ currentUser }: { currentUser: User | null }) {
       <section className="w-full max-w-md rounded-3xl border bg-card p-6 text-center shadow-lg">
         <VitoBrandLockup compact showTagline={false} imageClassName="object-contain" />
         <p className="mt-5 text-sm text-muted-foreground">
-          You are offline. Vito Physio is showing saved essentials only; new content and additional loading are paused until you reconnect.
+          You are offline. Vito Physio is showing saved essentials only; new content and additional
+          loading are paused until you reconnect.
         </p>
         <div className="mt-6 grid gap-2">
           {currentUser ? (
@@ -602,6 +604,12 @@ function SignedInHomeHeader({ user }: { user: User }) {
                     <Link to="/notifications">
                       <Bell className="size-4 text-primary" />
                       Notifications
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-lg px-2 py-2">
+                    <Link to="/research">
+                      <ChartColumn className="size-4 text-primary" />
+                      Research & Analytics
                     </Link>
                   </DropdownMenuItem>
                 </>
