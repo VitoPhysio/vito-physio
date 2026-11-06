@@ -1043,6 +1043,16 @@ export type Database = {
           notes: string | null
           pain_score: number | null
           sport_context: string | null
+          injury_type: string | null
+          severity: string | null
+          mechanism_category: string | null
+          onset_type: string | null
+          activity_context: string | null
+          is_recurrence: boolean | null
+          previous_injury_id: string | null
+          reported_at: string | null
+          resolved_at: string | null
+          days_lost: number | null
           status: string
           updated_at: string
         }
@@ -1058,6 +1068,16 @@ export type Database = {
           notes?: string | null
           pain_score?: number | null
           sport_context?: string | null
+          injury_type?: string | null
+          severity?: string | null
+          mechanism_category?: string | null
+          onset_type?: string | null
+          activity_context?: string | null
+          is_recurrence?: boolean | null
+          previous_injury_id?: string | null
+          reported_at?: string | null
+          resolved_at?: string | null
+          days_lost?: number | null
           status?: string
           updated_at?: string
         }
@@ -1073,6 +1093,16 @@ export type Database = {
           notes?: string | null
           pain_score?: number | null
           sport_context?: string | null
+          injury_type?: string | null
+          severity?: string | null
+          mechanism_category?: string | null
+          onset_type?: string | null
+          activity_context?: string | null
+          is_recurrence?: boolean | null
+          previous_injury_id?: string | null
+          reported_at?: string | null
+          resolved_at?: string | null
+          days_lost?: number | null
           status?: string
           updated_at?: string
         }
