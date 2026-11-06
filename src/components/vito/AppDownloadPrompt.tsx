@@ -1,44 +1,42 @@
 import { Capacitor } from "@capacitor/core";
-import { Download, Smartphone, X } from "lucide-react";
+import { Download, ExternalLink, Smartphone, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { APK_DOWNLOAD_URL } from "@/lib/app-release";
 
-const APK_URL = APK_DOWNLOAD_URL;
-const DISMISS_KEY = "vito-android-download-prompt-dismissed";
+const APP_URL_SCHEME = "com.vitophysio.app";
 
-function isAndroidBrowser() {
-  if (typeof navigator === "undefined") return false;
-  return /Android/i.test(navigator.userAgent) && !Capacitor.isNativePlatform();
+function isWebApp() {
+  return typeof window !== "undefined" && !Capacitor.isNativePlatform();
+}
+
+function openPhoneApp() {
+  if (typeof window === "undefined") return;
+  window.location.assign(`${APP_URL_SCHEME}://`);
 }
 
 export function AppDownloadPrompt() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!isAndroidBrowser()) return;
-    if (window.localStorage.getItem(DISMISS_KEY) === "1") return;
-    setVisible(true);
+    if (isWebApp()) setVisible(true);
   }, []);
 
   if (!visible) return null;
 
-  function dismiss() {
-    window.localStorage.setItem(DISMISS_KEY, "1");
-    setVisible(false);
-  }
-
   return (
     <aside
-      className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-lg rounded-2xl border border-primary/15 bg-card/95 p-4 text-card-foreground shadow-2xl backdrop-blur supports-[backdrop-filter]:bg-card/85 print:hidden"
-      role="status"
-      aria-label="Download the Vito Physio Android app"
+      className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[120] mx-auto max-w-lg rounded-2xl border border-primary/15 bg-card/95 p-4 text-card-foreground shadow-2xl backdrop-blur supports-[backdrop-filter]:bg-card/85 print:hidden"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="app-download-title"
+      aria-describedby="app-download-description"
     >
       <button
         type="button"
-        onClick={dismiss}
-        aria-label="Dismiss app download message"
+        onClick={() => setVisible(false)}
+        aria-label="Continue on the website"
         className="absolute right-2 top-2 inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <X className="size-4" />
@@ -49,22 +47,34 @@ export function AppDownloadPrompt() {
           <Smartphone className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className="font-bold leading-tight">Get Vito Physio on your phone</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Install the Android app for quicker access. You can continue using the website instead.
+          <p id="app-download-title" className="font-bold leading-tight">
+            Use Vito Physio on your phone
+          </p>
+          <p id="app-download-description" className="mt-1 text-sm text-muted-foreground">
+            Download the app for the best experience, or open it if it is already installed.
           </p>
         </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-2 pl-14">
+      <div className="mt-3 flex flex-wrap items-center gap-2 pl-14">
         <Button asChild size="sm" className="gap-2">
-          <a href={APK_URL} download="Vito-physio.apk">
+          <a href={APK_DOWNLOAD_URL} download="Vito-physio.apk">
             <Download className="size-4" aria-hidden="true" />
             Download app
           </a>
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={dismiss}>
-          Not now
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="gap-2"
+          onClick={openPhoneApp}
+        >
+          <ExternalLink className="size-4" aria-hidden="true" />
+          Open phone app
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setVisible(false)}>
+          Continue on website
         </Button>
       </div>
     </aside>

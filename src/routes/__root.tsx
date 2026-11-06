@@ -19,6 +19,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { AppDownloadPrompt } from "@/components/vito/AppDownloadPrompt";
 import { AppUpdatePrompt } from "@/components/vito/AppUpdatePrompt";
 import { applyTheme, getStoredTheme } from "@/lib/theme";
 
@@ -201,9 +202,11 @@ function RootComponent() {
       <Outlet />
       {!isOnline && (
         <div className="fixed inset-x-3 bottom-3 z-[110] mx-auto max-w-lg rounded-xl border border-accent/30 bg-card/95 px-4 py-3 text-center text-sm font-medium text-card-foreground shadow-xl backdrop-blur print:hidden">
-          Limited offline mode: showing saved Vito Physio content. New data will load when you reconnect.
+          Limited offline mode: showing saved Vito Physio content. New data will load when you
+          reconnect.
         </div>
       )}
+      <AppDownloadPrompt />
       <AppUpdatePrompt />
       <Toaster richColors position="top-center" />
     </PersistQueryClientProvider>
