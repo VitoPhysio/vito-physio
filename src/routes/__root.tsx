@@ -1,11 +1,14 @@
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import { SplashScreen } from "@capacitor/splash-screen";
 import {
   Outlet,
   Link,
   createRootRouteWithContext,
+  useCanGoBack,
   useRouter,
   HeadContent,
   Scripts,
@@ -133,6 +136,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
   const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
@@ -153,7 +158,35 @@ function RootComponent() {
   }, []);
 
   useEffect(() => {
-    applyTheme(getStoredTheme());
+    if (!Capacitor.isNativePlatform()) return;
+
+    let listener: { remove: () => Promise<void> } | undefined;
+    void App.addListener("backButton", () => {
+      if (canGoBack) {
+        router.history.back();
+      } else {
+        void App.exitApp();
+      }
+    }).then((handle) => {
+      listener = handle;
+    });
+
+    return () => {
+      void listener?.remove();
+    };
+  }, [canGoBack, router]);
+
+  useEffect(() => {
+    const theme = getStoredTheme();
+    const refreshTheme = () => applyTheme(theme);
+
+    refreshTheme();
+    if (theme !== "system") return;
+    return watchSystemTheme(refreshTheme);
+  }, []);
+
+  useEffect(() => {
+    void SplashScreen.hide({ fadeOutDuration: 200 });
   }, []);
 
   return (

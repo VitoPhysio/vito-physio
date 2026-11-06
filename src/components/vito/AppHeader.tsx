@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Bell,
+  ChartColumn,
   ClipboardList,
   Home,
   LayoutDashboard,
@@ -119,6 +120,13 @@ export function AppHeader({
           description: "Consultation alerts",
           icon: Bell,
           to: "/notifications",
+        },
+        {
+          key: "research",
+          label: "Research & Analytics",
+          description: "Injury trends and outcomes",
+          icon: ChartColumn,
+          to: "/research",
         },
       );
     if (ADMIN.includes(role))
