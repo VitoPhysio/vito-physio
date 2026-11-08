@@ -1,9 +1,9 @@
 import { Capacitor } from "@capacitor/core";
-import { Download, ExternalLink, Smartphone, X } from "lucide-react";
+import { Download, ExternalLink, Share, Smartphone, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { APK_DOWNLOAD_URL } from "@/lib/app-release";
+import { APK_DOWNLOAD_URL, detectWebPlatform, type WebPlatform } from "@/lib/app-release";
 
 const APP_URL_SCHEME = "com.vitophysio.app";
 
@@ -17,13 +17,21 @@ function openPhoneApp() {
 }
 
 export function AppDownloadPrompt() {
+  const [platform, setPlatform] = useState<WebPlatform | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (isWebApp()) setVisible(true);
+    if (!isWebApp()) return;
+
+    setPlatform(
+      detectWebPlatform(navigator.userAgent, navigator.platform, navigator.maxTouchPoints),
+    );
+    setVisible(true);
   }, []);
 
-  if (!visible) return null;
+  if (!visible || !platform || platform === "desktop") return null;
+
+  const isIos = platform === "ios";
 
   return (
     <aside
@@ -44,35 +52,49 @@ export function AppDownloadPrompt() {
 
       <div className="flex items-start gap-3 pr-7">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-          <Smartphone className="size-5" aria-hidden="true" />
+          {isIos ? (
+            <Share className="size-5" aria-hidden="true" />
+          ) : (
+            <Smartphone className="size-5" aria-hidden="true" />
+          )}
         </span>
         <div className="min-w-0">
           <p id="app-download-title" className="font-bold leading-tight">
-            Use Vito Physio on your phone
+            {isIos ? "Add Vito Physio to your Home Screen" : "Use Vito Physio on Android"}
           </p>
           <p id="app-download-description" className="mt-1 text-sm text-muted-foreground">
-            Download the app for the best experience, or open it if it is already installed.
+            {isIos
+              ? "In Safari, tap Share, then choose Add to Home Screen for an app-like experience."
+              : "Download the Android app for the best phone experience, or open it if it is already installed."}
           </p>
         </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 pl-14">
-        <Button asChild size="sm" className="gap-2">
-          <a href={APK_DOWNLOAD_URL} download="Vito-physio.apk">
-            <Download className="size-4" aria-hidden="true" />
-            Download app
-          </a>
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="gap-2"
-          onClick={openPhoneApp}
-        >
-          <ExternalLink className="size-4" aria-hidden="true" />
-          Open phone app
-        </Button>
+        {isIos ? (
+          <Button type="button" variant="secondary" size="sm" onClick={() => setVisible(false)}>
+            Continue in Safari
+          </Button>
+        ) : (
+          <>
+            <Button asChild size="sm" className="gap-2">
+              <a href={APK_DOWNLOAD_URL} download="Vito-physio.apk">
+                <Download className="size-4" aria-hidden="true" />
+                Download Android app
+              </a>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="gap-2"
+              onClick={openPhoneApp}
+            >
+              <ExternalLink className="size-4" aria-hidden="true" />
+              Open Android app
+            </Button>
+          </>
+        )}
         <Button type="button" variant="ghost" size="sm" onClick={() => setVisible(false)}>
           Continue on website
         </Button>
