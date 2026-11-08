@@ -3,7 +3,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
   appId: "com.vitophysio.app",
   appName: "Vito Physio",
-  webDir: "dist",
+  webDir: ".output/public",
   server: {
     url: "https://vito-physio.vercel.app",
     cleartext: false,
