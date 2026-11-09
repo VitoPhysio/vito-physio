@@ -952,16 +952,28 @@ function ChatView({
             event.currentTarget.value = "";
           }}
         />
-        <button
-          type="button"
-          onClick={() => attachmentInputRef.current?.click()}
-          disabled={sending}
-          title="Add a picture or file"
-          aria-label="Add a picture or file"
-          className="grid size-10 shrink-0 place-items-center rounded-full text-primary transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Plus className="size-5" />
-        </button>
+        <div className="flex min-w-0 flex-1 items-center rounded-full border bg-background px-1.5 transition focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+          <button
+            type="button"
+            onClick={() => attachmentInputRef.current?.click()}
+            disabled={sending}
+            title="Add a picture or file"
+            aria-label="Add a picture or file"
+            className="grid size-9 shrink-0 place-items-center rounded-full text-primary transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="size-5" />
+          </button>
+          <input
+            ref={inputRef}
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={sending}
+            placeholder="Write a message…"
+            aria-label="Message"
+            className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-sm outline-none"
+          />
+        </div>
         <button
           type="button"
           disabled
@@ -971,16 +983,6 @@ function ChatView({
         >
           <Smile className="size-5" />
         </button>
-        <input
-          ref={inputRef}
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={sending}
-          placeholder="Write a message…"
-          aria-label="Message"
-          className="min-w-0 flex-1 rounded-full border bg-background px-4 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-        />
         <button
           type="submit"
           disabled={sending || (!body.trim() && !pendingAttachment)}
