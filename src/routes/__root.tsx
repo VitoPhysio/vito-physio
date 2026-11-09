@@ -19,6 +19,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { AppDownloadPrompt } from "@/components/vito/AppDownloadPrompt";
 import { AppUpdatePrompt } from "@/components/vito/AppUpdatePrompt";
 import { applyTheme, getStoredTheme } from "@/lib/theme";
 
@@ -92,7 +93,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "theme-color", content: "#35108f" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "VITO Physio" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "format-detection", content: "telephone=no" },
       { title: "VITO Physio" },
       {
         name: "description",
@@ -112,6 +119,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/vito-logo.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -201,9 +210,11 @@ function RootComponent() {
       <Outlet />
       {!isOnline && (
         <div className="fixed inset-x-3 bottom-3 z-[110] mx-auto max-w-lg rounded-xl border border-accent/30 bg-card/95 px-4 py-3 text-center text-sm font-medium text-card-foreground shadow-xl backdrop-blur print:hidden">
-          Limited offline mode: showing saved Vito Physio content. New data will load when you reconnect.
+          Limited offline mode: showing saved Vito Physio content. New data will load when you
+          reconnect.
         </div>
       )}
+      <AppDownloadPrompt />
       <AppUpdatePrompt />
       <Toaster richColors position="top-center" />
     </PersistQueryClientProvider>

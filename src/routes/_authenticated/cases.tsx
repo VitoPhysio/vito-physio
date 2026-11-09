@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SimpleForm, clean, type Field } from "@/components/vito/SimpleForm";
@@ -207,8 +208,14 @@ function OpenCaseStep({ userId, onOpened }: { userId: string; onOpened: () => vo
             <Button size="sm" variant="outline" onClick={() => setAthleteId("")}>Change</Button>
           </div>
           <SimpleForm fields={fields} submitLabel="Open case" onSubmit={async (v) => {
+            const payload = {
+              ...clean(v, ["pain_score", "days_lost"]),
+              is_recurrence: v.is_recurrence ? v.is_recurrence === "true" : null,
+              athlete_id: selected.id,
+              created_by: userId,
+            } as TablesInsert<"injuries">;
             const { data: row, error } = await supabase.from("injuries")
-              .insert({ ...(clean(v, ["pain_score"]) as { body_region: string }), athlete_id: selected.id, created_by: userId })
+              .insert(payload)
               .select("injury_code").single();
             if (error) { toast.error(error.message); throw error; }
             toast.success(`Case ${row.injury_code} opened`);
@@ -440,12 +447,21 @@ function RecoverySub({ userId, injuryId, athleteId }: Ctx) {
     <Panel title="Recovery status">
       <SimpleForm submitLabel="Update status" fields={[
         { name: "status", label: "Status", type: "select", required: true, options: RECOVERY.map((v) => ({ value: v, label: v })) },
+        { name: "resolved_at", label: "Resolved / cleared date", type: "date" },
+        { name: "days_lost", label: "Days lost", type: "number" },
         { name: "notes", label: "Notes", type: "textarea" },
       ]} onSubmit={async (v) => {
-        await save("recovery_updates", { ...clean(v), injury_id: injuryId, athlete_id: athleteId, created_by: userId }, "Status updated");
         const status = v["status"];
         if (!status) return;
-        const { error } = await supabase.from("injuries").update({ status }).eq("id", injuryId).select("id").single();
+        const injuryUpdate: Record<string, string | number> = { status };
+        if (v["resolved_at"]?.trim()) injuryUpdate.resolved_at = v["resolved_at"];
+        if (v["days_lost"]?.trim()) {
+          const daysLost = Number(v["days_lost"]);
+          if (!Number.isInteger(daysLost) || daysLost < 0) throw new Error("Enter a valid number of days lost.");
+          injuryUpdate.days_lost = daysLost;
+        }
+        await save("recovery_updates", { status, notes: v["notes"]?.trim() || null, injury_id: injuryId, athlete_id: athleteId, created_by: userId }, "Status updated");
+        const { error } = await supabase.from("injuries").update(injuryUpdate as never).eq("id", injuryId).select("id").single();
         if (error) { toast.error(error.message); throw error; }
         await Promise.all([qc.invalidateQueries({ queryKey: ["cases"] }), qc.invalidateQueries({ queryKey: ["case-record", injuryId] }), qc.invalidateQueries({ queryKey: ["dashboard"] })]);
       }} />

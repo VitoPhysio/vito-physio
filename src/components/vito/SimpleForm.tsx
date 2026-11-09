@@ -56,23 +56,47 @@ export function SimpleForm({
               {f.required && <span className="text-accent"> *</span>}
             </Label>
             {f.type === "textarea" ? (
-              <Textarea id={f.name} required={f.required} value={v} onChange={(e) => set(e.target.value)} rows={2} />
+              <Textarea
+                id={f.name}
+                required={f.required}
+                value={v}
+                onChange={(e) => set(e.target.value)}
+                rows={2}
+              />
             ) : f.type === "select" ? (
-              <select id={f.name} required={f.required} value={v} onChange={(e) => set(e.target.value)} className={selectClass}>
+              <select
+                id={f.name}
+                required={f.required}
+                value={v}
+                onChange={(e) => set(e.target.value)}
+                className={selectClass}
+              >
                 <option value="">Select…</option>
                 {f.options?.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
                 ))}
               </select>
             ) : (
-              <Input id={f.name} type={f.type ?? "text"} required={f.required} value={v} onChange={(e) => set(e.target.value)}
-                {...(f.type === "number" ? { min: 0, max: 10 } : {})} />
+              <Input
+                id={f.name}
+                type={f.type ?? "text"}
+                required={f.required}
+                value={v}
+                onChange={(e) => set(e.target.value)}
+                {...(f.type === "number"
+                  ? { min: 0, ...(f.name === "pain_score" ? { max: 10 } : {}) }
+                  : {})}
+              />
             )}
           </div>
         );
       })}
       <div className="sm:col-span-2">
-        <Button type="submit" disabled={busy} className="w-full sm:w-auto">{busy ? "Saving…" : submitLabel}</Button>
+        <Button type="submit" disabled={busy} className="w-full sm:w-auto">
+          {busy ? "Saving…" : submitLabel}
+        </Button>
       </div>
     </form>
   );

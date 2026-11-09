@@ -1,0 +1,20 @@
+{
+  "name": "VITO Physio",
+  "short_name": "VITO Physio",
+  "description": "Sports physiotherapy case management for schools, academies, clubs and athletes.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b0618",
+  "theme_color": "#35108f",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/vito-logo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
