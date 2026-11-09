@@ -854,7 +854,9 @@ function ChatView({
             conversation.messages.map((message, index) => {
               const mine = message.sender_id === userId;
               const previous = conversation.messages[index - 1];
-              const showDate = !previous || !sameDay(previous.created_at, message.created_at);
+              const showDate =
+                isOlderThanAWeek(message.created_at) &&
+                (!previous || !sameDay(previous.created_at, message.created_at));
               return (
                 <div key={message.id}>
                   {showDate && (
@@ -1057,10 +1059,8 @@ function MessageBubble({
 }) {
   const { offset, progress, handlers } = useMessageGesture(canSwipe, onOpenActions, onReply);
   const deleted = Boolean(message.deleted_at);
-  const imageOnly =
-    !deleted &&
-    message.body === "Shared an attachment" &&
-    message.attachment_content_type?.startsWith("image/");
+  const attachmentOnly =
+    !deleted && message.body === "Shared an attachment" && Boolean(message.attachment_path);
 
   const reactionGroups = useMemo(() => {
     const groups = new Map<string, { count: number; mine: boolean }>();
@@ -1098,7 +1098,7 @@ function MessageBubble({
           transform: offset ? `translateX(${offset}px)` : undefined,
           transition: offset ? "none" : "transform 180ms ease-out",
         }}
-        className={`${imageOnly ? "max-w-[85%] rounded-none p-0 shadow-none" : "max-w-[85%] rounded-2xl px-4 py-2.5 shadow-sm"} cursor-pointer touch-pan-y select-none [-webkit-touch-callout:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:max-w-[70%] ${imageOnly ? "bg-transparent" : mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border bg-card"}`}
+        className={`${attachmentOnly ? "max-w-[85%] rounded-none bg-transparent p-0 shadow-none" : "max-w-[85%] rounded-2xl px-4 py-2.5 shadow-sm"} cursor-pointer touch-pan-y select-none [-webkit-touch-callout:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:max-w-[70%] ${attachmentOnly ? "" : mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border bg-card"}`}
       >
         {message.reply_to && !deleted && (
           <button
@@ -1663,6 +1663,10 @@ function formatMessageTime(value: string) {
     day: "numeric",
     ...(sameYear ? {} : { year: "numeric" }),
   });
+}
+
+function isOlderThanAWeek(value: string) {
+  return Date.now() - new Date(value).getTime() >= 7 * 24 * 60 * 60 * 1000;
 }
 
 function formatDate(value: string) {
