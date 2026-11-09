@@ -1057,6 +1057,10 @@ function MessageBubble({
 }) {
   const { offset, progress, handlers } = useMessageGesture(canSwipe, onOpenActions, onReply);
   const deleted = Boolean(message.deleted_at);
+  const imageOnly =
+    !deleted &&
+    message.body === "Shared an attachment" &&
+    message.attachment_content_type?.startsWith("image/");
 
   const reactionGroups = useMemo(() => {
     const groups = new Map<string, { count: number; mine: boolean }>();
@@ -1094,7 +1098,7 @@ function MessageBubble({
           transform: offset ? `translateX(${offset}px)` : undefined,
           transition: offset ? "none" : "transform 180ms ease-out",
         }}
-        className={`max-w-[85%] cursor-pointer touch-pan-y select-none rounded-2xl px-4 py-2.5 shadow-sm [-webkit-touch-callout:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:max-w-[70%] ${mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border bg-card"}`}
+        className={`${imageOnly ? "max-w-[85%] rounded-none p-0 shadow-none" : "max-w-[85%] rounded-2xl px-4 py-2.5 shadow-sm"} cursor-pointer touch-pan-y select-none [-webkit-touch-callout:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:max-w-[70%] ${imageOnly ? "bg-transparent" : mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border bg-card"}`}
       >
         {message.reply_to && !deleted && (
           <button
@@ -1636,15 +1640,29 @@ function filterLabel(filter: Filter) {
 }
 
 function formatChatTime(value: string) {
-  const date = new Date(value);
-  const now = new Date();
-  return date.toDateString() === now.toDateString()
-    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : date.toLocaleDateString([], { month: "short", day: "numeric" });
+  return formatMessageTime(value);
 }
 
 function formatMessageTime(value: string) {
-  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const date = new Date(value);
+  const now = new Date();
+  const elapsedMs = Math.max(0, now.getTime() - date.getTime());
+  const elapsedMinutes = Math.floor(elapsedMs / 60_000);
+  const elapsedHours = Math.floor(elapsedMs / 3_600_000);
+
+  if (elapsedMinutes < 1) return "just now";
+  if (elapsedMinutes < 60) return `${elapsedMinutes}m`;
+  if (elapsedHours < 24) return `${elapsedHours}h`;
+
+  if (elapsedHours < 48) return "Yesterday";
+  if (elapsedHours < 168) return date.toLocaleDateString([], { weekday: "long" });
+
+  const sameYear = date.getFullYear() === now.getFullYear();
+  return date.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
 }
 
 function formatDate(value: string) {
