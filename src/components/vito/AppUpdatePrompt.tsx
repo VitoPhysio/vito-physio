@@ -100,7 +100,7 @@ export function AppUpdatePrompt() {
 
       <div className="mt-3 flex flex-wrap items-center gap-2 pl-14">
         <Button asChild size="sm" className="gap-2">
-          <a href={downloadUrl} download="Vito-physio.apk" target="_system">
+          <a href={downloadUrl} download="VitoPhysio.apk" target="_system">
             <Download className="size-4" aria-hidden="true" />
             Update app
           </a>
