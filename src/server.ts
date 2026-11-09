@@ -2,6 +2,34 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { APK_SOURCE_URL } from "./lib/app-release";
+
+const APK_DOWNLOAD_PATH = "/api/download-app";
+
+async function handleApkDownload(request: Request): Promise<Response | undefined> {
+  const url = new URL(request.url);
+  if (url.pathname !== APK_DOWNLOAD_PATH) return undefined;
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return new Response("Method Not Allowed", { status: 405, headers: { Allow: "GET, HEAD" } });
+  }
+
+  const upstream = await fetch(APK_SOURCE_URL);
+  if (!upstream.ok || !upstream.body) {
+    return new Response("APK unavailable", { status: 502 });
+  }
+
+  return new Response(request.method === "HEAD" ? null : upstream.body, {
+    status: 200,
+    headers: {
+      "content-type": "application/vnd.android.package-archive",
+      "content-disposition": 'attachment; filename="VitoPhysio.apk"',
+      "cache-control": "public, max-age=300",
+      ...(upstream.headers.get("content-length")
+        ? { "content-length": upstream.headers.get("content-length") as string }
+        : {}),
+    },
+  });
+}
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -47,6 +75,8 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const apkResponse = await handleApkDownload(request);
+      if (apkResponse) return apkResponse;
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

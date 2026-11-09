@@ -1,7 +1,8 @@
 export const APP_NAME = "Vito Physio";
 export const CURRENT_APP_VERSION = "1.5.0";
-export const APK_DOWNLOAD_URL =
+export const APK_SOURCE_URL =
   "https://files.manuscdn.com/user_upload_by_module/session_file/310519663441912362/tbjtsPJzTzYOIFcy.apk";
+export const APK_DOWNLOAD_URL = "/api/download-app";
 export const APP_VERSION_MANIFEST_URL = "/app-version.json";
 
 export type WebPlatform = "android" | "ios" | "desktop";

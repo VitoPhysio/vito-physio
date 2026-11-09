@@ -127,7 +127,7 @@ export function AppDownloadPrompt() {
         ) : (
           <>
             <Button asChild size="sm" className="gap-2">
-              <a href={APK_DOWNLOAD_URL} download="Vito-physio.apk">
+              <a href={APK_DOWNLOAD_URL} download="VitoPhysio.apk">
                 <Download className="size-4" aria-hidden="true" />
                 Download Android app
               </a>
