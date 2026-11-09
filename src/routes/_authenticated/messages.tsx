@@ -41,7 +41,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/_authenticated/messages")({
-  head: () => ({ meta: [{ title: "Messages — VITO Physio" }, { name: "description", content: "Your private VITO Physio conversations." }, { property: "og:title", content: "Messages — VITO Physio" }, { property: "og:description", content: "Your private VITO Physio conversations." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({
+    meta: [
+      { title: "Messages — VITO Physio" },
+      { name: "description", content: "Your private VITO Physio conversations." },
+      { property: "og:title", content: "Messages — VITO Physio" },
+      { property: "og:description", content: "Your private VITO Physio conversations." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: MessagesPage,
 });
 
@@ -70,9 +79,21 @@ type Message = {
   created_at: string;
   reply_to_id: string | null;
   deleted_at: string | null;
+  attachment_path: string | null;
+  attachment_name: string | null;
+  attachment_content_type: string | null;
+  attachment_size: number | null;
+  attachment_url?: string | null;
   reply_to: QuotedMessage | null;
   reactions: Reaction[];
 };
+
+type PendingAttachment = {
+  file: File;
+  previewUrl: string | null;
+};
+
+const MAX_ATTACHMENT_SIZE = 25 * 1024 * 1024;
 type Participant = {
   conversation_id: string;
   user_id: string;
@@ -563,12 +584,14 @@ function ChatView({
   onSent: () => void;
 }) {
   const [body, setBody] = useState("");
+  const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
   const [sending, setSending] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [actionsFor, setActionsFor] = useState<Message | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const messageRefs = useRef(new Map<string, HTMLDivElement>());
   const profilePhotoUserId = conversation.otherProfiles[0]?.id ?? conversation.otherUserId;
 
@@ -586,6 +609,12 @@ function ChatView({
     const timer = window.setTimeout(() => setHighlightedId(null), 1600);
     return () => window.clearTimeout(timer);
   }, [highlightedId]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingAttachment?.previewUrl) URL.revokeObjectURL(pendingAttachment.previewUrl);
+    };
+  }, [pendingAttachment?.previewUrl]);
 
   function senderLabel(senderId: string) {
     if (senderId === userId) return "You";
@@ -613,23 +642,67 @@ function ChatView({
     setHighlightedId(messageId);
   }
 
+  function selectAttachment(file: File | undefined) {
+    if (!file) return;
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      toast.error("Pictures and files must be 25 MB or smaller.");
+      return;
+    }
+    const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+    setPendingAttachment((current) => {
+      if (current?.previewUrl) URL.revokeObjectURL(current.previewUrl);
+      return { file, previewUrl };
+    });
+  }
+
+  function clearAttachment() {
+    setPendingAttachment((current) => {
+      if (current?.previewUrl) URL.revokeObjectURL(current.previewUrl);
+      return null;
+    });
+    if (attachmentInputRef.current) attachmentInputRef.current.value = "";
+  }
+
   async function sendMessage() {
     const text = body.trim();
-    if (!text || sending) return;
+    if ((!text && !pendingAttachment) || sending) return;
     setSending(true);
+    let uploadedPath: string | null = null;
+    if (pendingAttachment) {
+      const safeName = pendingAttachment.file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      uploadedPath = `${conversation.id}/${userId}/${crypto.randomUUID()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage
+        .from("message-attachments")
+        .upload(uploadedPath, pendingAttachment.file, {
+          contentType: pendingAttachment.file.type || "application/octet-stream",
+          upsert: false,
+        });
+      if (uploadError) {
+        setSending(false);
+        toast.error("The picture or file could not be uploaded. Please try again.");
+        return;
+      }
+    }
     const { error } = await supabase.from("messages").insert({
       conversation_id: conversation.id,
       sender_id: userId,
-      body: text,
+      body: text || "Shared an attachment",
+      attachment_path: uploadedPath,
+      attachment_name: pendingAttachment?.file.name ?? null,
+      attachment_content_type: pendingAttachment?.file.type || "application/octet-stream",
+      attachment_size: pendingAttachment?.file.size ?? null,
       ...(replyTo && conversation.interactive ? { reply_to_id: replyTo.id } : {}),
     });
-    setSending(false);
     if (error) {
+      if (uploadedPath) void supabase.storage.from("message-attachments").remove([uploadedPath]);
+      setSending(false);
       toast.error("Your message could not be sent. Please try again.");
       return;
     }
+    setSending(false);
     setBody("");
     setReplyTo(null);
+    clearAttachment();
     onSent();
   }
 
@@ -835,6 +908,33 @@ function ChatView({
         </div>
       )}
 
+      {pendingAttachment && (
+        <div className="flex shrink-0 items-center gap-3 border-t bg-card px-3 pt-3">
+          {pendingAttachment.previewUrl ? (
+            <img
+              src={pendingAttachment.previewUrl}
+              alt="Selected attachment preview"
+              className="size-12 rounded-lg object-cover"
+            />
+          ) : (
+            <span className="grid size-12 shrink-0 place-items-center rounded-lg bg-secondary text-primary">
+              <Paperclip className="size-5" />
+            </span>
+          )}
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">
+            {pendingAttachment.file.name}
+          </span>
+          <button
+            type="button"
+            onClick={clearAttachment}
+            aria-label="Remove selected attachment"
+            className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
       <form
         className={`flex shrink-0 items-center gap-2 bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] ${replyTo ? "" : "border-t"}`}
         onSubmit={(event) => {
@@ -842,14 +942,25 @@ function ChatView({
           void sendMessage();
         }}
       >
+        <input
+          ref={attachmentInputRef}
+          type="file"
+          accept="image/*,*/*"
+          className="sr-only"
+          onChange={(event) => {
+            selectAttachment(event.target.files?.[0]);
+            event.currentTarget.value = "";
+          }}
+        />
         <button
           type="button"
-          disabled
-          title="Attachments are coming soon"
-          aria-label="Attachments are not available"
-          className="hidden rounded-full p-2 text-muted-foreground opacity-50 sm:inline-flex"
+          onClick={() => attachmentInputRef.current?.click()}
+          disabled={sending}
+          title="Add a picture or file"
+          aria-label="Add a picture or file"
+          className="grid size-10 shrink-0 place-items-center rounded-full text-primary transition hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <Paperclip className="size-5" />
+          <Plus className="size-5" />
         </button>
         <button
           type="button"
@@ -872,7 +983,7 @@ function ChatView({
         />
         <button
           type="submit"
-          disabled={sending || !body.trim()}
+          disabled={sending || (!body.trim() && !pendingAttachment)}
           aria-label="Send message"
           className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -1012,7 +1123,38 @@ function MessageBubble({
             {mine ? "You deleted this message" : "This message was deleted"}
           </p>
         ) : (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.body}</p>
+          <>
+            {message.attachment_url && message.attachment_content_type?.startsWith("image/") && (
+              <a
+                href={message.attachment_url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => event.stopPropagation()}
+                className="mb-2 block overflow-hidden rounded-xl"
+              >
+                <img
+                  src={message.attachment_url}
+                  alt={message.attachment_name ?? "Shared picture"}
+                  className="max-h-64 w-full object-cover"
+                />
+              </a>
+            )}
+            {message.attachment_url && !message.attachment_content_type?.startsWith("image/") && (
+              <a
+                href={message.attachment_url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => event.stopPropagation()}
+                className={`mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold ${mine ? "bg-primary-foreground/15" : "bg-secondary"}`}
+              >
+                <Paperclip className="size-4 shrink-0" />
+                <span className="min-w-0 truncate">{message.attachment_name ?? "Shared file"}</span>
+              </a>
+            )}
+            {message.body !== "Shared an attachment" && (
+              <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.body}</p>
+            )}
+          </>
         )}
         <div
           className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-foreground/75" : "text-muted-foreground"}`}
@@ -1121,7 +1263,8 @@ function MessageActionSheet({
               <div className="px-4 pt-4">
                 <div className="flex items-center justify-between gap-1 rounded-full border bg-background px-2 py-1.5 shadow-sm">
                   {QUICK_REACTIONS.map((emoji) => (
-                    <Button variant="ghost"
+                    <Button
+                      variant="ghost"
                       key={emoji}
                       type="button"
                       onClick={() => run(() => onReact(emoji))}
@@ -1134,7 +1277,8 @@ function MessageActionSheet({
                       {emoji}
                     </Button>
                   ))}
-                  <Button variant="ghost"
+                  <Button
+                    variant="ghost"
                     type="button"
                     onClick={() => setShowMore((value) => !value)}
                     aria-label={showMore ? "Hide more reactions" : "Show more reactions"}
@@ -1147,7 +1291,8 @@ function MessageActionSheet({
                 {showMore && (
                   <div className="mt-2 grid grid-cols-8 gap-1 rounded-2xl border bg-background p-2">
                     {MORE_REACTIONS.map((emoji) => (
-                      <Button variant="ghost"
+                      <Button
+                        variant="ghost"
                         key={emoji}
                         type="button"
                         onClick={() => run(() => onReact(emoji))}
@@ -1167,7 +1312,8 @@ function MessageActionSheet({
 
             <div className="mt-3 divide-y border-t">
               {!deleted && (
-                <Button variant="ghost"
+                <Button
+                  variant="ghost"
                   ref={firstActionRef}
                   type="button"
                   className={itemClass}
@@ -1177,12 +1323,18 @@ function MessageActionSheet({
                 </Button>
               )}
               {!deleted && (
-                <Button variant="ghost" type="button" className={itemClass} onClick={() => run(onCopy)}>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  className={itemClass}
+                  onClick={() => run(onCopy)}
+                >
                   <Copy className="size-5 text-primary" /> Copy
                 </Button>
               )}
               {interactive && (
-                <Button variant="ghost"
+                <Button
+                  variant="ghost"
                   ref={deleted ? firstActionRef : undefined}
                   type="button"
                   className={`${itemClass} text-destructive`}
@@ -1208,7 +1360,8 @@ function MessageActionSheet({
             </p>
             <div className="mt-3 divide-y border-t">
               {mine && !deleted && (
-                <Button variant="ghost"
+                <Button
+                  variant="ghost"
                   type="button"
                   className={`${itemClass} text-destructive`}
                   onClick={() => run(onDeleteForEveryone)}
@@ -1216,14 +1369,20 @@ function MessageActionSheet({
                   <Trash2 className="size-5" /> Delete for everyone
                 </Button>
               )}
-              <Button variant="ghost"
+              <Button
+                variant="ghost"
                 type="button"
                 className={`${itemClass} text-destructive`}
                 onClick={() => run(onDeleteForMe)}
               >
                 <Trash2 className="size-5" /> Delete for me
               </Button>
-              <Button variant="ghost" type="button" className={itemClass} onClick={() => setStep("menu")}>
+              <Button
+                variant="ghost"
+                type="button"
+                className={itemClass}
+                onClick={() => setStep("menu")}
+              >
                 Cancel
               </Button>
             </div>
@@ -1371,10 +1530,23 @@ async function loadMessageRows(
 ): Promise<{ messages: MessageRow[]; interactive: boolean }> {
   const extended = await supabase
     .from("messages")
-    .select("id,conversation_id,sender_id,body,created_at,reply_to_id,deleted_at")
+    .select(
+      "id,conversation_id,sender_id,body,created_at,reply_to_id,deleted_at,attachment_path,attachment_name,attachment_content_type,attachment_size",
+    )
     .in("conversation_id", conversationIds)
     .order("created_at", { ascending: true });
-  if (!extended.error) return { messages: extended.data ?? [], interactive: true };
+  if (!extended.error) {
+    const messages = await Promise.all(
+      (extended.data ?? []).map(async (row) => {
+        if (!row.attachment_path) return { ...row, attachment_url: null };
+        const { data } = await supabase.storage
+          .from("message-attachments")
+          .createSignedUrl(row.attachment_path, 60 * 60);
+        return { ...row, attachment_url: data?.signedUrl ?? null };
+      }),
+    );
+    return { messages, interactive: true };
+  }
   if (!isMissingSchemaError(extended.error)) throw extended.error;
 
   // The interactions migration has not been applied yet: fall back to plain messages.
@@ -1385,7 +1557,16 @@ async function loadMessageRows(
     .order("created_at", { ascending: true });
   if (basic.error) throw basic.error;
   return {
-    messages: (basic.data ?? []).map((row) => ({ ...row, reply_to_id: null, deleted_at: null })),
+    messages: (basic.data ?? []).map((row) => ({
+      ...row,
+      reply_to_id: null,
+      deleted_at: null,
+      attachment_path: null,
+      attachment_name: null,
+      attachment_content_type: null,
+      attachment_size: null,
+      attachment_url: null,
+    })),
     interactive: false,
   };
 }
