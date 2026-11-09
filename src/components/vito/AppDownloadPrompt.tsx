@@ -35,18 +35,30 @@ export function AppDownloadPrompt() {
   useEffect(() => {
     if (!isWebApp() || isStandaloneApp()) return;
 
-    setPlatform(
-      detectWebPlatform(navigator.userAgent, navigator.platform, navigator.maxTouchPoints),
+    const currentPlatform = detectWebPlatform(
+      navigator.userAgent,
+      navigator.platform,
+      navigator.maxTouchPoints,
     );
+    setPlatform(currentPlatform);
+    // Deliberately do not store dismissal state: web users should receive
+    // the platform-specific installation guidance whenever they return.
     setVisible(true);
 
     const handleInstallPrompt = (event: Event) => {
       event.preventDefault();
       setInstallPrompt(event as InstallPromptEvent);
     };
+    const handlePageShow = () => {
+      if (!isStandaloneApp()) setVisible(true);
+    };
 
     window.addEventListener("beforeinstallprompt", handleInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleInstallPrompt);
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleInstallPrompt);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
   }, []);
 
   if (!visible || !platform) return null;

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Building2, UserRound, Stethoscope, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { requestConsultation, listOrganisations } from "@/lib/intake.functions";
@@ -378,15 +379,26 @@ function Field({
   return (
     <div>
       <Label htmlFor={name}>{label}</Label>
-      <Input
-        id={name}
-        name={name}
-        type={type}
-        required={required}
-        maxLength={type === "date" ? undefined : 160}
-        minLength={type === "password" ? 8 : undefined}
-        className="mt-1"
-      />
+      {type === "password" ? (
+        <PasswordInput
+          id={name}
+          name={name}
+          required={required}
+          maxLength={160}
+          minLength={8}
+          autoComplete="new-password"
+          className="mt-1"
+        />
+      ) : (
+        <Input
+          id={name}
+          name={name}
+          type={type}
+          required={required}
+          maxLength={type === "date" ? undefined : 160}
+          className="mt-1"
+        />
+      )}
     </div>
   );
 }

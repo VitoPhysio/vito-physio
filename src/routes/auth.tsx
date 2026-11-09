@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { PhotoPicker, fileToPhotoPath } from "@/components/vito/Photo";
 import { setupAthleteIdLogin, signInWithIdentifier } from "@/lib/auth.functions";
@@ -166,7 +167,10 @@ function AuthPage() {
         if ("needsPassword" in session) {
           setSetup(true);
           setPassword("");
-          setMsg({ kind: "ok", text: "Welcome! Your clinician registered this athlete ID. Confirm your surname and create a password to finish setting up your login." });
+          setMsg({
+            kind: "ok",
+            text: "Welcome! Your clinician registered this athlete ID. Confirm your surname and create a password to finish setting up your login.",
+          });
           setBusy(false);
           return;
         }
@@ -299,7 +303,10 @@ function AuthPage() {
               type={mode === "signin" ? "text" : "email"}
               required
               value={identifier}
-              onChange={(e) => { setIdentifier(e.target.value); setSetup(false); }}
+              onChange={(e) => {
+                setIdentifier(e.target.value);
+                setSetup(false);
+              }}
               placeholder={
                 mode === "signin" ? "name@example.com or VITO-ATH-…" : "name@example.com"
               }
@@ -308,25 +315,36 @@ function AuthPage() {
           </div>
           <div className="space-y-1">
             <Label htmlFor="pw">Password</Label>
-            <Input
+            <PasswordInput
               id="pw"
-              type="password"
               required
               minLength={mode === "signup" || setup ? 8 : 1}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete={mode === "signup" || setup ? "new-password" : "current-password"}
             />
           </div>
           {mode === "signin" && setup && (
             <div className="space-y-1">
               <Label htmlFor="surname">Surname</Label>
-              <Input id="surname" required value={surname} onChange={(e) => setSurname(e.target.value)} />
+              <Input
+                id="surname"
+                required
+                value={surname}
+                onChange={(e) => setSurname(e.target.value)}
+              />
             </div>
           )}
           {(mode === "signup" || setup) && (
             <div className="space-y-1">
               <Label htmlFor="confirm">Confirm password</Label>
-              <Input id="confirm" name="confirm" type="password" required minLength={8} />
+              <PasswordInput
+                id="confirm"
+                name="confirm"
+                required
+                minLength={8}
+                autoComplete="new-password"
+              />
             </div>
           )}
           {mode === "signin" && (
