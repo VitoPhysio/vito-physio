@@ -79,15 +79,47 @@ export function AppHeader({
   const { data: unreadCount = 0, isLoading: notificationsLoading } = useQuery({
     queryKey: ["notification-count", user.id],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("notifications")
-        .select("id", { count: "exact", head: true })
-        .is("read_at", null);
+      const { data: badge, error } = await supabase.rpc("notification_badge_count", {
+        _user_id: user.id,
+      });
       if (error) return 0;
-      return count ?? 0;
+      return badge ?? 0;
     },
     refetchInterval: 30000,
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`notification-badge-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () =>
+          void queryClient.invalidateQueries({ queryKey: ["notification-count", user.id] }),
+      )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () =>
+        void queryClient.invalidateQueries({ queryKey: ["notification-count", user.id] }),
+      )
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversation_participants", filter: `user_id=eq.${user.id}` }, () =>
+        void queryClient.invalidateQueries({ queryKey: ["notification-count", user.id] }),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient, user.id]);
+
+  useEffect(() => {
+    if ("setAppBadge" in navigator) {
+      const badge = navigator as Navigator & { setAppBadge: (count: number) => Promise<void>; clearAppBadge: () => Promise<void> };
+      void (unreadCount ? badge.setAppBadge(unreadCount) : badge.clearAppBadge()).catch(() => {});
+    }
+  }, [unreadCount]);
 
   useEffect(() => {
     if (!profileLoading && !notificationsLoading) onReady?.();

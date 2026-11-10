@@ -14,6 +14,145 @@ export type Database = {
   }
   public: {
     Tables: {
+      notification_deliveries: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          device_token_id: string | null
+          id: string
+          last_error: string | null
+          next_attempt_at: string | null
+          notification_id: string
+          provider_message_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          device_token_id?: string | null
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string | null
+          notification_id: string
+          provider_message_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          device_token_id?: string | null
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string | null
+          notification_id?: string
+          provider_message_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_deliveries_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "user_device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_deliveries_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_device_tokens: {
+        Row: {
+          created_at: string
+          disabled_at: string | null
+          id: string
+          last_seen_at: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          disabled_at?: string | null
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          disabled_at?: string | null
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_device_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          appointments_enabled: boolean
+          comments_enabled: boolean
+          followers_enabled: boolean
+          mentions_enabled: boolean
+          messages_enabled: boolean
+          push_enabled: boolean
+          reactions_enabled: boolean
+          rehabilitation_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          appointments_enabled?: boolean
+          comments_enabled?: boolean
+          followers_enabled?: boolean
+          mentions_enabled?: boolean
+          messages_enabled?: boolean
+          push_enabled?: boolean
+          reactions_enabled?: boolean
+          rehabilitation_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          appointments_enabled?: boolean
+          comments_enabled?: boolean
+          followers_enabled?: boolean
+          mentions_enabled?: boolean
+          messages_enabled?: boolean
+          push_enabled?: boolean
+          reactions_enabled?: boolean
+          rehabilitation_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           appointment_code: string
@@ -1242,35 +1381,56 @@ export type Database = {
       }
       notifications: {
         Row: {
+          actor_avatar_path: string | null
+          actor_id: string | null
+          actor_name: string | null
           body: string
+          category: string
           consultation_request_id: string | null
           created_at: string
           data: Json
           id: string
           kind: string
+          path: string | null
           read_at: string | null
+          source_id: string | null
+          source_type: string | null
           title: string
           user_id: string
         }
         Insert: {
+          actor_avatar_path?: string | null
+          actor_id?: string | null
+          actor_name?: string | null
           body: string
+          category?: string
           consultation_request_id?: string | null
           created_at?: string
           data?: Json
           id?: string
           kind?: string
+          path?: string | null
           read_at?: string | null
+          source_id?: string | null
+          source_type?: string | null
           title: string
           user_id: string
         }
         Update: {
+          actor_avatar_path?: string | null
+          actor_id?: string | null
+          actor_name?: string | null
           body?: string
+          category?: string
           consultation_request_id?: string | null
           created_at?: string
           data?: Json
           id?: string
           kind?: string
+          path?: string | null
           read_at?: string | null
+          source_id?: string | null
+          source_type?: string | null
           title?: string
           user_id?: string
         }
@@ -1876,6 +2036,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      notification_badge_count: { Args: { _user_id: string }; Returns: number }
+      mark_all_notifications_read: { Args: never; Returns: number }
       add_social_comment: {
         Args: { _body: string; _post_id: string }
         Returns: string
