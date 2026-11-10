@@ -210,7 +210,7 @@ function OpenCaseStep({ userId, onOpened }: { userId: string; onOpened: () => vo
           <SimpleForm fields={fields} submitLabel="Open case" onSubmit={async (v) => {
             const payload = {
               ...clean(v, ["pain_score", "days_lost"]),
-              is_recurrence: v.is_recurrence ? v.is_recurrence === "true" : null,
+              is_recurrence: v["is_recurrence"] ? v["is_recurrence"] === "true" : null,
               athlete_id: selected.id,
               created_by: userId,
             } as TablesInsert<"injuries">;
@@ -454,11 +454,11 @@ function RecoverySub({ userId, injuryId, athleteId }: Ctx) {
         const status = v["status"];
         if (!status) return;
         const injuryUpdate: Record<string, string | number> = { status };
-        if (v["resolved_at"]?.trim()) injuryUpdate.resolved_at = v["resolved_at"];
+        if (v["resolved_at"]?.trim()) injuryUpdate["resolved_at"] = v["resolved_at"];
         if (v["days_lost"]?.trim()) {
           const daysLost = Number(v["days_lost"]);
           if (!Number.isInteger(daysLost) || daysLost < 0) throw new Error("Enter a valid number of days lost.");
-          injuryUpdate.days_lost = daysLost;
+          injuryUpdate["days_lost"] = daysLost;
         }
         await save("recovery_updates", { status, notes: v["notes"]?.trim() || null, injury_id: injuryId, athlete_id: athleteId, created_by: userId }, "Status updated");
         const { error } = await supabase.from("injuries").update(injuryUpdate as never).eq("id", injuryId).select("id").single();
