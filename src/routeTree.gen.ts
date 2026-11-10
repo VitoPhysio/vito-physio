@@ -27,6 +27,7 @@ import { Route as AuthenticatedBlogIndexRouteImport } from './routes/_authentica
 import { Route as AuthenticatedBlogSlugRouteImport } from './routes/_authenticated/blog/$slug'
 import { Route as AuthenticatedBlogWriteRouteImport } from './routes/_authenticated/blog/write'
 import { Route as AuthenticatedMembersMemberIdRouteImport } from './routes/_authenticated/members/$memberId'
+import { Route as ApiPublicNotificationDeliveryRouteImport } from './routes/api/public/notification-delivery'
 import { Route as AuthenticatedBlogEditArticleIdRouteImport } from './routes/_authenticated/blog/edit/$articleId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -121,6 +122,12 @@ const AuthenticatedMembersMemberIdRoute =
     path: '/members/$memberId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicNotificationDeliveryRoute =
+  ApiPublicNotificationDeliveryRouteImport.update({
+    id: '/api/public/notification-delivery',
+    path: '/api/public/notification-delivery',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedBlogEditArticleIdRoute =
   AuthenticatedBlogEditArticleIdRouteImport.update({
     id: '/blog/edit/$articleId',
@@ -145,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/blog/$slug': typeof AuthenticatedBlogSlugRoute
   '/blog/write': typeof AuthenticatedBlogWriteRoute
   '/members/$memberId': typeof AuthenticatedMembersMemberIdRoute
+  '/api/public/notification-delivery': typeof ApiPublicNotificationDeliveryRoute
   '/blog/': typeof AuthenticatedBlogIndexRoute
   '/blog/edit/$articleId': typeof AuthenticatedBlogEditArticleIdRoute
 }
@@ -165,6 +173,7 @@ export interface FileRoutesByTo {
   '/blog/$slug': typeof AuthenticatedBlogSlugRoute
   '/blog/write': typeof AuthenticatedBlogWriteRoute
   '/members/$memberId': typeof AuthenticatedMembersMemberIdRoute
+  '/api/public/notification-delivery': typeof ApiPublicNotificationDeliveryRoute
   '/blog': typeof AuthenticatedBlogIndexRoute
   '/blog/edit/$articleId': typeof AuthenticatedBlogEditArticleIdRoute
 }
@@ -187,6 +196,7 @@ export interface FileRoutesById {
   '/_authenticated/blog/$slug': typeof AuthenticatedBlogSlugRoute
   '/_authenticated/blog/write': typeof AuthenticatedBlogWriteRoute
   '/_authenticated/members/$memberId': typeof AuthenticatedMembersMemberIdRoute
+  '/api/public/notification-delivery': typeof ApiPublicNotificationDeliveryRoute
   '/_authenticated/blog/': typeof AuthenticatedBlogIndexRoute
   '/_authenticated/blog/edit/$articleId': typeof AuthenticatedBlogEditArticleIdRoute
 }
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/blog/write'
     | '/members/$memberId'
+    | '/api/public/notification-delivery'
     | '/blog/'
     | '/blog/edit/$articleId'
   fileRoutesByTo: FileRoutesByTo
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/blog/write'
     | '/members/$memberId'
+    | '/api/public/notification-delivery'
     | '/blog'
     | '/blog/edit/$articleId'
   id:
@@ -250,6 +262,7 @@ export interface FileRouteTypes {
     | '/_authenticated/blog/$slug'
     | '/_authenticated/blog/write'
     | '/_authenticated/members/$memberId'
+    | '/api/public/notification-delivery'
     | '/_authenticated/blog/'
     | '/_authenticated/blog/edit/$articleId'
   fileRoutesById: FileRoutesById
@@ -261,6 +274,7 @@ export interface RootRouteChildren {
   PortalRoute: typeof PortalRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicNotificationDeliveryRoute: typeof ApiPublicNotificationDeliveryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -391,6 +405,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMembersMemberIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/notification-delivery': {
+      id: '/api/public/notification-delivery'
+      path: '/api/public/notification-delivery'
+      fullPath: '/api/public/notification-delivery'
+      preLoaderRoute: typeof ApiPublicNotificationDeliveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/blog/edit/$articleId': {
       id: '/_authenticated/blog/edit/$articleId'
       path: '/blog/edit/$articleId'
@@ -443,6 +464,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalRoute: PortalRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicNotificationDeliveryRoute: ApiPublicNotificationDeliveryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
