@@ -4,15 +4,19 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-com
 firebase.initializeApp(Object.fromEntries(new URL(self.location).searchParams));
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
+messaging.onBackgroundMessage(async (payload) => {
   const data = payload.data || {};
+  // Avoid duplicates: when VITO is open and focused, realtime counts already update in-app.
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  if (windows.some((client) => client.visibilityState === 'visible' && client.focused)) return;
   const title = data.title || payload.notification?.title || 'VITO Physio';
   const body = data.body || payload.notification?.body || 'You have a new update.';
-  self.registration.showNotification(title, {
+  return self.registration.showNotification(title, {
     body,
     icon: '/favicon.png',
     badge: '/favicon.png',
     tag: data.tag || undefined,
+    renotify: Boolean(data.tag),
     data: { path: data.path || '/notifications' },
   });
 });

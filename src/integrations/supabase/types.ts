@@ -1200,6 +1200,63 @@ export type Database = {
           },
         ]
       }
+      message_push_deliveries: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          device_token_id: string
+          id: string
+          last_error: string | null
+          message_id: string
+          next_attempt_at: string
+          provider_message_id: string | null
+          recipient_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          device_token_id: string
+          id?: string
+          last_error?: string | null
+          message_id: string
+          next_attempt_at?: string
+          provider_message_id?: string | null
+          recipient_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          device_token_id?: string
+          id?: string
+          last_error?: string | null
+          message_id?: string
+          next_attempt_at?: string
+          provider_message_id?: string | null
+          recipient_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_push_deliveries_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "user_device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_push_deliveries_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_reactions: {
         Row: {
           created_at: string
@@ -1352,6 +1409,7 @@ export type Database = {
           comments_enabled: boolean
           followers_enabled: boolean
           mentions_enabled: boolean
+          message_preview_enabled: boolean
           messages_enabled: boolean
           push_enabled: boolean
           reactions_enabled: boolean
@@ -1364,6 +1422,7 @@ export type Database = {
           comments_enabled?: boolean
           followers_enabled?: boolean
           mentions_enabled?: boolean
+          message_preview_enabled?: boolean
           messages_enabled?: boolean
           push_enabled?: boolean
           reactions_enabled?: boolean
@@ -1376,6 +1435,7 @@ export type Database = {
           comments_enabled?: boolean
           followers_enabled?: boolean
           mentions_enabled?: boolean
+          message_preview_enabled?: boolean
           messages_enabled?: boolean
           push_enabled?: boolean
           reactions_enabled?: boolean
@@ -2112,6 +2172,13 @@ export type Database = {
         Returns: boolean
       }
       can_write_blog: { Args: never; Returns: boolean }
+      conversation_unread_counts: {
+        Args: never
+        Returns: {
+          conversation_id: string
+          unread: number
+        }[]
+      }
       create_direct_conversation: {
         Args: { _other_user: string }
         Returns: string
@@ -2270,6 +2337,7 @@ export type Database = {
         Args: { _conversation_id: string }
         Returns: undefined
       }
+      message_unread_count: { Args: never; Returns: number }
       notification_badge_count: { Args: { _user_id: string }; Returns: number }
       notification_preference_enabled: {
         Args: { _category: string; _user_id: string }

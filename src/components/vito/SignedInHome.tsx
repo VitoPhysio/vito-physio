@@ -1,3 +1,4 @@
+import { useMessageUnreadCount } from "@/hooks/use-message-unread";
 import { useRef, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
@@ -319,6 +320,7 @@ export function SignedInBottomNavigation({
   const [composerOpen, setComposerOpen] = useState(false);
   const onHome = pathname === "/";
   const onMessages = pathname === "/messages";
+  const messageUnread = useMessageUnreadCount(userId);
   const onProfile = pathname === "/profile";
 
   return (
@@ -351,9 +353,17 @@ export function SignedInBottomNavigation({
           <Link
             to="/messages"
             aria-current={onMessages ? "page" : undefined}
+            aria-label={messageUnread ? `Messages (${messageUnread} unread)` : "Messages"}
             className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl side:py-3 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${onMessages ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <MessageCircle aria-hidden="true" className="size-5" />
+            <span className="relative">
+              <MessageCircle aria-hidden="true" className="size-5" />
+              {messageUnread > 0 && (
+                <span className="absolute -right-2.5 -top-1.5 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold leading-4 text-accent-foreground">
+                  {messageUnread > 99 ? "99+" : messageUnread}
+                </span>
+              )}
+            </span>
             <span>Messages</span>
           </Link>
           <Link

@@ -11,9 +11,10 @@ const preferencesInput = z.object({
   appointments_enabled: z.boolean(),
   rehabilitation_enabled: z.boolean(),
   push_enabled: z.boolean(),
+  message_preview_enabled: z.boolean().default(true),
 });
 
-export type NotificationPreferences = z.infer<typeof preferencesInput>;
+export type NotificationPreferences = z.output<typeof preferencesInput>;
 
 export const saveNotificationPreferences = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
