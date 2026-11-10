@@ -882,21 +882,26 @@ function ChatView({
 
       <div
         ref={historyRef}
-        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-background px-4 py-5 sm:px-8"
+        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#10051d] px-4 py-5 sm:px-8"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(16,5,29,0.84), rgba(16,5,29,0.84)), url('/chat-wallpaper.svg')",
+          backgroundSize: "auto, 360px 360px",
+          backgroundRepeat: "repeat",
+          backgroundAttachment: "local",
+        }}
       >
         <div className="mx-auto flex max-w-3xl flex-col gap-3">
           {conversation.messages.length ? (
             conversation.messages.map((message, index) => {
               const mine = message.sender_id === userId;
               const previous = conversation.messages[index - 1];
-              const showDate =
-                isOlderThanAWeek(message.created_at) &&
-                (!previous || !sameDay(previous.created_at, message.created_at));
+              const showDate = !previous || !sameDay(previous.created_at, message.created_at);
               return (
                 <div key={message.id}>
                   {showDate && (
                     <p className="mx-auto mb-3 w-fit rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-muted-foreground">
-                      {formatDate(message.created_at)}
+                      {formatDateCategory(message.created_at)}
                     </p>
                   )}
                   <MessageBubble
@@ -1700,12 +1705,28 @@ function formatMessageTime(value: string) {
   });
 }
 
-function isOlderThanAWeek(value: string) {
-  return Date.now() - new Date(value).getTime() >= 7 * 24 * 60 * 60 * 1000;
+function formatDateCategory(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  const calendarDays = calendarDayDifference(date, now);
+
+  if (sameDay(value, now.toISOString())) return "Today";
+  if (calendarDays === 1) return "Yesterday";
+  if (calendarDays >= 2 && calendarDays <= 7) {
+    return date.toLocaleDateString([], { weekday: "long" });
+  }
+  return date.toLocaleDateString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+function calendarDayDifference(earlier: Date, later: Date) {
+  const earlierDay = new Date(earlier.getFullYear(), earlier.getMonth(), earlier.getDate());
+  const laterDay = new Date(later.getFullYear(), later.getMonth(), later.getDate());
+  return Math.floor((laterDay.getTime() - earlierDay.getTime()) / 86_400_000);
 }
 
 function sameDay(left: string, right: string) {
