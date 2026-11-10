@@ -1,3 +1,5 @@
+import { dispatchPendingPushes } from "@/lib/notification.functions";
+import { messageUnreadKey } from "@/hooks/use-message-unread";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCanGoBack, useRouter } from "@tanstack/react-router";
@@ -196,10 +198,23 @@ function MessagesPage() {
     setSelectedId(linkedConversation);
     void supabase.rpc("mark_conversation_read", { _conversation_id: linkedConversation }).then(({ error }) => {
       if (!error) {
-        void queryClient.invalidateQueries({ queryKey: ["notification-count", user.id] });
+        void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+        void queryClient.invalidateQueries({ queryKey: messageUnreadKey(user.id) });
       }
     });
   }, [linkedConversation, Boolean(conversations.data), queryClient, user.id]);
+
+  // New messages arriving in the conversation you're looking at are read immediately,
+  // so the Messages count stays accurate and no device push is sent for them.
+  useEffect(() => {
+    if (!selected || selected.unread === 0 || document.visibilityState !== "visible") return;
+    void supabase.rpc("mark_conversation_read", { _conversation_id: selected.id }).then(({ error }) => {
+      if (!error) {
+        void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+        void queryClient.invalidateQueries({ queryKey: messageUnreadKey(user.id) });
+      }
+    });
+  }, [selected?.id, selected?.unread, queryClient, user.id]);
   const messagingUsers = useQuery({
     queryKey: ["messaging-users", user.id],
     queryFn: () => loadMessagingUsers(),
@@ -242,7 +257,10 @@ function MessagesPage() {
     const { error } = await supabase.rpc("mark_conversation_read", {
       _conversation_id: conversation.id,
     });
-    if (!error) void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+    if (!error) {
+      void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+      void queryClient.invalidateQueries({ queryKey: messageUnreadKey(user.id) });
+    }
   }
 
   function closeMessages() {
@@ -360,7 +378,11 @@ function MessagesPage() {
               userId={user.id}
               onBack={() => setSelectedId(null)}
               onOpenProfile={(participantId) => window.location.assign(`/members/${participantId}`)}
-              onSent={() => void queryClient.invalidateQueries({ queryKey: ["messages", user.id] })}
+              onSent={() => {
+                void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+                // Wake the device-push queue so recipients get the OS alert right away.
+                void dispatchPendingPushes().catch(() => {});
+              }}
             />
           ) : (
             <div className="m-auto max-w-sm px-8 text-center text-muted-foreground">

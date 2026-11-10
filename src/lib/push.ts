@@ -60,6 +60,8 @@ export async function enablePush(): Promise<PushResult> {
   const messaging = getMessaging(app);
   onMessage(messaging, (payload) => {
     const data = payload.data ?? {};
+    // VITO is open: in-app badges update in real time, so don't duplicate with an OS alert.
+    if (document.visibilityState === "visible") return;
     void serviceWorkerRegistration.showNotification(data["title"] ?? "VITO Physio", {
       body: data["body"] ?? "You have a new update.",
       tag: data["tag"] ?? "vito-update",

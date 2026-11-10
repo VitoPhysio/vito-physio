@@ -22,3 +22,17 @@
 
 ## GitHub preservation
 Apply notification additions to the latest main, retaining existing attachment chat features, native folders and dependency versions. Do not replace the whole project with the older local checkout.
+## Architecture (chat vs. notification bell)
+- **Messages system** (`messages`, `conversations`, `conversation_participants.last_read_at`, `message_hidden`) owns chat. Unread counts come from `message_unread_count()` / `conversation_unread_counts()` and drive the Messages icon in the bottom navigation, refreshed in real time.
+- **Chat device pushes** use their own queue `message_push_deliveries` (filled by the `message_notification` trigger). Chat no longer writes `notifications` rows. Sender name + preview (respecting `notification_preferences.message_preview_enabled`), tag per conversation, tap opens `/messages?conversation=<id>`. Skipped when the recipient already read the message.
+- **Notification bell** (`notifications` + `notification_deliveries`) covers followers, reactions, comments, appointments (new, changed, cancelled), booking request responses, announcements. `notification_badge_count()` and `mark_all_notifications_read()` ignore legacy `messages` rows, which remain stored for history.
+- **Duplicates**: web pushes are data-only; the service worker and foreground handler do not show an OS alert while VITO is focused. Native Android/iOS tokens get a system notification payload.
+- **Device registry / preferences** stay in `user_device_tokens` and `notification_preferences`.
+
+## Acceptance checks run against the connected database (rolled back)
+- A: a direct message left the recipient's bell rows unchanged (4→4) and raised Messages unread 0→1.
+- B: a follow added a follower bell item (0→1).
+- C: cancelling an appointment added a bell item for the athlete/guardians (6→7) and queues device pushes for registered devices.
+- D: reading the conversation dropped Messages unread 1→0 while the bell stayed at 1.
+- E: "Mark all read" only touches `notifications`; conversation read state is untouched by design.
+- No device tokens are registered yet, so real phone delivery is unverified until a device enables notifications (Notifications → Enable on this device) and the Firebase web push keys are set.

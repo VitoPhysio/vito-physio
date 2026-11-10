@@ -37,6 +37,7 @@ import { EditablePhoto, PhotoAvatar } from "@/components/vito/Photo";
 import { DEFAULT_QUICK_MENU_ITEMS, type QuickMenuItem } from "@/components/vito/QuickMenu";
 import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
 import { dispatchPendingPushes } from "@/lib/notification.functions";
+import { useMessageUnreadCount } from "@/hooks/use-message-unread";
 
 const STAFF = ["super_admin", "vito_admin", "clinical_professional", "clinical_supervisor"];
 const ADMIN = ["super_admin", "vito_admin"];
@@ -103,12 +104,6 @@ export function AppHeader({
         () =>
           void queryClient.invalidateQueries({ queryKey: ["notification-count", user.id] }),
       )
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () =>
-        void queryClient.invalidateQueries({ queryKey: ["notification-count", user.id] }),
-      )
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversation_participants", filter: `user_id=eq.${user.id}` }, () =>
-        void queryClient.invalidateQueries({ queryKey: ["notification-count", user.id] }),
-      )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
@@ -126,6 +121,7 @@ export function AppHeader({
     const channel = supabase
       .channel(`push-dispatch-${user.id}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => setTimeout(flush, 1500))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, () => setTimeout(flush, 1500))
       .subscribe();
     flush();
     const timer = window.setInterval(flush, 20000);
@@ -135,12 +131,16 @@ export function AppHeader({
     };
   }, [user.id]);
 
+  const messageUnread = useMessageUnreadCount(user.id);
+
+  // App-icon badge = unread chats + unread bell items; each source stays independent in-app.
   useEffect(() => {
+    const total = unreadCount + messageUnread;
     if ("setAppBadge" in navigator) {
       const badge = navigator as Navigator & { setAppBadge: (count: number) => Promise<void>; clearAppBadge: () => Promise<void> };
-      void (unreadCount ? badge.setAppBadge(unreadCount) : badge.clearAppBadge()).catch(() => {});
+      void (total ? badge.setAppBadge(total) : badge.clearAppBadge()).catch(() => {});
     }
-  }, [unreadCount]);
+  }, [unreadCount, messageUnread]);
 
   useEffect(() => {
     if (!profileLoading && !notificationsLoading) onReady?.();

@@ -6,7 +6,6 @@ import {
   Check,
   CheckCheck,
   HeartPulse,
-  MessageCircle,
   MessagesSquare,
   Smartphone,
   ThumbsUp,
@@ -33,11 +32,11 @@ export const Route = createFileRoute("/_authenticated/notifications")({
   head: () => ({
     meta: [
       { title: "Notifications — VITO Physio" },
-      { name: "description", content: "Your VITO Physio messages, reactions and care updates." },
+      { name: "description", content: "Your VITO Physio followers, reactions, appointments and care updates." },
       { property: "og:title", content: "Notifications — VITO Physio" },
       {
         property: "og:description",
-        content: "Your VITO Physio messages, reactions and care updates.",
+        content: "Your VITO Physio followers, reactions, appointments and care updates.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -60,7 +59,6 @@ type NotificationRow = {
 
 const CATEGORIES: { key: string; label: string; icon: LucideIcon }[] = [
   { key: "all", label: "All", icon: Bell },
-  { key: "messages", label: "Messages", icon: MessageCircle },
   { key: "reactions", label: "Reactions", icon: ThumbsUp },
   { key: "comments", label: "Comments & replies", icon: MessagesSquare },
   { key: "followers", label: "Followers", icon: UserPlus },
@@ -71,7 +69,8 @@ const CATEGORIES: { key: string; label: string; icon: LucideIcon }[] = [
 ];
 
 const PREFERENCE_FIELDS: { key: keyof NotificationPreferences; label: string }[] = [
-  { key: "messages_enabled", label: "Messages" },
+  { key: "messages_enabled", label: "Chat messages (device alerts only)" },
+  { key: "message_preview_enabled", label: "Show message text in chat alerts" },
   { key: "reactions_enabled", label: "Post reactions" },
   { key: "comments_enabled", label: "Comments and replies" },
   { key: "followers_enabled", label: "New followers" },
@@ -89,6 +88,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   appointments_enabled: true,
   rehabilitation_enabled: true,
   push_enabled: true,
+  message_preview_enabled: true,
 };
 
 function categoryIcon(category: string): LucideIcon {
@@ -112,6 +112,7 @@ function NotificationsPage() {
         .select(
           "id,title,body,category,actor_name,actor_avatar_path,path,read_at,created_at",
         )
+        .neq("category", "messages")
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -249,7 +250,7 @@ function NotificationsPage() {
             </p>
             <h1 className="mt-2 text-3xl font-black tracking-tight">Notifications</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Messages, reactions, followers and care updates in one place.
+              Followers, reactions, comments, appointments and announcements. Chats live in Messages.
             </p>
           </div>
           {unreadCount > 0 && (
