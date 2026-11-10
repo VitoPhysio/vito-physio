@@ -63,3 +63,12 @@ export const unregisterDeviceToken = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { registered: false };
   });
+
+/** Wakes the push queue right after in-app activity; it only delivers already-queued pushes to their own recipients. */
+export const dispatchPendingPushes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { processPushQueue } = await import("./push-delivery.server");
+    const result = await processPushQueue();
+    return { sent: result.sent };
+  });
