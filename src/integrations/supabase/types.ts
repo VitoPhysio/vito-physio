@@ -14,144 +14,29 @@ export type Database = {
   }
   public: {
     Tables: {
-      notification_deliveries: {
+      analytics_thresholds: {
         Row: {
-          attempt_count: number
-          created_at: string
-          device_token_id: string | null
-          id: string
-          last_error: string | null
-          next_attempt_at: string | null
-          notification_id: string
-          provider_message_id: string | null
-          status: string
+          days: number
+          key: string
+          label: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
-          attempt_count?: number
-          created_at?: string
-          device_token_id?: string | null
-          id?: string
-          last_error?: string | null
-          next_attempt_at?: string | null
-          notification_id: string
-          provider_message_id?: string | null
-          status?: string
+          days: number
+          key: string
+          label: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
-          attempt_count?: number
-          created_at?: string
-          device_token_id?: string | null
-          id?: string
-          last_error?: string | null
-          next_attempt_at?: string | null
-          notification_id?: string
-          provider_message_id?: string | null
-          status?: string
+          days?: number
+          key?: string
+          label?: string
           updated_at?: string
+          updated_by?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "notification_deliveries_device_token_id_fkey"
-            columns: ["device_token_id"]
-            isOneToOne: false
-            referencedRelation: "user_device_tokens"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notification_deliveries_notification_id_fkey"
-            columns: ["notification_id"]
-            isOneToOne: false
-            referencedRelation: "notifications"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_device_tokens: {
-        Row: {
-          created_at: string
-          disabled_at: string | null
-          id: string
-          last_seen_at: string
-          platform: string
-          token: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          disabled_at?: string | null
-          id?: string
-          last_seen_at?: string
-          platform?: string
-          token: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          disabled_at?: string | null
-          id?: string
-          last_seen_at?: string
-          platform?: string
-          token?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_device_tokens_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      notification_preferences: {
-        Row: {
-          appointments_enabled: boolean
-          comments_enabled: boolean
-          followers_enabled: boolean
-          mentions_enabled: boolean
-          messages_enabled: boolean
-          push_enabled: boolean
-          reactions_enabled: boolean
-          rehabilitation_enabled: boolean
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          appointments_enabled?: boolean
-          comments_enabled?: boolean
-          followers_enabled?: boolean
-          mentions_enabled?: boolean
-          messages_enabled?: boolean
-          push_enabled?: boolean
-          reactions_enabled?: boolean
-          rehabilitation_enabled?: boolean
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          appointments_enabled?: boolean
-          comments_enabled?: boolean
-          followers_enabled?: boolean
-          mentions_enabled?: boolean
-          messages_enabled?: boolean
-          push_enabled?: boolean
-          reactions_enabled?: boolean
-          rehabilitation_enabled?: boolean
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notification_preferences_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       appointments: {
         Row: {
@@ -347,6 +232,50 @@ export type Database = {
           },
         ]
       }
+      athlete_exposures: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          created_by: string | null
+          hours: number
+          id: string
+          notes: string | null
+          session_date: string
+          session_type: string
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          created_by?: string | null
+          hours: number
+          id?: string
+          notes?: string | null
+          session_date: string
+          session_type?: string
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          created_by?: string | null
+          hours?: number
+          id?: string
+          notes?: string | null
+          session_date?: string
+          session_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athlete_exposures_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athlete_guardians: {
         Row: {
           athlete_id: string
@@ -383,6 +312,7 @@ export type Database = {
         Row: {
           athlete_code: string
           athlete_number: string | null
+          competition_level: string | null
           created_at: string
           created_by: string | null
           date_of_birth: string | null
@@ -400,6 +330,7 @@ export type Database = {
         Insert: {
           athlete_code?: string
           athlete_number?: string | null
+          competition_level?: string | null
           created_at?: string
           created_by?: string | null
           date_of_birth?: string | null
@@ -417,6 +348,7 @@ export type Database = {
         Update: {
           athlete_code?: string
           athlete_number?: string | null
+          competition_level?: string | null
           created_at?: string
           created_by?: string | null
           date_of_birth?: string | null
@@ -488,32 +420,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      blog_bookmarks: {
-        Row: {
-          article_id: string
-          created_at: string
-          user_id: string
-        }
-        Insert: {
-          article_id: string
-          created_at?: string
-          user_id: string
-        }
-        Update: {
-          article_id?: string
-          created_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "blog_bookmarks_article_id_fkey"
-            columns: ["article_id"]
-            isOneToOne: false
-            referencedRelation: "blog_articles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       care_requests: {
         Row: {
@@ -1171,77 +1077,77 @@ export type Database = {
       }
       injuries: {
         Row: {
+          activity_context: string | null
           athlete_id: string
           body_region: string
           created_at: string
           created_by: string | null
+          days_lost: number | null
           id: string
           injury_code: string
           injury_date: string | null
-          mechanism: string | null
-          notes: string | null
-          pain_score: number | null
-          sport_context: string | null
           injury_type: string | null
-          severity: string | null
-          mechanism_category: string | null
-          onset_type: string | null
-          activity_context: string | null
           is_recurrence: boolean | null
+          mechanism: string | null
+          mechanism_category: string | null
+          notes: string | null
+          onset_type: string | null
+          pain_score: number | null
           previous_injury_id: string | null
           reported_at: string | null
           resolved_at: string | null
-          days_lost: number | null
+          severity: string | null
+          sport_context: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          activity_context?: string | null
           athlete_id: string
           body_region: string
           created_at?: string
           created_by?: string | null
+          days_lost?: number | null
           id?: string
           injury_code?: string
           injury_date?: string | null
-          mechanism?: string | null
-          notes?: string | null
-          pain_score?: number | null
-          sport_context?: string | null
           injury_type?: string | null
-          severity?: string | null
-          mechanism_category?: string | null
-          onset_type?: string | null
-          activity_context?: string | null
           is_recurrence?: boolean | null
+          mechanism?: string | null
+          mechanism_category?: string | null
+          notes?: string | null
+          onset_type?: string | null
+          pain_score?: number | null
           previous_injury_id?: string | null
           reported_at?: string | null
           resolved_at?: string | null
-          days_lost?: number | null
+          severity?: string | null
+          sport_context?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          activity_context?: string | null
           athlete_id?: string
           body_region?: string
           created_at?: string
           created_by?: string | null
+          days_lost?: number | null
           id?: string
           injury_code?: string
           injury_date?: string | null
-          mechanism?: string | null
-          notes?: string | null
-          pain_score?: number | null
-          sport_context?: string | null
           injury_type?: string | null
-          severity?: string | null
-          mechanism_category?: string | null
-          onset_type?: string | null
-          activity_context?: string | null
           is_recurrence?: boolean | null
+          mechanism?: string | null
+          mechanism_category?: string | null
+          notes?: string | null
+          onset_type?: string | null
+          pain_score?: number | null
           previous_injury_id?: string | null
           reported_at?: string | null
           resolved_at?: string | null
-          days_lost?: number | null
+          severity?: string | null
+          sport_context?: string | null
           status?: string
           updated_at?: string
         }
@@ -1251,6 +1157,13 @@ export type Database = {
             columns: ["athlete_id"]
             isOneToOne: false
             referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "injuries_previous_injury_id_fkey"
+            columns: ["previous_injury_id"]
+            isOneToOne: false
+            referencedRelation: "injuries"
             referencedColumns: ["id"]
           },
         ]
@@ -1375,6 +1288,107 @@ export type Database = {
             columns: ["reply_to_id"]
             isOneToOne: false
             referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_deliveries: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          device_token_id: string | null
+          id: string
+          last_error: string | null
+          next_attempt_at: string | null
+          notification_id: string
+          provider_message_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          device_token_id?: string | null
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string | null
+          notification_id: string
+          provider_message_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          device_token_id?: string | null
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string | null
+          notification_id?: string
+          provider_message_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_deliveries_device_token_id_fkey"
+            columns: ["device_token_id"]
+            isOneToOne: false
+            referencedRelation: "user_device_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_deliveries_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          appointments_enabled: boolean
+          comments_enabled: boolean
+          followers_enabled: boolean
+          mentions_enabled: boolean
+          messages_enabled: boolean
+          push_enabled: boolean
+          reactions_enabled: boolean
+          rehabilitation_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          appointments_enabled?: boolean
+          comments_enabled?: boolean
+          followers_enabled?: boolean
+          mentions_enabled?: boolean
+          messages_enabled?: boolean
+          push_enabled?: boolean
+          reactions_enabled?: boolean
+          rehabilitation_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          appointments_enabled?: boolean
+          comments_enabled?: boolean
+          followers_enabled?: boolean
+          mentions_enabled?: boolean
+          messages_enabled?: boolean
+          push_enabled?: boolean
+          reactions_enabled?: boolean
+          rehabilitation_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2013,6 +2027,44 @@ export type Database = {
           },
         ]
       }
+      user_device_tokens: {
+        Row: {
+          created_at: string
+          disabled_at: string | null
+          id: string
+          last_seen_at: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          disabled_at?: string | null
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          disabled_at?: string | null
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_device_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -2036,8 +2088,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      notification_badge_count: { Args: { _user_id: string }; Returns: number }
-      mark_all_notifications_read: { Args: never; Returns: number }
       add_social_comment: {
         Args: { _body: string; _post_id: string }
         Returns: string
@@ -2065,6 +2115,19 @@ export type Database = {
       create_direct_conversation: {
         Args: { _other_user: string }
         Returns: string
+      }
+      create_notification: {
+        Args: {
+          _actor_id: string
+          _body: string
+          _category: string
+          _path: string
+          _source_id: string
+          _source_type: string
+          _title: string
+          _user_id: string
+        }
+        Returns: undefined
       }
       create_social_post: {
         Args: { _body?: string; _media_path?: string; _parent_post_id?: string }
@@ -2202,9 +2265,15 @@ export type Database = {
           shares_count: number
         }[]
       }
+      mark_all_notifications_read: { Args: never; Returns: number }
       mark_conversation_read: {
         Args: { _conversation_id: string }
         Returns: undefined
+      }
+      notification_badge_count: { Args: { _user_id: string }; Returns: number }
+      notification_preference_enabled: {
+        Args: { _category: string; _user_id: string }
+        Returns: boolean
       }
       save_athlete_profile: {
         Args: {
