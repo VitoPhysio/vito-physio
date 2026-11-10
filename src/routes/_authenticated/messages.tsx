@@ -850,8 +850,8 @@ function ChatView({
         className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#10051d] px-4 py-5 sm:px-8"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(16,5,29,0.84), rgba(16,5,29,0.84)), url('/chat-wallpaper.svg')",
-          backgroundSize: "auto, 360px 360px",
+            "linear-gradient(rgba(16,5,29,0.70), rgba(16,5,29,0.70)), url('/chat-wallpaper.svg')",
+          backgroundSize: "auto, 420px 420px",
           backgroundRepeat: "repeat",
           backgroundAttachment: "local",
         }}
@@ -1103,7 +1103,7 @@ function MessageBubble({
           transform: offset ? `translateX(${offset}px)` : undefined,
           transition: offset ? "none" : "transform 180ms ease-out",
         }}
-        className={`${attachmentOnly ? "max-w-[85%] rounded-none bg-transparent p-0 shadow-none" : "max-w-[85%] rounded-2xl px-4 py-2.5 shadow-sm"} cursor-pointer touch-pan-y select-none [-webkit-touch-callout:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:max-w-[70%] ${attachmentOnly ? "" : mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border bg-card"}`}
+        className={`${attachmentOnly ? "max-w-[92%] rounded-none bg-transparent p-0 shadow-none" : "max-w-[92%] rounded-[1.25rem] px-4 py-3 shadow-md"} cursor-pointer touch-pan-y select-none [-webkit-touch-callout:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:max-w-[78%] ${attachmentOnly ? "" : mine ? "rounded-br-md rounded-tr-md bg-primary text-primary-foreground" : "rounded-bl-md rounded-tl-md border bg-card"}`}
       >
         {message.reply_to && !deleted && (
           <button
@@ -1647,26 +1647,11 @@ function filterLabel(filter: Filter) {
 function formatChatTime(value: string) {
   return formatMessageTime(value);
 }
-
 function formatMessageTime(value: string) {
-  const date = new Date(value);
-  const now = new Date();
-  const elapsedMs = Math.max(0, now.getTime() - date.getTime());
-  const elapsedMinutes = Math.floor(elapsedMs / 60_000);
-  const elapsedHours = Math.floor(elapsedMs / 3_600_000);
-
-  if (elapsedMinutes < 1) return "just now";
-  if (elapsedMinutes < 60) return `${elapsedMinutes}m`;
-  if (elapsedHours < 24) return `${elapsedHours}h`;
-
-  if (elapsedHours < 48) return "Yesterday";
-  if (elapsedHours < 168) return date.toLocaleDateString([], { weekday: "long" });
-
-  const sameYear = date.getFullYear() === now.getFullYear();
-  return date.toLocaleDateString([], {
-    month: "short",
-    day: "numeric",
-    ...(sameYear ? {} : { year: "numeric" }),
+  return new Date(value).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
   });
 }
 
