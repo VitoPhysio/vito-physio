@@ -17,7 +17,7 @@ describe("App routing", () => {
   it("does not register the removed Discover route", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
     expect(
-      router.matchRoutes("/discover").some((match) => match.routeId === "/_authenticated/discover"),
+      router.matchRoutes("/discover").some((match) => (match.routeId as string) === "/_authenticated/discover"),
     ).toBe(false);
   });
   it("matches a page for / instead of falling back to not found", () => {

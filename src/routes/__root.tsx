@@ -187,11 +187,7 @@ function RootComponent() {
 
   useEffect(() => {
     const theme = getStoredTheme();
-    const refreshTheme = () => applyTheme(theme);
-
-    refreshTheme();
-    if (theme !== "system") return;
-    return watchSystemTheme(refreshTheme);
+    applyTheme(theme);
   }, []);
 
   useEffect(() => {

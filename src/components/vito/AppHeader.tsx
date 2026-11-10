@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { EditablePhoto, PhotoAvatar } from "@/components/vito/Photo";
 import { DEFAULT_QUICK_MENU_ITEMS, type QuickMenuItem } from "@/components/vito/QuickMenu";
 import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
+import { dispatchPendingPushes } from "@/lib/notification.functions";
 
 const STAFF = ["super_admin", "vito_admin", "clinical_professional", "clinical_supervisor"];
 const ADMIN = ["super_admin", "vito_admin"];
@@ -113,6 +114,26 @@ export function AppHeader({
       void supabase.removeChannel(channel);
     };
   }, [queryClient, user.id]);
+
+  // Deliver queued phone/web pushes promptly while anyone is active in the app.
+  useEffect(() => {
+    let busy = false;
+    const flush = () => {
+      if (busy || document.visibilityState !== "visible") return;
+      busy = true;
+      void dispatchPendingPushes().catch(() => {}).finally(() => { busy = false; });
+    };
+    const channel = supabase
+      .channel(`push-dispatch-${user.id}-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => setTimeout(flush, 1500))
+      .subscribe();
+    flush();
+    const timer = window.setInterval(flush, 20000);
+    return () => {
+      window.clearInterval(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [user.id]);
 
   useEffect(() => {
     if ("setAppBadge" in navigator) {
