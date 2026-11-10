@@ -1,0 +1,65 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+const preferencesInput = z.object({
+  messages_enabled: z.boolean(),
+  reactions_enabled: z.boolean(),
+  comments_enabled: z.boolean(),
+  followers_enabled: z.boolean(),
+  mentions_enabled: z.boolean(),
+  appointments_enabled: z.boolean(),
+  rehabilitation_enabled: z.boolean(),
+  push_enabled: z.boolean(),
+});
+
+export type NotificationPreferences = z.infer<typeof preferencesInput>;
+
+export const saveNotificationPreferences = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => preferencesInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("notification_preferences").upsert({
+      user_id: context.userId,
+      ...data,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(error.message);
+    return { saved: true };
+  });
+
+const tokenInput = z.object({
+  token: z.string().min(20).max(4096),
+  platform: z.enum(["web", "android", "ios"]).default("web"),
+});
+
+export const registerDeviceToken = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => tokenInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("user_device_tokens").upsert(
+      {
+        user_id: context.userId,
+        token: data.token,
+        platform: data.platform,
+        last_seen_at: new Date().toISOString(),
+        disabled_at: null,
+      },
+      { onConflict: "user_id,token" },
+    );
+    if (error) throw new Error(error.message);
+    return { registered: true };
+  });
+
+export const unregisterDeviceToken = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => tokenInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("user_device_tokens")
+      .update({ disabled_at: new Date().toISOString() })
+      .eq("user_id", context.userId)
+      .eq("token", data.token);
+    if (error) throw new Error(error.message);
+    return { registered: false };
+  });

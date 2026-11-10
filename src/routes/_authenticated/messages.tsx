@@ -51,6 +51,7 @@ export const Route = createFileRoute("/_authenticated/messages")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>): { conversation?: string } => typeof search["conversation"] === "string" ? { conversation: search["conversation"] } : {},
   component: MessagesPage,
 });
 
@@ -140,6 +141,7 @@ function MessagesPage() {
   const [userSearch, setUserSearch] = useState("");
   const [startingConversation, setStartingConversation] = useState(false);
 
+  const { conversation: linkedConversation } = Route.useSearch();
   const conversations = useQuery({
     queryKey: ["messages", user.id],
     queryFn: () => loadConversations(user.id),
@@ -188,6 +190,15 @@ function MessagesPage() {
 
   const selected =
     (conversations.data ?? []).find((conversation) => conversation.id === selectedId) ?? null;
+  useEffect(() => {
+    if (!linkedConversation || !conversations.data?.some((item) => item.id === linkedConversation)) return;
+    setSelectedId(linkedConversation);
+    void supabase.rpc("mark_conversation_read", { _conversation_id: linkedConversation }).then(({ error }) => {
+      if (!error) {
+        void queryClient.invalidateQueries({ queryKey: ["notification-count", user.id] });
+      }
+    });
+  }, [linkedConversation, Boolean(conversations.data), queryClient, user.id]);
   const messagingUsers = useQuery({
     queryKey: ["messaging-users", user.id],
     queryFn: () => loadMessagingUsers(),
