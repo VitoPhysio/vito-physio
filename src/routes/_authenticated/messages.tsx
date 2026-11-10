@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getMessageAttachmentMetadata } from "@/lib/message-attachments";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { Button } from "@/components/ui/button";
 import { useMessageGesture } from "@/hooks/use-message-gesture";
@@ -655,6 +656,10 @@ function ChatView({
 
   function selectAttachment(file: File | undefined) {
     if (!file) return;
+    if (file.size === 0) {
+      toast.error("Empty files cannot be sent.");
+      return;
+    }
     if (file.size > MAX_ATTACHMENT_SIZE) {
       toast.error("Pictures and files must be 25 MB or smaller.");
       return;
@@ -698,10 +703,7 @@ function ChatView({
       conversation_id: conversation.id,
       sender_id: userId,
       body: text || "Shared an attachment",
-      attachment_path: uploadedPath,
-      attachment_name: pendingAttachment?.file.name ?? null,
-      attachment_content_type: pendingAttachment?.file.type || "application/octet-stream",
-      attachment_size: pendingAttachment?.file.size ?? null,
+      ...getMessageAttachmentMetadata(pendingAttachment?.file ?? null, uploadedPath),
       ...(replyTo && conversation.interactive ? { reply_to_id: replyTo.id } : {}),
     });
     if (error) {
