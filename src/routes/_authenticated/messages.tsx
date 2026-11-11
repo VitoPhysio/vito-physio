@@ -775,7 +775,7 @@ function ChatView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex shrink-0 items-center gap-3 border-b bg-card px-4 py-3 shadow-sm sm:px-5">
+      <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-3 text-card-foreground shadow-sm sm:px-5">
         <button
           type="button"
           onClick={onBack}
@@ -847,11 +847,10 @@ function ChatView({
 
       <div
         ref={historyRef}
-        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#10051d] px-4 py-5 sm:px-8"
+        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-background px-4 py-5 sm:px-8"
         style={{
-          backgroundImage:
-            "linear-gradient(rgba(16,5,29,0.70), rgba(16,5,29,0.70)), url('/chat-wallpaper.svg')",
-          backgroundSize: "auto, 420px 420px",
+          backgroundImage: "url('/chat-wallpaper.svg')",
+          backgroundSize: "520px 520px",
           backgroundRepeat: "repeat",
           backgroundAttachment: "local",
         }}
@@ -865,7 +864,7 @@ function ChatView({
               return (
                 <div key={message.id}>
                   {showDate && (
-                    <p className="mx-auto mb-3 w-fit rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+                    <p className="mx-auto mb-3 w-fit rounded-full border border-border bg-secondary px-3 py-1 text-[11px] font-semibold text-secondary-foreground shadow-sm">
                       {formatDateCategory(message.created_at)}
                     </p>
                   )}
@@ -943,7 +942,7 @@ function ChatView({
       )}
 
       <form
-        className={`flex shrink-0 items-center gap-2 bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] ${replyTo ? "" : "border-t"}`}
+        className="flex shrink-0 items-center gap-2 border-t border-border bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         onSubmit={(event) => {
           event.preventDefault();
           void sendMessage();
