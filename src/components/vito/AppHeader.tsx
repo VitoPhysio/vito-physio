@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { EditablePhoto, PhotoAvatar } from "@/components/vito/Photo";
 import { DEFAULT_QUICK_MENU_ITEMS, type QuickMenuItem } from "@/components/vito/QuickMenu";
 import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
+import { PhoneNotificationsToggle } from "@/components/vito/PhoneNotificationsToggle";
 import { dispatchPendingPushes } from "@/lib/notification.functions";
 import { useMessageUnreadCount } from "@/hooks/use-message-unread";
 
@@ -291,7 +292,7 @@ export function AppHeader({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Settings</DialogTitle>
-            <DialogDescription>Manage your profile and account.</DialogDescription>
+            <DialogDescription>Manage your profile, notifications and account.</DialogDescription>
           </DialogHeader>
           <div className="space-y-5">
             <EditablePhoto
@@ -311,6 +312,7 @@ export function AppHeader({
               <dt className="text-muted-foreground">Email</dt>
               <dd className="truncate font-medium">{user.email}</dd>
             </dl>
+            <PhoneNotificationsToggle userId={user.id} />
             <Button variant="outline" className="w-full" onClick={signOut}>
               <LogOut className="mr-1 size-4" />
               Sign out

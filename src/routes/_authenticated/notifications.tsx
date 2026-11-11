@@ -21,7 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { PhotoAvatar } from "@/components/vito/Photo";
-import { enablePush } from "@/lib/push";
+import { enableDevicePush } from "@/lib/device-push";
 import {
   registerDeviceToken,
   saveNotificationPreferences,
@@ -213,9 +213,9 @@ function NotificationsPage() {
   async function enablePhoneNotifications() {
     setPushBusy(true);
     try {
-      const result = await enablePush();
+      const result = await enableDevicePush();
       if (result.status === "registered") {
-        await registerToken({ data: { token: result.token, platform: "web" } });
+        await registerToken({ data: { token: result.token, platform: result.platform } });
         await togglePreference("push_enabled", true);
         toast.success("This device will now receive VITO Physio notifications.");
         return;
