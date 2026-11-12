@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "864936698639",
+    "project_id": "vito-final",
+    "storage_bucket": "vito-final.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:864936698639:android:055e11a99bd6d82701547a",
+        "android_client_info": {
+          "package_name": "com.vitophysio.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjCNqmgA7gp9B8Zo64zKzMt7vwnvx5wlY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
