@@ -5,8 +5,7 @@ const config: CapacitorConfig = {
   appName: "Vito Physio",
   webDir: ".output/public",
   server: {
-    // Lovable hosting holds the Firebase connection that sends phone alerts.
-    url: "https://vito-physio.lovable.app",
+    url: "https://vito-physio.vercel.app",
     cleartext: false,
   },
   plugins: {

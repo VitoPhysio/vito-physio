@@ -144,7 +144,18 @@ async function processMessageQueue(db: Db, apiKey: string, connectionKey: string
 export async function processPushQueue(): Promise<{ processed: number; sent: number; error?: string | undefined }> {
   const apiKey = process.env["LOVABLE_API_KEY"];
   const connectionKey = process.env["FIREBASE_MESSAGING_API_KEY"];
-  if (!apiKey || !connectionKey) return { processed: 0, sent: 0, error: "Push connection missing" };
+  if (!apiKey || !connectionKey) {
+    // Hosts without the Firebase connection (e.g. Vercel) hand sending to the Lovable-hosted copy.
+    const secret = process.env["NOTIFICATION_WEBHOOK_SECRET"];
+    if (!secret) return { processed: 0, sent: 0, error: "Push connection missing" };
+    const res = await fetch("https://vito-physio.lovable.app/api/public/notification-delivery", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${secret}` },
+    });
+    const text = await res.text();
+    if (!res.ok) return { processed: 0, sent: 0, error: `Relay failed [${res.status}]: ${text}` };
+    return JSON.parse(text) as { processed: number; sent: number };
+  }
   const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
   const [chat, bell] = await Promise.all([
     processMessageQueue(db, apiKey, connectionKey),
