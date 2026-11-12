@@ -1,8 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { compareVersions, detectWebPlatform } from "@/lib/app-release";
+import {
+  APK_SOURCE_URL,
+  CURRENT_APP_VERSION,
+  compareVersions,
+  detectWebPlatform,
+} from "@/lib/app-release";
 
 describe("app release version comparison", () => {
+  it("offers version 1.6.0 to phones running version 1.5.0", () => {
+    expect(CURRENT_APP_VERSION).toBe("1.6.0");
+    expect(compareVersions(CURRENT_APP_VERSION, "1.5.0")).toBeGreaterThan(0);
+  });
+
+  it("downloads the signed APK from the latest GitHub release", () => {
+    expect(APK_SOURCE_URL).toBe(
+      "https://github.com/VitoPhysio/vito-physio/releases/latest/download/VitoPhysio.apk",
+    );
+  });
   it("detects a newer release", () => {
     expect(compareVersions("1.3.0", "1.2.0")).toBeGreaterThan(0);
   });

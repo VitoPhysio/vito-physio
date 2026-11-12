@@ -1,5 +1,5 @@
 {
-  "version": "1.5.0",
+  "version": "1.6.0",
   "apkUrl": "/api/download-app",
-  "releaseNotes": "Centered Vito launcher logo, improved offline experience, and app stability."
+  "releaseNotes": "Phone notifications for messages and app activity. This one-time release requires a fresh install; future updates can install over version 1.6.0."
 }
