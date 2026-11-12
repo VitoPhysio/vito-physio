@@ -58,7 +58,7 @@ export function buildFcmMessage(input: {
     token: input.token,
     data,
     notification: { title: input.title, body: input.body },
-    android: { priority: "high", notification: { tag: input.tag, click_action: "FCM_PLUGIN_ACTIVITY" } },
+    android: { priority: "high", notification: { tag: input.tag, channel_id: "vito-default", default_sound: true, notification_priority: "PRIORITY_HIGH", visibility: "PUBLIC" } },
     apns: { headers: { "apns-collapse-id": input.tag.slice(0, 64) }, payload: { aps: { sound: "default" } } },
   };
 }

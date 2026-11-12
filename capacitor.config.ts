@@ -5,10 +5,14 @@ const config: CapacitorConfig = {
   appName: "Vito Physio",
   webDir: ".output/public",
   server: {
-    url: "https://vito-physio.vercel.app",
+    // Lovable hosting holds the Firebase connection that sends phone alerts.
+    url: "https://vito-physio.lovable.app",
     cleartext: false,
   },
   plugins: {
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"],
+    },
     SplashScreen: {
       launchAutoHide: true,
       launchShowDuration: 700,

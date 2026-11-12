@@ -186,6 +186,47 @@ function RootComponent() {
   }, [canGoBack, router]);
 
   useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    void (async () => {
+      const [{ startNativePush }, { registerDeviceToken }, { supabase }] = await Promise.all([
+        import("@/lib/device-push"),
+        import("@/lib/notification.functions"),
+        import("@/integrations/supabase/client"),
+      ]);
+      await startNativePush(
+        (path) => {
+          const [pathname, query = ""] = path.split("?");
+          void router.navigate({ href: query ? `${pathname}?${query}` : pathname! });
+        },
+        async (token, platform) => {
+          const { data } = await supabase.auth.getSession();
+          if (data.session) await registerDeviceToken({ data: { token, platform } });
+        },
+      );
+    })().catch(() => undefined);
+  }, [router]);
+
+  useEffect(() => {
+    // Nudge the alert queue while the app is open so activity alerts go out promptly.
+    let stopped = false;
+    const tick = async () => {
+      if (stopped || document.visibilityState !== "visible") return;
+      const [{ supabase }, { dispatchPendingPushes }] = await Promise.all([
+        import("@/integrations/supabase/client"),
+        import("@/lib/notification.functions"),
+      ]);
+      const { data } = await supabase.auth.getSession();
+      if (data.session) await dispatchPendingPushes();
+    };
+    void tick().catch(() => undefined);
+    const id = window.setInterval(() => void tick().catch(() => undefined), 30000);
+    return () => {
+      stopped = true;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  useEffect(() => {
     const theme = getStoredTheme();
     applyTheme(theme);
   }, []);

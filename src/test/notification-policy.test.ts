@@ -51,4 +51,13 @@ describe("chat message pushes", () => {
     const android = buildFcmMessage({ token: "t", platform: "android", title: "a", body: "b", path: "/messages", tag: "c" });
     expect("notification" in android).toBe(true);
   });
+  it("posts Android alerts to the high-importance channel and lets taps open the app", () => {
+    const android = buildFcmMessage({ token: "t", platform: "android", title: "a", body: "b", path: "/messages?conversation=x", tag: "c" }) as {
+      data: { path: string };
+      android: { notification: Record<string, unknown> };
+    };
+    expect(android.android.notification["channel_id"]).toBe("vito-default");
+    expect(android.android.notification["click_action"]).toBeUndefined();
+    expect(android.data.path).toBe("/messages?conversation=x");
+  });
 });

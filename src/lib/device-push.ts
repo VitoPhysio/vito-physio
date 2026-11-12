@@ -45,12 +45,7 @@ async function enableNativePush(): Promise<DevicePushResult> {
   }
   if (perm.receive !== "granted") return { status: "denied" };
 
-  await PushNotifications.createChannel?.({
-    id: "vito-default",
-    name: "VITO Physio",
-    importance: 5,
-    visibility: 1,
-  }).catch(() => undefined);
+  await ensureChannel();
 
   return new Promise<DevicePushResult>((resolve) => {
     const timer = setTimeout(() => resolve({ status: "not-configured" }), 15000);
@@ -62,10 +57,6 @@ async function enableNativePush(): Promise<DevicePushResult> {
       clearTimeout(timer);
       resolve({ status: "not-configured" });
     });
-    void PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
-      const path = action.notification.data?.path;
-      if (typeof path === "string" && path.startsWith("/")) window.location.assign(path);
-    });
     void PushNotifications.register();
   });
 }
@@ -75,4 +66,45 @@ export async function disableDevicePush() {
     const { PushNotifications } = await import("@capacitor/push-notifications");
     await PushNotifications.unregister().catch(() => undefined);
   }
+}
+
+async function ensureChannel() {
+  const { PushNotifications } = await import("@capacitor/push-notifications");
+  await PushNotifications.createChannel({
+    id: "vito-default",
+    name: "Messages & activity",
+    description: "New messages, care updates and activity from VITO Physio",
+    importance: 5,
+    visibility: 1,
+    sound: "default",
+    vibration: true,
+    lights: true,
+  }).catch(() => undefined);
+}
+
+let nativeStarted = false;
+
+/**
+ * Runs once at app start on Android/iOS: makes sure the alert channel exists, opens the exact
+ * screen when an alert in the notification shade is tapped (also on cold start), and refreshes
+ * the device token when permission was already granted.
+ */
+export async function startNativePush(
+  open: (path: string) => void,
+  onToken: (token: string, platform: DevicePlatform) => Promise<unknown>,
+) {
+  if (nativeStarted || currentPlatform() === "web") return;
+  nativeStarted = true;
+  const { PushNotifications } = await import("@capacitor/push-notifications");
+  await ensureChannel();
+  await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+    const path = action.notification.data?.path;
+    if (typeof path === "string" && path.startsWith("/") && !path.startsWith("//")) open(path);
+  });
+  await PushNotifications.addListener("registration", (t) => {
+    localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: t.value, platform: currentPlatform() }));
+    void onToken(t.value, currentPlatform()).catch(() => undefined);
+  });
+  const perm = await PushNotifications.checkPermissions();
+  if (perm.receive === "granted" && storedDeviceToken()) await PushNotifications.register();
 }
