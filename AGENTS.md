@@ -24,3 +24,4 @@
 
 - Athlete Home, Discover and Profile share a portal presentation layer and reuse clinical data/functions; the existing staff dashboard remains separate. Why: preserve management flows while keeping community identity isolated from clinical records.
 - Unavailable community features render honest empty states without querying undeployed tables. Why: avoid broken schemas and accidental clinical-directory exposure.
+- Institution workspace (/workspace) scopes every view to one selected institution in the URL; institution roles live in school_users.role/status, and membership, registration, approvals and counts go through institution-checking SECURITY DEFINER functions. Why: one account can hold different roles across institutions without mixing data or granting global roles.
