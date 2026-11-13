@@ -1,5 +1,10 @@
 # Roadmap
 
+- [x] Fit shared message screens to phone widths with shrinkable columns, names and message content.
+- [x] Open chat photos in-app with pinch zoom, download and forwarding; share and forward messages.
+- [x] Run focused checks (20 tests pass; preview redirects signed-out messages to sign-in without runtime errors).
+- [ ] Verify these changes in signed-in phone chats. Blocked: external authenticated test session unavailable.
+
 - [x] Organise clinician and admin dashboards with horizontal dropdown menus.
 - [x] Group cases by status and sort by newest or athlete name.
 - [x] Enable editing saved case opening and management information using existing access rules.

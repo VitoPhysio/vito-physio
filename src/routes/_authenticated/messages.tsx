@@ -12,6 +12,8 @@ import {
   CheckCheck,
   ChevronDown,
   Copy,
+  Forward,
+  Share2,
   Filter,
   LoaderCircle,
   MessageCircle,
@@ -35,6 +37,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMessageAttachmentMetadata } from "@/lib/message-attachments";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { Button } from "@/components/ui/button";
+import { ChatPhotoViewer } from "@/components/vito/ChatPhotoViewer";
+import { isAttachmentOnly } from "@/lib/chat-media";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useMessageGesture } from "@/hooks/use-message-gesture";
 import {
   DropdownMenu,
@@ -272,9 +277,9 @@ function MessagesPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] side:left-20 flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-foreground">
+    <div className="fixed inset-0 z-[100] side:left-20 flex h-[100dvh] min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground">
       {!selected && (
-        <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-3 shadow-sm sm:px-6">
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] shrink-0 items-center gap-2 border-b bg-card px-4 py-3 shadow-sm sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -318,9 +323,9 @@ function MessagesPage() {
         </header>
       )}
 
-      <div className="grid min-h-0 flex-1 md:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]">
+      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)]">
         <aside
-          className={`${selected ? "hidden md:flex" : "flex"} min-h-0 flex-col border-r bg-muted/20`}
+          className={`${selected ? "hidden md:flex" : "flex"} min-h-0 min-w-0 overflow-hidden flex-col border-r bg-muted/20`}
         >
           <div className="shrink-0 border-b p-4">
             <label className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 text-sm text-muted-foreground shadow-sm focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
@@ -579,8 +584,8 @@ function ConversationRow({
         aria-label={`Open conversation with ${conversation.displayName}`}
         className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
       >
-        <span className="flex items-center justify-between gap-2">
-          <span className="truncate font-bold">{conversation.displayName}</span>
+        <span className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+          <span className="min-w-0 truncate font-bold">{conversation.displayName}</span>
           <span
             className={`shrink-0 text-xs ${conversation.unread ? "font-bold text-primary" : "text-muted-foreground"}`}
           >
@@ -622,6 +627,11 @@ function ChatView({
   const [sending, setSending] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [actionsFor, setActionsFor] = useState<Message | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<Message | null>(null);
+  const [forwarding, setForwarding] = useState<Message | null>(null);
+  const [forwardSearch, setForwardSearch] = useState("");
+  const [forwardBusy, setForwardBusy] = useState(false);
+  const forwardUsers = useQuery({ queryKey: ["messaging-users", userId], queryFn: loadMessagingUsers, enabled: Boolean(forwarding), staleTime: 60_000 });
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -636,6 +646,8 @@ function ChatView({
   useEffect(() => {
     setReplyTo(null);
     setActionsFor(null);
+    setViewingPhoto(null);
+    setForwarding(null);
   }, [conversation.id]);
 
   useEffect(() => {
@@ -799,6 +811,47 @@ function ChatView({
     }
   }
 
+  async function shareMessage(message: Message) {
+    if (message.attachment_url && message.attachment_content_type?.startsWith("image/")) {
+      setViewingPhoto(message);
+      return;
+    }
+    try {
+      if (navigator.share) await navigator.share({ text: message.body });
+      else await copyMessage(message);
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) toast.error("Unable to share this message.");
+    }
+  }
+
+  async function forwardMessage(member: MessagingUser) {
+    if (!forwarding || forwardBusy || forwarding.deleted_at) return;
+    setForwardBusy(true);
+    let uploadedPath: string | null = null;
+    try {
+      const { data: targetId, error: targetError } = await supabase.rpc("create_direct_conversation", { _other_user: member.id });
+      if (targetError || !targetId) throw targetError ?? new Error("Conversation unavailable");
+      let file: File | null = null;
+      if (forwarding.attachment_path) {
+        const { data: blob, error: readError } = await supabase.storage.from("message-attachments").download(forwarding.attachment_path);
+        if (readError || !blob) throw readError ?? new Error("Attachment unavailable");
+        file = new File([blob], forwarding.attachment_name ?? "attachment", { type: forwarding.attachment_content_type ?? blob.type });
+        uploadedPath = `${targetId}/${userId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const { error: uploadError } = await supabase.storage.from("message-attachments").upload(uploadedPath, file, { contentType: file.type, upsert: false });
+        if (uploadError) throw uploadError;
+      }
+      const { error } = await supabase.from("messages").insert({ conversation_id: targetId, sender_id: userId, body: forwarding.body, ...getMessageAttachmentMetadata(file, uploadedPath) });
+      if (error) throw error;
+      setForwarding(null);
+      setForwardSearch("");
+      toast.success("Message forwarded.");
+      onSent();
+    } catch {
+      if (uploadedPath) void supabase.storage.from("message-attachments").remove([uploadedPath]);
+      toast.error("Unable to forward this message. Please try again.");
+    } finally { setForwardBusy(false); }
+  }
+
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -809,12 +862,12 @@ function ChatView({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-3 text-card-foreground shadow-sm sm:px-5">
         <button
           type="button"
           onClick={onBack}
-          className="grid size-9 place-items-center rounded-full text-primary hover:bg-secondary md:hidden"
+          className="grid size-9 shrink-0 place-items-center rounded-full text-primary hover:bg-secondary md:hidden"
           aria-label="Back to messages"
         >
           <ArrowLeft className="size-5" />
@@ -851,7 +904,7 @@ function ChatView({
           ) : (
             <h2 className="truncate font-bold">{conversation.displayName}</h2>
           )}
-          <p className="text-xs text-muted-foreground">{roleLabel(conversation.otherRole)}</p>
+          <p className="truncate text-xs text-muted-foreground">{roleLabel(conversation.otherRole)}</p>
         </div>
         <button
           type="button"
@@ -890,7 +943,7 @@ function ChatView({
           backgroundAttachment: "local",
         }}
       >
-        <div className="mx-auto flex max-w-3xl flex-col gap-3">
+        <div className="mx-auto flex min-w-0 max-w-3xl flex-col gap-3">
           {conversation.messages.length ? (
             conversation.messages.map((message, index) => {
               const mine = message.sender_id === userId;
@@ -918,6 +971,7 @@ function ChatView({
                     onReply={() => startReply(message)}
                     onJumpTo={jumpToMessage}
                     onToggleReaction={(emoji) => void toggleReaction(message, emoji)}
+                    onOpenPhoto={() => setViewingPhoto(message)}
                   />
                 </div>
               );
@@ -1044,10 +1098,25 @@ function ChatView({
           onReact={(emoji) => void toggleReaction(actionsFor, emoji)}
           onReply={() => startReply(actionsFor)}
           onCopy={() => void copyMessage(actionsFor)}
+          onForward={() => { setForwardSearch(""); setForwarding(actionsFor); }}
+          onShare={() => void shareMessage(actionsFor)}
           onDeleteForMe={() => void deleteForMe(actionsFor)}
           onDeleteForEveryone={() => void deleteForEveryone(actionsFor)}
         />
       )}
+      {viewingPhoto?.attachment_url && <ChatPhotoViewer key={viewingPhoto.id} url={viewingPhoto.attachment_url} name={viewingPhoto.attachment_name ?? "Photo"} onClose={() => setViewingPhoto(null)} onForward={() => { setForwardSearch(""); setForwarding(viewingPhoto); setViewingPhoto(null); }} />}
+      <Dialog open={Boolean(forwarding)} onOpenChange={(open) => { if (!open && !forwardBusy) setForwarding(null); }}>
+        <DialogContent className="z-[180] w-[calc(100%_-_2rem)]" overlayClassName="z-[179]" aria-describedby={undefined}>
+          <DialogTitle>Forward message</DialogTitle>
+          <input value={forwardSearch} onChange={(event) => setForwardSearch(event.target.value)} aria-label="Search forwarding recipients" placeholder="Search users" className="min-w-0 w-full rounded-md border bg-background p-3 text-sm" />
+          <div className="max-h-[50dvh] overflow-y-auto">
+            {forwardUsers.isLoading ? <p className="py-4 text-sm">Loading users…</p> : forwardUsers.error ? <Button variant="outline" onClick={() => void forwardUsers.refetch()}>Try again</Button> : <>
+              {(forwardUsers.data ?? []).filter((member) => member.id !== userId && messagingUserDisplayName(member).toLowerCase().includes(forwardSearch.toLowerCase())).map((member) => <Button key={member.id} variant="ghost" disabled={forwardBusy} className="h-auto w-full justify-start gap-3 py-3" onClick={() => void forwardMessage(member)}><PhotoAvatar path={member.avatar_path} name={member.full_name} className="size-9 shrink-0" /><span className="min-w-0 flex-1 truncate text-left">{messagingUserDisplayName(member)}</span><Forward className="size-4 shrink-0" /></Button>)}
+              {!forwardUsers.data?.some((member) => member.id !== userId && messagingUserDisplayName(member).toLowerCase().includes(forwardSearch.toLowerCase())) && <p className="py-4 text-sm text-muted-foreground">No matching users.</p>}
+            </>}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1083,6 +1152,7 @@ function MessageBubble({
   onReply,
   onJumpTo,
   onToggleReaction,
+  onOpenPhoto,
 }: {
   ref: Ref<HTMLDivElement>;
   message: Message;
@@ -1095,11 +1165,11 @@ function MessageBubble({
   onReply: () => void;
   onJumpTo: (messageId: string) => void;
   onToggleReaction: (emoji: string) => void;
+  onOpenPhoto: () => void;
 }) {
   const { offset, progress, handlers } = useMessageGesture(canSwipe, onOpenActions, onReply);
   const deleted = Boolean(message.deleted_at);
-  const attachmentOnly =
-    !deleted && message.body === "Shared an attachment" && Boolean(message.attachment_path);
+  const attachmentOnly = isAttachmentOnly(message);
 
   const reactionGroups = useMemo(() => {
     const groups = new Map<string, { count: number; mine: boolean }>();
@@ -1115,7 +1185,7 @@ function MessageBubble({
   return (
     <div
       ref={ref}
-      className={`relative flex flex-col rounded-2xl transition-colors duration-700 ${mine ? "items-end" : "items-start"} ${highlighted ? "bg-primary/15" : ""}`}
+      className={`relative flex min-w-0 flex-col rounded-2xl transition-colors duration-700 ${mine ? "items-end" : "items-start"} ${highlighted ? "bg-primary/15" : ""}`}
     >
       <span
         aria-hidden
@@ -1170,19 +1240,19 @@ function MessageBubble({
         ) : (
           <>
             {message.attachment_url && message.attachment_content_type?.startsWith("image/") && (
-              <a
-                href={message.attachment_url}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(event) => event.stopPropagation()}
-                className="mb-2 block overflow-hidden rounded-xl"
+              <Button
+                variant="ghost"
+                type="button"
+                aria-label={`Open photo ${message.attachment_name ?? "Shared picture"}`}
+                onClick={(event) => { event.stopPropagation(); onOpenPhoto(); }}
+                className="mb-1 block h-auto max-w-full overflow-hidden rounded-none bg-transparent p-0 hover:bg-transparent"
               >
                 <img
                   src={message.attachment_url}
                   alt={message.attachment_name ?? "Shared picture"}
-                  className="max-h-64 w-full object-cover"
+                  className="max-h-64 max-w-full object-contain"
                 />
-              </a>
+              </Button>
             )}
             {message.attachment_url && !message.attachment_content_type?.startsWith("image/") && (
               <a
@@ -1197,12 +1267,12 @@ function MessageBubble({
               </a>
             )}
             {message.body !== "Shared an attachment" && (
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.body}</p>
+              <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm leading-relaxed">{message.body}</p>
             )}
           </>
         )}
         <div
-          className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-foreground/75" : "text-muted-foreground"}`}
+          className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine && !attachmentOnly ? "text-primary-foreground/75" : "text-muted-foreground"}`}
         >
           {formatMessageTime(message.created_at)}
           {mine && !deleted && <CheckCheck className="size-3" />}
@@ -1241,6 +1311,8 @@ function MessageActionSheet({
   onReact,
   onReply,
   onCopy,
+  onForward,
+  onShare,
   onDeleteForMe,
   onDeleteForEveryone,
 }: {
@@ -1252,6 +1324,8 @@ function MessageActionSheet({
   onReact: (emoji: string) => void;
   onReply: () => void;
   onCopy: () => void;
+  onForward: () => void;
+  onShare: () => void;
   onDeleteForMe: () => void;
   onDeleteForEveryone: () => void;
 }) {
@@ -1293,7 +1367,7 @@ function MessageActionSheet({
         aria-modal="true"
         aria-label="Message options"
         onClick={(event) => event.stopPropagation()}
-        className="w-full max-w-sm overflow-hidden rounded-t-3xl bg-card pb-[env(safe-area-inset-bottom)] shadow-2xl animate-in slide-in-from-bottom-4 fade-in sm:rounded-3xl"
+        className="max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-t-3xl bg-card pb-[env(safe-area-inset-bottom)] shadow-2xl animate-in slide-in-from-bottom-4 fade-in sm:rounded-3xl"
       >
         <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-muted sm:hidden" />
         <p
@@ -1377,6 +1451,10 @@ function MessageActionSheet({
                   <Copy className="size-5 text-primary" /> Copy
                 </Button>
               )}
+              {!deleted && <>
+                <Button variant="ghost" type="button" className={itemClass} onClick={() => run(onForward)}><Forward className="size-5 text-primary" /> Forward</Button>
+                <Button variant="ghost" type="button" className={itemClass} onClick={() => run(onShare)}><Share2 className="size-5 text-primary" /> Share</Button>
+              </>}
               {interactive && (
                 <Button
                   variant="ghost"
