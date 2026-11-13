@@ -91,7 +91,7 @@ export function SignedInHomeHighlights({
               size="lg"
               className="h-11 rounded-full bg-brand-gradient px-5 text-sm font-bold shadow-glow ring-2 ring-primary/25 transition-transform hover:-translate-y-0.5 sm:text-base"
             >
-              <Link to="/dashboard">
+              <Link to="/workspace">
                 <LayoutDashboard aria-hidden="true" className="mr-2 size-4" />
                 Go to Your Workspace
               </Link>

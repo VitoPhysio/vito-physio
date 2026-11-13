@@ -1834,19 +1834,25 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          role: string
           school_id: string
+          status: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          role?: string
           school_id: string
+          status?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          role?: string
           school_id?: string
+          status?: string
           user_id?: string
         }
         Relationships: [
@@ -1861,9 +1867,11 @@ export type Database = {
       }
       schools: {
         Row: {
+          contact_email: string | null
           contact_phone: string | null
           created_at: string
           created_by: string | null
+          district: string | null
           id: string
           intake_notes: string | null
           location: string | null
@@ -1872,12 +1880,16 @@ export type Database = {
           school_code: string
           school_type: string
           self_registered: boolean
+          sports: string[]
           updated_at: string
+          verification_status: string
         }
         Insert: {
+          contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           created_by?: string | null
+          district?: string | null
           id?: string
           intake_notes?: string | null
           location?: string | null
@@ -1886,12 +1898,16 @@ export type Database = {
           school_code?: string
           school_type?: string
           self_registered?: boolean
+          sports?: string[]
           updated_at?: string
+          verification_status?: string
         }
         Update: {
+          contact_email?: string | null
           contact_phone?: string | null
           created_at?: string
           created_by?: string | null
+          district?: string | null
           id?: string
           intake_notes?: string | null
           location?: string | null
@@ -1900,7 +1916,9 @@ export type Database = {
           school_code?: string
           school_type?: string
           self_registered?: boolean
+          sports?: string[]
           updated_at?: string
+          verification_status?: string
         }
         Relationships: []
       }
@@ -2271,6 +2289,35 @@ export type Database = {
         }
         Returns: boolean
       }
+      institution_join_requests: {
+        Args: { _school: string }
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          role: string
+          status: string
+          user_id: string
+        }[]
+      }
+      institution_members: {
+        Args: { _school: string }
+        Returns: {
+          avatar_path: string
+          email: string
+          full_name: string
+          joined_at: string
+          role: string
+          status: string
+          user_id: string
+        }[]
+      }
+      institution_overview: { Args: { _school: string }; Returns: Json }
+      institution_role: {
+        Args: { _school: string; _user: string }
+        Returns: string
+      }
       is_blog_admin: { Args: never; Returns: boolean }
       is_connected: { Args: { _a: string; _b: string }; Returns: boolean }
       is_conversation_participant: {
@@ -2278,6 +2325,14 @@ export type Database = {
         Returns: boolean
       }
       is_discoverable_member: { Args: { _u: string }; Returns: boolean }
+      is_institution_admin: {
+        Args: { _school: string; _user: string }
+        Returns: boolean
+      }
+      is_institution_member: {
+        Args: { _school: string; _user: string }
+        Returns: boolean
+      }
       is_valid_photo_path: { Args: { _p: string }; Returns: boolean }
       is_vito_staff: { Args: { _user_id: string }; Returns: boolean }
       list_messaging_users: {
@@ -2338,10 +2393,45 @@ export type Database = {
         Returns: undefined
       }
       message_unread_count: { Args: never; Returns: number }
+      my_institutions: {
+        Args: never
+        Returns: {
+          district: string
+          id: string
+          location: string
+          logo_path: string
+          name: string
+          role: string
+          school_type: string
+          verification_status: string
+        }[]
+      }
       notification_badge_count: { Args: { _user_id: string }; Returns: number }
       notification_preference_enabled: {
         Args: { _category: string; _user_id: string }
         Returns: boolean
+      }
+      register_institution: {
+        Args: {
+          _district: string
+          _email: string
+          _location: string
+          _logo_path: string
+          _name: string
+          _notes: string
+          _phone: string
+          _sports: string[]
+          _type: string
+        }
+        Returns: string
+      }
+      request_institution_membership: {
+        Args: { _role: string; _school: string }
+        Returns: string
+      }
+      review_join_request: {
+        Args: { _approve: boolean; _request: string }
+        Returns: undefined
       }
       save_athlete_profile: {
         Args: {
@@ -2364,6 +2454,25 @@ export type Database = {
           p_user_id: string
           p_visibility: string
         }
+        Returns: undefined
+      }
+      search_institutions: {
+        Args: { _q?: string }
+        Returns: {
+          admin_name: string
+          district: string
+          id: string
+          is_member: boolean
+          location: string
+          logo_path: string
+          my_request_status: string
+          name: string
+          school_type: string
+          verification_status: string
+        }[]
+      }
+      set_institution_member_role: {
+        Args: { _role: string; _school: string; _status: string; _user: string }
         Returns: undefined
       }
       share_social_post: { Args: { _post_id: string }; Returns: number }
@@ -2397,6 +2506,19 @@ export type Database = {
       }
       toggle_social_follow: { Args: { _following: string }; Returns: boolean }
       toggle_social_like: { Args: { _post_id: string }; Returns: boolean }
+      update_institution_profile: {
+        Args: {
+          _district: string
+          _email: string
+          _location: string
+          _logo_path: string
+          _name: string
+          _phone: string
+          _school: string
+          _sports: string[]
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:

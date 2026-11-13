@@ -1,5 +1,13 @@
 # Roadmap
 
+## Institutional workspace upgrade (brief)
+- [x] Phase 1: workspace entry, institution chooser, join requests, registration, multi-institution switching, institution roles enforced in the database.
+- [ ] Phase 2: athlete directory, profiles, team and coach assignments.
+- [ ] Phase 3: injury management, statistics, surveillance, pattern detection, prevention guidance.
+- [ ] Phase 4: institutional messaging, announcements, targeted notifications.
+- [ ] Phase 5: professional discovery, referrals, consent-based sharing.
+- [ ] Phase 6: institutional, athlete, team and surveillance reports with PDF/print.
+
 - [ ] Add expandable branded Android alerts with Reply and Mark as read actions, keeping older APK delivery intact.
 - [ ] Test notification action routing; native phone verification requires installation of the new APK.
 
