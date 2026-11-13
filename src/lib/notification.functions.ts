@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { ACTION_TOKEN_PREFIX } from "@/lib/notification-actions";
 
 const preferencesInput = z.object({
   messages_enabled: z.boolean(),
@@ -32,6 +33,7 @@ export const saveNotificationPreferences = createServerFn({ method: "POST" })
 const tokenInput = z.object({
   token: z.string().min(20).max(4096),
   platform: z.enum(["web", "android", "ios"]).default("web"),
+  androidActions: z.boolean().optional(),
 });
 
 export const registerDeviceToken = createServerFn({ method: "POST" })
@@ -41,7 +43,7 @@ export const registerDeviceToken = createServerFn({ method: "POST" })
     const { error } = await context.supabase.from("user_device_tokens").upsert(
       {
         user_id: context.userId,
-        token: data.token,
+        token: data.platform === "android" && data.androidActions ? `${ACTION_TOKEN_PREFIX}${data.token}` : data.token,
         platform: data.platform,
         last_seen_at: new Date().toISOString(),
         disabled_at: null,
@@ -49,6 +51,9 @@ export const registerDeviceToken = createServerFn({ method: "POST" })
       { onConflict: "user_id,token" },
     );
     if (error) throw new Error(error.message);
+    if (data.platform === "android" && data.androidActions) {
+      await context.supabase.from("user_device_tokens").update({ disabled_at: new Date().toISOString() }).eq("user_id", context.userId).eq("token", data.token);
+    }
     return { registered: true };
   });
 
@@ -60,7 +65,7 @@ export const unregisterDeviceToken = createServerFn({ method: "POST" })
       .from("user_device_tokens")
       .update({ disabled_at: new Date().toISOString() })
       .eq("user_id", context.userId)
-      .eq("token", data.token);
+      .in("token", [data.token, `${ACTION_TOKEN_PREFIX}${data.token}`]);
     if (error) throw new Error(error.message);
     return { registered: false };
   });

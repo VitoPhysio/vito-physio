@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Add expandable branded Android alerts with Reply and Mark as read actions, keeping older APK delivery intact.
+- [ ] Test notification action routing; native phone verification requires installation of the new APK.
+
 - [x] Fit shared message screens to phone widths with shrinkable columns, names and message content.
 - [x] Open chat photos in-app with pinch zoom, download and forwarding; share and forward messages.
 - [x] Run focused checks (20 tests pass; preview redirects signed-out messages to sign-in without runtime errors).

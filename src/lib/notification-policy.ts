@@ -1,3 +1,5 @@
+import { ACTION_TOKEN_PREFIX } from "./notification-actions";
+
 export function pushBody(category: string, body: string): string {
   return category === "messages" ? "Open VITO Physio to view this private message." : body;
 }
@@ -53,6 +55,9 @@ export function buildFcmMessage(input: {
   const data = { title: input.title, body: input.body, path: input.path, tag: input.tag };
   if (input.platform === "web") {
     return { token: input.token, data, webpush: { headers: { Urgency: "high" } } };
+  }
+  if (input.platform === "android" && input.token.startsWith(ACTION_TOKEN_PREFIX)) {
+    return { token: input.token.slice(ACTION_TOKEN_PREFIX.length), data: { ...data, vito_actions: "1" }, android: { priority: "high" } };
   }
   return {
     token: input.token,

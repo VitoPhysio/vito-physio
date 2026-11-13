@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { enablePush } from "@/lib/push";
+import { notificationActionPath } from "@/lib/notification-actions";
 
 export type DevicePlatform = "web" | "android" | "ios";
 export type DevicePushResult =
@@ -99,7 +100,7 @@ export async function startNativePush(
   await ensureChannel();
   await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
     const path = action.notification.data?.path;
-    if (typeof path === "string" && path.startsWith("/") && !path.startsWith("//")) open(path);
+    if (typeof path === "string") open(notificationActionPath(path, action.notification.data?.vito_action));
   });
   await PushNotifications.addListener("registration", (t) => {
     localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: t.value, platform: currentPlatform() }));
