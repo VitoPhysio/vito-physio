@@ -22,7 +22,9 @@ export function PhotoAvatar({
     staleTime: 50 * 60 * 1000,
     queryFn: async () => {
       if (!path) return null;
-      return (await supabase.storage.from("avatars").createSignedUrl(path, 3600)).data?.signedUrl ?? null;
+      return (
+        (await supabase.storage.from("avatars").createSignedUrl(path, 3600)).data?.signedUrl ?? null
+      );
     },
   });
   const initials = (name ?? "?")
@@ -69,7 +71,12 @@ export async function fileToPhotoPath(file: File): Promise<string> {
   let bin = "";
   for (let i = 0; i < buf.length; i += 0x8000)
     bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-  return uploadPhoto({ data: { base64: btoa(bin), contentType: file.type as "image/png" } });
+  return uploadPhoto({
+    data: {
+      base64: btoa(bin),
+      contentType: file.type as "image/png" | "image/jpeg" | "image/webp",
+    },
+  });
 }
 
 export async function fileToSocialPostPhotoPath(file: File): Promise<string> {
