@@ -92,6 +92,8 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: vitophysio
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VITO_VERSION_CODE: ${{ 100 + github.run_number }}
+          VITO_VERSION_NAME: 1.8.${{ github.run_number }}
         run: ./gradlew assembleRelease --no-daemon
 
       - name: Stage APK
@@ -102,7 +104,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: VitoPhysio-1.7.1
+          name: VitoPhysio-1.8.${{ github.run_number }}
           path: release/VitoPhysio.apk
           retention-days: 14
 
@@ -110,11 +112,11 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.7.1
-          name: Vito Physio 1.7.1
+          tag_name: v1.8.${{ github.run_number }}
+          name: Vito Physio 1.8.${{ github.run_number }}
           body: |
             VITO-branded expandable phone notifications with Reply (opens the conversation composer) and Mark as read (opens VITO and updates the inbox).
 
-            Install this update over the previous signed release to activate the native notification actions.
+            Installs over the previous version; no uninstall needed. Phone alerts re-register automatically.
           files: release/VitoPhysio.apk
           generate_release_notes: true

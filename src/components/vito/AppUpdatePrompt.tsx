@@ -39,6 +39,14 @@ export function AppUpdatePrompt() {
         ]);
         if (!response.ok) return;
         const manifest = (await response.json()) as VersionManifest;
+        // Newest published APK (set automatically by each GitHub build) wins over the static file.
+        try {
+          const latest = await fetch("https://api.github.com/repos/VitoPhysio/vito-physio/releases/latest", { cache: "no-store" });
+          if (latest.ok) {
+            const tag = ((await latest.json()) as { tag_name?: string }).tag_name?.replace(/^v/, "");
+            if (tag && (!manifest.version || compareVersions(tag, manifest.version) > 0)) manifest.version = tag;
+          }
+        } catch {}
         if (!manifest.version || compareVersions(manifest.version, installedVersion) <= 0) {
           if (active) setUpdate(null);
           return;

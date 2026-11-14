@@ -115,5 +115,10 @@ export async function startNativePush(
     void androidNotificationActions().then((capable) => onToken(t.value, currentPlatform(), capable)).catch(() => undefined);
   });
   const perm = await PushNotifications.checkPermissions();
-  if (perm.receive === "granted" && storedDeviceToken()) await PushNotifications.register();
+  // Always refresh when allowed: a reinstall/update wipes saved tokens and invalidates the old one.
+  if (perm.receive === "granted") await PushNotifications.register();
+  const { App } = await import("@capacitor/app");
+  await App.addListener("resume", () => {
+    void PushNotifications.checkPermissions().then((p) => (p.receive === "granted" ? PushNotifications.register() : undefined));
+  });
 }
