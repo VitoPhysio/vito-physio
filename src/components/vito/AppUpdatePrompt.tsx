@@ -39,9 +39,12 @@ export function AppUpdatePrompt() {
         ]);
         if (!response.ok) return;
         const manifest = (await response.json()) as VersionManifest;
-        if (!manifest.version || compareVersions(manifest.version, installedVersion) <= 0) return;
+        if (!manifest.version || compareVersions(manifest.version, installedVersion) <= 0) {
+          if (active) setUpdate(null);
+          return;
+        }
         if (!active) return;
-        setDismissed(window.localStorage.getItem(`${DISMISS_PREFIX}${manifest.version}`) === "1");
+        setDismissed(window.sessionStorage.getItem(`${DISMISS_PREFIX}${manifest.version}`) === "1");
         setUpdate(manifest);
       } catch {
         // An update check must never prevent the current app from working.
@@ -50,7 +53,10 @@ export function AppUpdatePrompt() {
 
     void checkForUpdate();
     const listener = App.addListener("appStateChange", ({ isActive }) => {
-      if (isActive) void checkForUpdate();
+      if (isActive) {
+        setDismissed(false);
+        void checkForUpdate();
+      }
     });
 
     return () => {
@@ -61,26 +67,28 @@ export function AppUpdatePrompt() {
 
   if (!update?.version || dismissed) return null;
 
-  const downloadUrl = update.apkUrl || APK_DOWNLOAD_URL;
+  const downloadUrl = APK_DOWNLOAD_URL;
   const dismiss = () => {
-    window.localStorage.setItem(`${DISMISS_PREFIX}${update.version}`, "1");
+    window.sessionStorage.setItem(`${DISMISS_PREFIX}${update.version}`, "1");
     setDismissed(true);
   };
 
   return (
     <aside
-      className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[90] mx-auto max-w-lg rounded-2xl border border-primary/20 bg-card/95 p-4 text-card-foreground shadow-2xl backdrop-blur supports-[backdrop-filter]:bg-card/85 print:hidden"
+      className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[200] mx-auto max-w-lg rounded-lg border border-primary/20 bg-card p-4 text-card-foreground shadow-2xl print:hidden"
       role="status"
       aria-label={`${APP_NAME} update available`}
     >
-      <button
+      <Button
+        variant="ghost"
+        size="icon"
         type="button"
         onClick={dismiss}
         aria-label="Dismiss update notification"
         className="absolute right-2 top-2 inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <X className="size-4" />
-      </button>
+      </Button>
 
       <div className="flex items-start gap-3 pr-7">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
@@ -89,8 +97,7 @@ export function AppUpdatePrompt() {
         <div className="min-w-0">
           <p className="font-bold leading-tight">A new Vito Physio update is ready</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Version {update.version} is available. You can update now or continue using the current
-            version.
+            Version {update.version} is ready. Tap Update app, open the downloaded file, then confirm Install.
           </p>
           {update.releaseNotes && (
             <p className="mt-2 text-xs text-muted-foreground">{update.releaseNotes}</p>
@@ -100,7 +107,7 @@ export function AppUpdatePrompt() {
 
       <div className="mt-3 flex flex-wrap items-center gap-2 pl-14">
         <Button asChild size="sm" className="gap-2">
-          <a href={downloadUrl} download="VitoPhysio.apk" target="_system">
+          <a href={downloadUrl} download="VitoPhysio.apk" target="_system" rel="noopener noreferrer">
             <Download className="size-4" aria-hidden="true" />
             Update app
           </a>

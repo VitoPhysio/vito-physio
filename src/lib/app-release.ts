@@ -1,5 +1,5 @@
 export const APP_NAME = "Vito Physio";
-export const CURRENT_APP_VERSION = "1.6.0";
+export const CURRENT_APP_VERSION = "1.7.1";
 export const APK_SOURCE_URL =
   "https://github.com/VitoPhysio/vito-physio/releases/latest/download/VitoPhysio.apk";
 export const APK_DOWNLOAD_URL = "/api/download-app";

@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import manifest from "../../public/app-version.json";
+import { readFileSync } from "node:fs";
 
 import {
   APK_SOURCE_URL,
@@ -8,9 +10,17 @@ import {
 } from "@/lib/app-release";
 
 describe("app release version comparison", () => {
-  it("offers version 1.6.0 to phones running version 1.5.0", () => {
-    expect(CURRENT_APP_VERSION).toBe("1.6.0");
-    expect(compareVersions(CURRENT_APP_VERSION, "1.5.0")).toBeGreaterThan(0);
+  it("offers the notification action release to older installed APKs", () => {
+    expect(compareVersions(CURRENT_APP_VERSION, "1.6.0")).toBeGreaterThan(0);
+    expect(compareVersions(CURRENT_APP_VERSION, "1.7.0")).toBeGreaterThan(0);
+    expect(compareVersions(CURRENT_APP_VERSION, CURRENT_APP_VERSION)).toBe(0);
+  });
+
+  it("keeps the prompt version synchronized with the actual Android package", () => {
+    const gradle = readFileSync("android/app/build.gradle", "utf8");
+    const nativeVersion = gradle.match(/versionName\s+"([^"]+)"/)?.[1];
+    expect(manifest.version).toBe(nativeVersion);
+    expect(CURRENT_APP_VERSION).toBe(nativeVersion);
   });
 
   it("downloads the signed APK from the latest GitHub release", () => {

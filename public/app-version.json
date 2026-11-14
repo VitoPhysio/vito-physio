@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
+  "version": "1.7.1",
   "apkUrl": "/api/download-app",
-  "releaseNotes": "Phone notifications for messages and app activity. This one-time release requires a fresh install; future updates can install over version 1.6.0."
+  "releaseNotes": "VITO-branded expandable phone alerts with Reply and Mark as read. Download the update, then confirm Install on your phone; your account stays unchanged."
 }
