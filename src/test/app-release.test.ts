@@ -16,9 +16,10 @@ describe("app release version comparison", () => {
     expect(compareVersions(CURRENT_APP_VERSION, CURRENT_APP_VERSION)).toBe(0);
   });
 
-  it("keeps the prompt version synchronized with the actual Android package", () => {
+  it("keeps the fallback version synchronized with the Android package default", () => {
     const gradle = readFileSync("android/app/build.gradle", "utf8");
-    const nativeVersion = gradle.match(/versionName\s+"([^"]+)"/)?.[1];
+    const nativeVersion = gradle.match(/VITO_VERSION_NAME"\) \?: "([^"]+)"/)?.[1];
+    expect(nativeVersion).toBeDefined();
     expect(manifest.version).toBe(nativeVersion);
     expect(CURRENT_APP_VERSION).toBe(nativeVersion);
   });
@@ -60,5 +61,13 @@ describe("app release version comparison", () => {
 
   it("uses the desktop experience for non-mobile browsers", () => {
     expect(detectWebPlatform("Mozilla/5.0 (X11; Linux x86_64)", "Linux x86_64")).toBe("desktop");
+  });
+});
+
+describe("automatic Android versions", () => {
+  it("numbers every APK build from the build counter so it installs over the last one", () => {
+    const wf = readFileSync(".github/workflows/android-apk.yml", "utf8");
+    expect(wf).toContain("VITO_VERSION_CODE: ${{ 100 + github.run_number }}");
+    expect(wf).toContain("tag_name: v1.8.${{ github.run_number }}");
   });
 });
