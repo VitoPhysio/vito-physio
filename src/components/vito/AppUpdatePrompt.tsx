@@ -1,4 +1,5 @@
 import { App } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { Download, RefreshCw, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -26,6 +27,8 @@ function isAndroidApp() {
 export function AppUpdatePrompt() {
   const [update, setUpdate] = useState<VersionManifest | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAndroidApp()) return;
@@ -75,7 +78,19 @@ export function AppUpdatePrompt() {
 
   if (!update?.version || dismissed) return null;
 
-  const downloadUrl = APK_DOWNLOAD_URL;
+  const downloadUrl = update.apkUrl || APK_DOWNLOAD_URL;
+  const openUpdate = async () => {
+    setOpening(true);
+    setOpenError(null);
+    const absoluteUrl = new URL(downloadUrl, window.location.origin).toString();
+    try {
+      await Browser.open({ url: absoluteUrl });
+    } catch {
+      setOpenError("The download could not be opened. Please try again.");
+    } finally {
+      setOpening(false);
+    }
+  };
   const dismiss = () => {
     window.sessionStorage.setItem(`${DISMISS_PREFIX}${update.version}`, "1");
     setDismissed(true);
@@ -114,16 +129,25 @@ export function AppUpdatePrompt() {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 pl-14">
-        <Button asChild size="sm" className="gap-2">
-          <a href={downloadUrl} download="VitoPhysio.apk" target="_system" rel="noopener noreferrer">
-            <Download className="size-4" aria-hidden="true" />
-            Update app
-          </a>
+        <Button
+          type="button"
+          size="sm"
+          className="gap-2"
+          onClick={() => void openUpdate()}
+          disabled={opening}
+        >
+          <Download className="size-4" aria-hidden="true" />
+          {opening ? "Opening download…" : "Update app"}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={dismiss}>
           Continue later
         </Button>
       </div>
+      {openError && (
+        <p className="mt-2 pl-14 text-xs text-destructive" role="alert">
+          {openError}
+        </p>
+      )}
     </aside>
   );
 }
