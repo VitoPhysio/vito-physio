@@ -34,7 +34,7 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="vito-default" />
-        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_notification_v" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_notification_brand" />
         <service android:name="com.capacitorjs.plugins.pushnotifications.MessagingService" tools:node="remove" />
         <service android:name=".VitoMessagingService" android:exported="false">
             <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>

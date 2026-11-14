@@ -196,11 +196,11 @@ function RootComponent() {
       await startNativePush(
         (path) => {
           const [pathname, query = ""] = path.split("?");
-          void router.navigate({ href: query ? `${pathname}?${query}` : pathname! });
+          if (pathname) void router.navigate({ href: query ? `${pathname}?${query}` : pathname });
         },
-        async (token, platform) => {
+        async (token, platform, androidActions) => {
           const { data } = await supabase.auth.getSession();
-          if (data.session) await registerDeviceToken({ data: { token, platform } });
+          if (data.session) await registerDeviceToken({ data: { token, platform, androidActions } });
         },
       );
     })().catch(() => undefined);

@@ -39,6 +39,7 @@ import { PhotoAvatar } from "@/components/vito/Photo";
 import { Button } from "@/components/ui/button";
 import { ChatPhotoViewer } from "@/components/vito/ChatPhotoViewer";
 import { isAttachmentOnly } from "@/lib/chat-media";
+import { notificationActionSearch } from "@/lib/notification-actions";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useMessageGesture } from "@/hooks/use-message-gesture";
 import {
@@ -77,7 +78,7 @@ export const Route = createFileRoute("/_authenticated/messages")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  validateSearch: (search: Record<string, unknown>): { conversation?: string } => typeof search["conversation"] === "string" ? { conversation: search["conversation"] } : {},
+  validateSearch: notificationActionSearch,
   component: MessagesPage,
 });
 
@@ -169,7 +170,7 @@ function MessagesPage() {
   const [chatToDelete, setChatToDelete] = useState<ConversationView | null>(null);
   const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
 
-  const { conversation: linkedConversation } = Route.useSearch();
+  const { conversation: linkedConversation, alertAction } = Route.useSearch();
   const conversations = useQuery({
     queryKey: ["messages", user.id],
     queryFn: () => loadConversations(user.id),
@@ -220,14 +221,21 @@ function MessagesPage() {
     (conversations.data ?? []).find((conversation) => conversation.id === selectedId) ?? null;
   useEffect(() => {
     if (!linkedConversation || !conversations.data?.some((item) => item.id === linkedConversation)) return;
-    setSelectedId(linkedConversation);
+    if (alertAction !== "read") setSelectedId(linkedConversation);
     void supabase.rpc("mark_conversation_read", { _conversation_id: linkedConversation }).then(({ error }) => {
       if (!error) {
         void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
         void queryClient.invalidateQueries({ queryKey: messageUnreadKey(user.id) });
+        if (alertAction === "read") {
+          setSelectedId(null);
+          toast.success("Conversation marked as read.");
+          void navigate({ to: "/messages", search: {}, replace: true });
+        }
+      } else if (alertAction === "read") {
+        toast.error("Could not mark this conversation as read. Please try again.");
       }
     });
-  }, [linkedConversation, Boolean(conversations.data), queryClient, user.id]);
+  }, [linkedConversation, alertAction, Boolean(conversations.data), queryClient, user.id, navigate]);
 
   // New messages arriving in the conversation you're looking at are read immediately,
   // so the Messages count stays accurate and no device push is sent for them.
@@ -445,6 +453,8 @@ function MessagesPage() {
           {selected ? (
             <ChatView
               conversation={selected}
+              focusReply={alertAction === "reply" && selected.id === linkedConversation}
+              onReplyFocused={() => void navigate({ to: "/messages", search: { conversation: selected.id }, replace: true })}
               userId={user.id}
               onBack={() => setSelectedId(null)}
               onDelete={() => setChatToDelete(selected)}
@@ -729,6 +739,8 @@ function ConversationRow({
 
 function ChatView({
   conversation,
+  focusReply,
+  onReplyFocused,
   userId,
   onBack,
   onDelete,
@@ -736,6 +748,8 @@ function ChatView({
   onSent,
 }: {
   conversation: ConversationView;
+  focusReply: boolean;
+  onReplyFocused: () => void;
   userId: string;
   onBack: () => void;
   onDelete: () => void;
@@ -758,6 +772,12 @@ function ChatView({
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const messageRefs = useRef(new Map<string, HTMLDivElement>());
   const profilePhotoUserId = conversation.otherProfiles[0]?.id ?? conversation.otherUserId;
+
+  useEffect(() => {
+    if (!focusReply) return;
+    inputRef.current?.focus();
+    onReplyFocused();
+  }, [focusReply, onReplyFocused]);
 
   useEffect(() => {
     historyRef.current?.scrollTo({ top: historyRef.current.scrollHeight });

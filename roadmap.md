@@ -8,8 +8,9 @@
 - [ ] Phase 5: professional discovery, referrals, consent-based sharing.
 - [ ] Phase 6: institutional, athlete, team and surveillance reports with PDF/print.
 
-- [ ] Add expandable branded Android alerts with Reply and Mark as read actions, keeping older APK delivery intact.
-- [ ] Test notification action routing; native phone verification requires installation of the new APK.
+- [x] Add expandable branded Android alerts with Reply and Mark as read actions, keeping older APK delivery intact.
+- [x] Test notification action routing and deployment lockfile compatibility (113 tests pass; pnpm 10 frozen check passes).
+- [ ] Verify alerts on a physical phone. Blocked: new APK installation and signed-in Android device unavailable here.
 
 - [x] Fit shared message screens to phone widths with shrinkable columns, names and message content.
 - [x] Open chat photos in-app with pinch zoom, download and forwarding; share and forward messages.

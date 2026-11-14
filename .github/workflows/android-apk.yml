@@ -102,7 +102,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: VitoPhysio-1.6.0
+          name: VitoPhysio-1.7.1
           path: release/VitoPhysio.apk
           retention-days: 14
 
@@ -110,11 +110,11 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.6.0
-          name: Vito Physio 1.6.0
+          tag_name: v1.7.1
+          name: Vito Physio 1.7.1
           body: |
-            Phone notifications for direct and group messages and general app activity.
+            VITO-branded expandable phone notifications with Reply (opens the conversation composer) and Mark as read (opens VITO and updates the inbox).
 
-            This release uses a new release signing key because the original debug key was not stored in the repository. Uninstall the old APK once before installing version 1.6.0. Future APKs signed with the stored release key can update in place.
+            Install this update over the previous signed release to activate the native notification actions.
           files: release/VitoPhysio.apk
           generate_release_notes: true

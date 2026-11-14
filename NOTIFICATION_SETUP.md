@@ -1,5 +1,13 @@
 # Notification delivery setup and verification
 
+## Android action update (1.7.1 / build 9)
+- The native alert shows the supplied VITO logo as its full-color large icon and its alpha silhouette as the small icon. Android renders small status icons monochrome; that tint is controlled by the phone, not the app.
+- Expand the alert using Android's standard notification chevron to see more preview text and actions. Message preview privacy settings still apply.
+- Reply opens the exact conversation and focuses its composer; it is not inline typing in the notification shade. Mark as read opens VITO, updates the conversation through the signed-in participant-scoped RPC, and returns to the inbox.
+- Build 9 and later register the action capability prefix, stripped before sending data-only FCM pushes to the custom native service. Older APKs continue receiving their existing notification payload.
+- Install the new signed APK after the GitHub build succeeds. The app still loads Vercel. Deploy the changed delivery code on both Vercel and the Lovable relay when used.
+- All 113 application tests and pnpm 10 frozen lockfile validation pass. This environment has no Java/Android SDK or signed-in physical phone, so native compilation and real foreground/background/cold-start alerts remain unverified.
+
 ## Delivered
 - Persisted event notifications, category preferences, user-scoped device registration, realtime in-app counts and browser badges where supported.
 - Firebase web registration and dedicated messaging worker (PWA skill: no offline app-shell caching).

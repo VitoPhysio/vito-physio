@@ -41,13 +41,13 @@ public class VitoMessagingService extends MessagingService {
         int id = tag.hashCode();
         String body = data.getOrDefault("body", "New activity");
         NotificationCompat.Builder alert = new NotificationCompat.Builder(this, "vito-default")
-            .setSmallIcon(R.drawable.ic_notification_v)
+            .setSmallIcon(R.drawable.ic_notification_brand)
             .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.vito_logo))
             .setContentTitle(data.getOrDefault("title", "VITO Physio"))
             .setContentText(body)
             .setStyle(new NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
             .setContentIntent(destination(data, messageId, "open", id));
         String path = data.getOrDefault("path", "");

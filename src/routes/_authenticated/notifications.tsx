@@ -215,7 +215,7 @@ function NotificationsPage() {
     try {
       const result = await enableDevicePush();
       if (result.status === "registered") {
-        await registerToken({ data: { token: result.token, platform: result.platform } });
+        await registerToken({ data: { token: result.token, platform: result.platform, androidActions: result.androidActions } });
         await togglePreference("push_enabled", true);
         toast.success("This device will now receive VITO Physio notifications.");
         return;

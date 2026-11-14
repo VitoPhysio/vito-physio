@@ -29,7 +29,7 @@ export function PhoneNotificationsToggle({ userId }: { userId: string }) {
   async function turnOn() {
     const result = await enableDevicePush();
     if (result.status === "registered") {
-      await register({ data: { token: result.token, platform: result.platform } });
+      await register({ data: { token: result.token, platform: result.platform, androidActions: result.androidActions } });
       setEnabled(true);
       void queryClient.invalidateQueries({ queryKey: ["notification-preferences", userId] });
       toast.success("Notifications are on. You'll get pop-ups on this device.");

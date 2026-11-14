@@ -1,13 +1,21 @@
 import { Capacitor } from "@capacitor/core";
 import { enablePush } from "@/lib/push";
-import { notificationActionPath } from "@/lib/notification-actions";
+import { notificationActionPath, supportsAndroidActions } from "@/lib/notification-actions";
 
 export type DevicePlatform = "web" | "android" | "ios";
 export type DevicePushResult =
-  | { status: "registered"; token: string; platform: DevicePlatform }
+  | { status: "registered"; token: string; platform: DevicePlatform; androidActions?: boolean }
   | { status: "not-configured" | "unsupported" | "open-in-new-tab" | "denied" };
 
 const TOKEN_KEY = "vito-device-push-token";
+
+export async function androidNotificationActions(): Promise<boolean> {
+  if (currentPlatform() !== "android") return false;
+  try {
+    const { App } = await import("@capacitor/app");
+    return supportsAndroidActions("android", (await App.getInfo()).build);
+  } catch { return false; }
+}
 
 export function currentPlatform(): DevicePlatform {
   const p = Capacitor.getPlatform();
@@ -33,7 +41,7 @@ export async function enableDevicePush(): Promise<DevicePushResult> {
   const result = platform === "web" ? await enablePush() : await enableNativePush();
   if (result.status === "registered") {
     localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: result.token, platform }));
-    return { ...result, platform };
+    return { ...result, platform, androidActions: await androidNotificationActions() };
   }
   return result;
 }
@@ -92,7 +100,7 @@ let nativeStarted = false;
  */
 export async function startNativePush(
   open: (path: string) => void,
-  onToken: (token: string, platform: DevicePlatform) => Promise<unknown>,
+  onToken: (token: string, platform: DevicePlatform, androidActions: boolean) => Promise<unknown>,
 ) {
   if (nativeStarted || currentPlatform() === "web") return;
   nativeStarted = true;
@@ -104,7 +112,7 @@ export async function startNativePush(
   });
   await PushNotifications.addListener("registration", (t) => {
     localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: t.value, platform: currentPlatform() }));
-    void onToken(t.value, currentPlatform()).catch(() => undefined);
+    void androidNotificationActions().then((capable) => onToken(t.value, currentPlatform(), capable)).catch(() => undefined);
   });
   const perm = await PushNotifications.checkPermissions();
   if (perm.receive === "granted" && storedDeviceToken()) await PushNotifications.register();
