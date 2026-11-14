@@ -36,6 +36,9 @@ import { Button } from "@/components/ui/button";
 import { EditablePhoto, PhotoAvatar } from "@/components/vito/Photo";
 import { DEFAULT_QUICK_MENU_ITEMS, type QuickMenuItem } from "@/components/vito/QuickMenu";
 import { VitoInfoPanel } from "@/components/vito/VitoInfoPanel";
+import { PhoneNotificationsToggle } from "@/components/vito/PhoneNotificationsToggle";
+import { dispatchPendingPushes } from "@/lib/notification.functions";
+import { useMessageUnreadCount } from "@/hooks/use-message-unread";
 
 const STAFF = ["super_admin", "vito_admin", "clinical_professional", "clinical_supervisor"];
 const ADMIN = ["super_admin", "vito_admin"];
@@ -79,15 +82,66 @@ export function AppHeader({
   const { data: unreadCount = 0, isLoading: notificationsLoading } = useQuery({
     queryKey: ["notification-count", user.id],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("notifications")
-        .select("id", { count: "exact", head: true })
-        .is("read_at", null);
+      const { data: badge, error } = await supabase.rpc("notification_badge_count", {
+        _user_id: user.id,
+      });
       if (error) return 0;
-      return count ?? 0;
+      return badge ?? 0;
     },
     refetchInterval: 30000,
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`notification-badge-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () =>
+          void queryClient.invalidateQueries({ queryKey: ["notification-count", user.id] }),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient, user.id]);
+
+  // Deliver queued phone/web pushes promptly while anyone is active in the app.
+  useEffect(() => {
+    let busy = false;
+    const flush = () => {
+      if (busy || document.visibilityState !== "visible") return;
+      busy = true;
+      void dispatchPendingPushes().catch(() => {}).finally(() => { busy = false; });
+    };
+    const channel = supabase
+      .channel(`push-dispatch-${user.id}-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => setTimeout(flush, 1500))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, () => setTimeout(flush, 1500))
+      .subscribe();
+    flush();
+    const timer = window.setInterval(flush, 20000);
+    return () => {
+      window.clearInterval(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [user.id]);
+
+  const messageUnread = useMessageUnreadCount(user.id);
+
+  // App-icon badge = unread chats + unread bell items; each source stays independent in-app.
+  useEffect(() => {
+    const total = unreadCount + messageUnread;
+    if ("setAppBadge" in navigator) {
+      const badge = navigator as Navigator & { setAppBadge: (count: number) => Promise<void>; clearAppBadge: () => Promise<void> };
+      void (total ? badge.setAppBadge(total) : badge.clearAppBadge()).catch(() => {});
+    }
+  }, [unreadCount, messageUnread]);
 
   useEffect(() => {
     if (!profileLoading && !notificationsLoading) onReady?.();
@@ -238,7 +292,7 @@ export function AppHeader({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Settings</DialogTitle>
-            <DialogDescription>Manage your profile and account.</DialogDescription>
+            <DialogDescription>Manage your profile, notifications and account.</DialogDescription>
           </DialogHeader>
           <div className="space-y-5">
             <EditablePhoto
@@ -258,6 +312,7 @@ export function AppHeader({
               <dt className="text-muted-foreground">Email</dt>
               <dd className="truncate font-medium">{user.email}</dd>
             </dl>
+            <PhoneNotificationsToggle userId={user.id} />
             <Button variant="outline" className="w-full" onClick={signOut}>
               <LogOut className="mr-1 size-4" />
               Sign out

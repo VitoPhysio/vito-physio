@@ -17,16 +17,34 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { PhotoAvatar, fileToPhotoPath, fileToSocialPostPhotoPath } from "@/components/vito/Photo";
+import { PhotoCropDialog } from "@/components/vito/PhotoCropDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { updateLinkedPhoto } from "@/lib/photo.functions";
+import { memberProfileCopy, profileDisplayName, profileKind } from "@/lib/member-profile";
 
 export type SocialTab = "posts" | "replies" | "media";
 
@@ -79,11 +97,11 @@ type SocialComment = {
 };
 
 const ROLE_LABEL: Record<string, string> = {
-  super_admin: "Super admin",
-  vito_admin: "VITO admin",
+  super_admin: "VITO Physio",
+  vito_admin: "VITO Physio",
   clinical_professional: "Clinical professional",
   clinical_supervisor: "Clinical supervisor",
-  school_admin: "School admin",
+  school_admin: "Institution",
   coach: "Coach",
   athlete: "Athlete",
   parent: "Parent / guardian",
@@ -109,6 +127,10 @@ export function SocialProfile({
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const [coverPreviewOpen, setCoverPreviewOpen] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoToCrop, setPhotoToCrop] = useState<{
+    target: "profile" | "community-cover";
+    file: File;
+  } | null>(null);
   const profileFileRef = useRef<HTMLInputElement>(null);
   const coverFileRef = useRef<HTMLInputElement>(null);
   const profile = useQuery({
@@ -147,6 +169,22 @@ export function SocialProfile({
   }
 
   const member = profile.data;
+  const displayName = profileDisplayName(member.role, member.full_name, member.school_name);
+  const profileCopy = memberProfileCopy(profileKind(member.role ? [member.role] : []));
+  const isInstitutionProfile =
+    member.role === "school_admin" || member.role === "super_admin" || member.role === "vito_admin";
+  const profileDetails = isInstitutionProfile
+    ? [
+        member.role === "school_admin" ? member.school_name : "VITO Physio",
+        member.district,
+        member.country,
+      ]
+    : [member.sport, member.player_position, member.team || member.school_name];
+  const profilePosts = posts.data?.map((post) =>
+    isInstitutionProfile && post.author_id === profileId
+      ? { ...post, author_name: displayName }
+      : post,
+  );
 
   async function saveOwnerPhoto(target: "profile" | "community-cover", file: File | null) {
     setPhotoBusy(true);
@@ -166,6 +204,14 @@ export function SocialProfile({
     } finally {
       setPhotoBusy(false);
     }
+  }
+
+  function queuePhotoCrop(target: "profile" | "community-cover", file: File) {
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("Choose a photo smaller than 20MB.");
+      return;
+    }
+    setPhotoToCrop({ target, file });
   }
 
   async function toggleFollow() {
@@ -208,7 +254,7 @@ export function SocialProfile({
           >
             <PhotoAvatar
               path={member.avatar_path}
-              name={member.full_name}
+              name={displayName}
               className="size-20 border-4 border-card bg-secondary text-2xl shadow-xl sm:size-24"
             />
           </button>
@@ -233,43 +279,60 @@ export function SocialProfile({
         </div>
         <div className="space-y-3 pb-5 pt-3">
           <div>
-            <h1 className="text-2xl font-black tracking-tight sm:text-3xl">
-              {member.full_name || "VITO Physio member"}
-            </h1>
+            <h1 className="text-2xl font-black tracking-tight sm:text-3xl">{displayName}</h1>
             <p className="mt-1 text-sm font-semibold text-primary">{roleLabel(member.role)}</p>
           </div>
           {member.headline && <p className="text-sm font-medium">{member.headline}</p>}
-          {(member.sport || member.player_position || member.team || member.school_name) && (
+          {profileDetails.some(Boolean) && (
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-primary">
-              {[member.sport, member.player_position, member.team || member.school_name]
-                .filter(Boolean)
-                .map((item, index, items) => (
-                  <span key={`${item}-${index}`} className="inline-flex items-center gap-2">
-                    {item}
-                    {index < items.length - 1 && (
-                      <span aria-hidden="true" className="text-accent">
-                        ·
-                      </span>
-                    )}
-                  </span>
-                ))}
+              {profileDetails.filter(Boolean).map((item, index, items) => (
+                <span key={`${item}-${index}`} className="inline-flex items-center gap-2">
+                  {item}
+                  {index < items.length - 1 && (
+                    <span aria-hidden="true" className="text-accent">
+                      ·
+                    </span>
+                  )}
+                </span>
+              ))}
             </div>
           )}
           {member.bio && (
-            <p className="max-w-2xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-              {member.bio}
-            </p>
+            <div className="max-w-2xl space-y-1">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                {profileCopy.aboutLabel}
+              </p>
+              <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                {member.bio}
+              </p>
+            </div>
           )}
           {(member.interests.length > 0 || member.skills.length > 0) && (
-            <div className="flex flex-wrap gap-2">
-              {[...member.interests, ...member.skills].map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full bg-secondary px-3 py-1 text-xs font-medium"
-                >
-                  {item}
-                </span>
-              ))}
+            <div className="space-y-3">
+              {(
+                [
+                  [profileCopy.skillsLabel, member.skills],
+                  [profileCopy.interestsLabel, member.interests],
+                ] as const
+              )
+                .filter(([, items]) => items.length > 0)
+                .map(([label, items]) => (
+                  <div key={label} className="space-y-1.5">
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      {label}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {items.map((item) => (
+                        <span
+                          key={`${label}-${item}`}
+                          className="rounded-full bg-secondary px-3 py-1 text-xs font-medium"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
             </div>
           )}
         </div>
@@ -321,8 +384,8 @@ export function SocialProfile({
         {!posts.isLoading && !posts.isError && !posts.data?.length && (
           <div className="p-8 text-center text-sm text-muted-foreground">No {tab} yet.</div>
         )}
-        {posts.data?.map((post) => (
-          <SocialPostCard key={post.id} post={post} />
+        {profilePosts?.map((post) => (
+          <SocialPostCard key={post.id} post={post} viewerId={viewerId} />
         ))}
       </div>
 
@@ -335,12 +398,12 @@ export function SocialProfile({
             {member.avatar_path ? (
               <SocialImage
                 path={member.avatar_path}
-                alt={`${member.full_name ?? "Member"} profile picture`}
+                alt={`${displayName} profile picture`}
                 className="max-h-[60dvh] max-w-full rounded-lg object-contain"
               />
             ) : (
               <div className="grid size-48 place-items-center rounded-full bg-secondary text-5xl font-bold text-primary">
-                {(member.full_name ?? "?").slice(0, 1).toUpperCase()}
+                {displayName.slice(0, 1).toUpperCase()}
               </div>
             )}
           </div>
@@ -367,7 +430,7 @@ export function SocialProfile({
                 onChange={(event) => {
                   const file = event.target.files?.[0] ?? null;
                   event.target.value = "";
-                  if (file) void saveOwnerPhoto("profile", file);
+                  if (file) queuePhotoCrop("profile", file);
                 }}
               />
             </div>
@@ -416,13 +479,25 @@ export function SocialProfile({
                 onChange={(event) => {
                   const file = event.target.files?.[0] ?? null;
                   event.target.value = "";
-                  if (file) void saveOwnerPhoto("community-cover", file);
+                  if (file) queuePhotoCrop("community-cover", file);
                 }}
               />
             </div>
           )}
         </DialogContent>
       </Dialog>
+      <PhotoCropDialog
+        open={Boolean(photoToCrop)}
+        file={photoToCrop?.file ?? null}
+        aspectRatio={photoToCrop?.target === "profile" ? 1 : 2.8}
+        title={photoToCrop?.target === "profile" ? "profile picture" : "cover photo"}
+        onCancel={() => setPhotoToCrop(null)}
+        onSave={(croppedFile) => {
+          const target = photoToCrop?.target;
+          setPhotoToCrop(null);
+          if (target) void saveOwnerPhoto(target, croppedFile);
+        }}
+      />
     </section>
   );
 }
@@ -470,7 +545,7 @@ export function SocialFeed({ viewerId }: { viewerId: string }) {
           </div>
         )}
         {posts.data?.map((post) => (
-          <SocialPostCard key={post.id} post={post} />
+          <SocialPostCard key={post.id} post={post} viewerId={viewerId} />
         ))}
       </div>
     </section>
@@ -585,10 +660,15 @@ export function SocialComposerDialog({
   );
 }
 
-function SocialPostCard({ post }: { post: SocialPost }) {
+function SocialPostCard({ post, viewerId }: { post: SocialPost; viewerId: string }) {
   const queryClient = useQueryClient();
   const [postOpen, setPostOpen] = useState(false);
   const [comment, setComment] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editBody, setEditBody] = useState(post.body ?? "");
+  const [savingPost, setSavingPost] = useState(false);
+  const isAuthor = viewerId === post.author_id;
   const comments = useQuery({
     queryKey: ["social-comments", post.id],
     enabled: postOpen,
@@ -644,6 +724,52 @@ function SocialPostCard({ post }: { post: SocialPost }) {
     void data;
   }
 
+  function beginEditing() {
+    setEditBody(post.body ?? "");
+    setEditOpen(true);
+  }
+
+  async function savePostChanges() {
+    const body = editBody.trim();
+    if (!body && !post.media_path) {
+      toast.error("A post needs text or a picture.");
+      return;
+    }
+    setSavingPost(true);
+    try {
+      const { error } = await supabase
+        .from("social_posts")
+        .update({ body: body || null })
+        .eq("id", post.id);
+      if (error) throw error;
+      setEditOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ["social-posts"] });
+      toast.success("Post updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Post could not be updated.");
+    } finally {
+      setSavingPost(false);
+    }
+  }
+
+  async function deletePost() {
+    if (!isAuthor || savingPost) return;
+    setSavingPost(true);
+    try {
+      const { error } = await supabase.from("social_posts").delete().eq("id", post.id);
+      if (error) throw error;
+      setDeleteOpen(false);
+      setPostOpen(false);
+      await queryClient.invalidateQueries({ queryKey: ["social-posts"] });
+      await queryClient.invalidateQueries({ queryKey: ["social-comments", post.id] });
+      toast.success("Post deleted");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Post could not be deleted.");
+    } finally {
+      setSavingPost(false);
+    }
+  }
+
   return (
     <>
       <article
@@ -687,13 +813,9 @@ function SocialPostCard({ post }: { post: SocialPost }) {
                   {roleLabel(post.author_role)} · {formatDate(post.created_at)}
                 </p>
               </div>
-              <button
-                type="button"
-                aria-label="Post options"
-                className="rounded-full p-1 text-muted-foreground hover:bg-secondary"
-              >
-                <MoreHorizontal className="size-4" />
-              </button>
+              {isAuthor && (
+                <PostOwnerActions onEdit={beginEditing} onDelete={() => setDeleteOpen(true)} />
+              )}
             </div>
             {post.body && <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{post.body}</p>}
             {post.media_path && (
@@ -769,7 +891,12 @@ function SocialPostCard({ post }: { post: SocialPost }) {
                 <p className="truncate text-sm font-bold">
                   {post.author_name || "VITO Physio member"}
                 </p>
-                <p className="text-xs text-muted-foreground">{roleLabel(post.author_role)}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground">{roleLabel(post.author_role)}</p>
+                  {isAuthor && (
+                    <PostOwnerActions onEdit={beginEditing} onDelete={() => setDeleteOpen(true)} />
+                  )}
+                </div>
               </div>
             </div>
             {post.body && <p className="whitespace-pre-wrap text-sm leading-6">{post.body}</p>}
@@ -869,7 +996,93 @@ function SocialPostCard({ post }: { post: SocialPost }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit post</DialogTitle>
+            <DialogDescription>
+              Update the text on your post. Your attached picture will stay as it is.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={editBody}
+            onChange={(event) => setEditBody(event.target.value)}
+            maxLength={2000}
+            rows={5}
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" disabled={savingPost} onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={savingPost || (!editBody.trim() && !post.media_path)}
+              onClick={() => void savePostChanges()}
+            >
+              {savingPost ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!savingPost) setDeleteOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this post?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove your post and its comments. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={savingPost}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingPost}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                void deletePost();
+              }}
+            >
+              {savingPost ? "Deleting…" : "Delete post"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
+  );
+}
+
+function PostOwnerActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Post options"
+          className="size-8 shrink-0 rounded-full"
+        >
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-40">
+        <DropdownMenuItem onSelect={onEdit} className="cursor-pointer gap-2">
+          <Pencil className="size-4" /> Edit post
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={onDelete}
+          className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+        >
+          <Trash2 className="size-4" /> Delete post
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

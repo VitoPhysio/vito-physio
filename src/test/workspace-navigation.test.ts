@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isWorkspacePath } from "@/lib/workspace-navigation";
 
 describe("Workspace navigation", () => {
-  it.each(["/dashboard", "/cases", "/admin", "/dashboard/", "/cases/123", "/admin/accounts"])(
+  it.each(["/dashboard", "/cases", "/admin", "/dashboard/", "/cases/123", "/admin/accounts", "/workspace", "/workspace/abc"])(
     "excludes persistent community navigation from %s",
     (path) => expect(isWorkspacePath(path)).toBe(true),
   );

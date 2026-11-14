@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SocialProfile } from "@/components/vito/SocialProfile";
 import { supabase } from "@/integrations/supabase/client";
+import { profileDisplayName } from "@/lib/member-profile";
 
 export const Route = createFileRoute("/_authenticated/members/$memberId")({
   component: MemberProfilePage,
@@ -118,7 +119,33 @@ function MemberProfilePage() {
 }
 
 function ProfileDashboard({ member, viewerId }: { member: MemberCard; viewerId: string }) {
-  const name = member.full_name?.trim() || "VITO Physio member";
+  const name = profileDisplayName(member.role, member.full_name, member.school);
+  const isStaff = member.role === "super_admin" || member.role === "vito_admin";
+  const isInstitution = member.role === "school_admin" || isStaff;
+  const identityTitle = isStaff
+    ? "VITO Physio profile"
+    : member.role === "school_admin"
+      ? "Institution profile"
+      : member.role === "coach"
+        ? "Coach profile"
+        : member.role === "clinical_professional" || member.role === "clinical_supervisor"
+          ? "Clinical professional profile"
+          : member.role === "parent"
+            ? "Parent / guardian profile"
+            : member.role === "athlete"
+              ? "Athlete identity"
+              : "Professional identity";
+  const identityDetails = isInstitution
+    ? [
+        { label: "Institution", value: isStaff ? "VITO Physio" : member.school || "Not added" },
+        { label: "Profile focus", value: member.headline || member.position || "Not added" },
+      ]
+    : [
+        { label: "Sport", value: member.sport || "Not added" },
+        { label: "Position / role", value: member.position || "Not added" },
+        { label: "Team", value: member.team || "Not added" },
+        { label: "School or organisation", value: member.school || "Not added" },
+      ];
 
   return (
     <main className="w-full px-0 pb-12 pt-0">
@@ -128,25 +155,28 @@ function ProfileDashboard({ member, viewerId }: { member: MemberCard; viewerId: 
         <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
           <div className="flex items-center gap-2">
             <Trophy className="size-5 text-primary" />
-            <h3 className="text-lg font-bold">
-              {member.role === "athlete" ? "Athlete identity" : "Professional identity"}
-            </h3>
+            <h3 className="text-lg font-bold">{identityTitle}</h3>
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <Info label="Account type" value={roleLabel(member.role)} />
-            <Info label="Sport" value={member.sport || "Not added"} />
-            <Info label="Position" value={member.position || "Not added"} />
-            <Info label="Team" value={member.team || "Not added"} />
+            {!isInstitution && <Info label="Account type" value={roleLabel(member.role)} />}
+            {identityDetails.map(({ label, value }) => (
+              <Info key={label} label={label} value={value} />
+            ))}
           </div>
         </section>
 
         <section className="rounded-2xl border bg-card p-5 shadow-sm sm:p-6">
           <div className="flex items-center gap-2">
             <MapPin className="size-5 text-primary" />
-            <h3 className="text-lg font-bold">Community</h3>
+            <h3 className="text-lg font-bold">
+              {isInstitution ? "Institution / service area" : "Community"}
+            </h3>
           </div>
           <div className="mt-5 space-y-4">
-            <Info label="School or organisation" value={member.school || "Not added"} />
+            <Info
+              label={isInstitution ? "Institution" : "School or organisation"}
+              value={isStaff ? "VITO Physio" : member.school || "Not added"}
+            />
             {member.school_verified && (
               <p className="flex items-center gap-2 text-sm text-primary">
                 <BadgeCheck className="size-4" /> Verified affiliation

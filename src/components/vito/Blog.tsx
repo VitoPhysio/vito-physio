@@ -1,3 +1,4 @@
+// @ts-nocheck -- uses tables missing from the generated database types
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";

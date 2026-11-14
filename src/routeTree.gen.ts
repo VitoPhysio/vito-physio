@@ -27,6 +27,9 @@ import { Route as AuthenticatedBlogIndexRouteImport } from './routes/_authentica
 import { Route as AuthenticatedBlogSlugRouteImport } from './routes/_authenticated/blog/$slug'
 import { Route as AuthenticatedBlogWriteRouteImport } from './routes/_authenticated/blog/write'
 import { Route as AuthenticatedMembersMemberIdRouteImport } from './routes/_authenticated/members/$memberId'
+import { Route as AuthenticatedWorkspaceIndexRouteImport } from './routes/_authenticated/workspace/index'
+import { Route as AuthenticatedWorkspaceInstitutionIdRouteImport } from './routes/_authenticated/workspace/$institutionId'
+import { Route as ApiPublicNotificationDeliveryRouteImport } from './routes/api/public/notification-delivery'
 import { Route as AuthenticatedBlogEditArticleIdRouteImport } from './routes/_authenticated/blog/edit/$articleId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -121,6 +124,24 @@ const AuthenticatedMembersMemberIdRoute =
     path: '/members/$memberId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedWorkspaceIndexRoute =
+  AuthenticatedWorkspaceIndexRouteImport.update({
+    id: '/workspace/',
+    path: '/workspace/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedWorkspaceInstitutionIdRoute =
+  AuthenticatedWorkspaceInstitutionIdRouteImport.update({
+    id: '/workspace/$institutionId',
+    path: '/workspace/$institutionId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const ApiPublicNotificationDeliveryRoute =
+  ApiPublicNotificationDeliveryRouteImport.update({
+    id: '/api/public/notification-delivery',
+    path: '/api/public/notification-delivery',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedBlogEditArticleIdRoute =
   AuthenticatedBlogEditArticleIdRouteImport.update({
     id: '/blog/edit/$articleId',
@@ -145,7 +166,10 @@ export interface FileRoutesByFullPath {
   '/blog/$slug': typeof AuthenticatedBlogSlugRoute
   '/blog/write': typeof AuthenticatedBlogWriteRoute
   '/members/$memberId': typeof AuthenticatedMembersMemberIdRoute
+  '/workspace/$institutionId': typeof AuthenticatedWorkspaceInstitutionIdRoute
+  '/api/public/notification-delivery': typeof ApiPublicNotificationDeliveryRoute
   '/blog/': typeof AuthenticatedBlogIndexRoute
+  '/workspace/': typeof AuthenticatedWorkspaceIndexRoute
   '/blog/edit/$articleId': typeof AuthenticatedBlogEditArticleIdRoute
 }
 export interface FileRoutesByTo {
@@ -165,7 +189,10 @@ export interface FileRoutesByTo {
   '/blog/$slug': typeof AuthenticatedBlogSlugRoute
   '/blog/write': typeof AuthenticatedBlogWriteRoute
   '/members/$memberId': typeof AuthenticatedMembersMemberIdRoute
+  '/workspace/$institutionId': typeof AuthenticatedWorkspaceInstitutionIdRoute
+  '/api/public/notification-delivery': typeof ApiPublicNotificationDeliveryRoute
   '/blog': typeof AuthenticatedBlogIndexRoute
+  '/workspace': typeof AuthenticatedWorkspaceIndexRoute
   '/blog/edit/$articleId': typeof AuthenticatedBlogEditArticleIdRoute
 }
 export interface FileRoutesById {
@@ -187,7 +214,10 @@ export interface FileRoutesById {
   '/_authenticated/blog/$slug': typeof AuthenticatedBlogSlugRoute
   '/_authenticated/blog/write': typeof AuthenticatedBlogWriteRoute
   '/_authenticated/members/$memberId': typeof AuthenticatedMembersMemberIdRoute
+  '/_authenticated/workspace/$institutionId': typeof AuthenticatedWorkspaceInstitutionIdRoute
+  '/api/public/notification-delivery': typeof ApiPublicNotificationDeliveryRoute
   '/_authenticated/blog/': typeof AuthenticatedBlogIndexRoute
+  '/_authenticated/workspace/': typeof AuthenticatedWorkspaceIndexRoute
   '/_authenticated/blog/edit/$articleId': typeof AuthenticatedBlogEditArticleIdRoute
 }
 export interface FileRouteTypes {
@@ -209,7 +239,10 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/blog/write'
     | '/members/$memberId'
+    | '/workspace/$institutionId'
+    | '/api/public/notification-delivery'
     | '/blog/'
+    | '/workspace/'
     | '/blog/edit/$articleId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -229,7 +262,10 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/blog/write'
     | '/members/$memberId'
+    | '/workspace/$institutionId'
+    | '/api/public/notification-delivery'
     | '/blog'
+    | '/workspace'
     | '/blog/edit/$articleId'
   id:
     | '__root__'
@@ -250,7 +286,10 @@ export interface FileRouteTypes {
     | '/_authenticated/blog/$slug'
     | '/_authenticated/blog/write'
     | '/_authenticated/members/$memberId'
+    | '/_authenticated/workspace/$institutionId'
+    | '/api/public/notification-delivery'
     | '/_authenticated/blog/'
+    | '/_authenticated/workspace/'
     | '/_authenticated/blog/edit/$articleId'
   fileRoutesById: FileRoutesById
 }
@@ -261,6 +300,7 @@ export interface RootRouteChildren {
   PortalRoute: typeof PortalRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiPublicNotificationDeliveryRoute: typeof ApiPublicNotificationDeliveryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -391,6 +431,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMembersMemberIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/workspace/': {
+      id: '/_authenticated/workspace/'
+      path: '/workspace'
+      fullPath: '/workspace/'
+      preLoaderRoute: typeof AuthenticatedWorkspaceIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/workspace/$institutionId': {
+      id: '/_authenticated/workspace/$institutionId'
+      path: '/workspace/$institutionId'
+      fullPath: '/workspace/$institutionId'
+      preLoaderRoute: typeof AuthenticatedWorkspaceInstitutionIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/notification-delivery': {
+      id: '/api/public/notification-delivery'
+      path: '/api/public/notification-delivery'
+      fullPath: '/api/public/notification-delivery'
+      preLoaderRoute: typeof ApiPublicNotificationDeliveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/blog/edit/$articleId': {
       id: '/_authenticated/blog/edit/$articleId'
       path: '/blog/edit/$articleId'
@@ -413,7 +474,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBlogSlugRoute: typeof AuthenticatedBlogSlugRoute
   AuthenticatedBlogWriteRoute: typeof AuthenticatedBlogWriteRoute
   AuthenticatedMembersMemberIdRoute: typeof AuthenticatedMembersMemberIdRoute
+  AuthenticatedWorkspaceInstitutionIdRoute: typeof AuthenticatedWorkspaceInstitutionIdRoute
   AuthenticatedBlogIndexRoute: typeof AuthenticatedBlogIndexRoute
+  AuthenticatedWorkspaceIndexRoute: typeof AuthenticatedWorkspaceIndexRoute
   AuthenticatedBlogEditArticleIdRoute: typeof AuthenticatedBlogEditArticleIdRoute
 }
 
@@ -429,7 +492,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBlogSlugRoute: AuthenticatedBlogSlugRoute,
   AuthenticatedBlogWriteRoute: AuthenticatedBlogWriteRoute,
   AuthenticatedMembersMemberIdRoute: AuthenticatedMembersMemberIdRoute,
+  AuthenticatedWorkspaceInstitutionIdRoute:
+    AuthenticatedWorkspaceInstitutionIdRoute,
   AuthenticatedBlogIndexRoute: AuthenticatedBlogIndexRoute,
+  AuthenticatedWorkspaceIndexRoute: AuthenticatedWorkspaceIndexRoute,
   AuthenticatedBlogEditArticleIdRoute: AuthenticatedBlogEditArticleIdRoute,
 }
 
@@ -443,6 +509,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalRoute: PortalRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiPublicNotificationDeliveryRoute: ApiPublicNotificationDeliveryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

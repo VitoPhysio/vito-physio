@@ -3,44 +3,79 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - 'fix/**'
-      - 'feat/**'
+    branches: [main]
+    paths:
+      - ".github/workflows/android-apk.yml"
+      - "android/**"
+      - "src/**"
+      - "public/**"
+      - "capacitor.config.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "vite.config.ts"
+      - "tsconfig.json"
+  pull_request:
+    paths:
+      - ".github/workflows/android-apk.yml"
+      - "android/**"
+      - "src/**"
+      - "public/**"
+      - "capacitor.config.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "vite.config.ts"
+      - "tsconfig.json"
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 30
     steps:
-      - name: Checkout
+      - name: Check out source
         uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
 
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: 21
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: pnpm
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
 
-      - name: Enable pnpm
-        run: corepack enable
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build web assets
+      - name: Run app tests
+        run: pnpm test
+
+      - name: Build web app
         run: pnpm build
 
-      - name: Sync Capacitor Android plugins
+      - name: Sync Capacitor Android project
         run: |
           mkdir -p android/app/src/main/assets
           pnpm exec cap sync android
@@ -48,15 +83,44 @@ jobs:
       - name: Calculate Android version code
         run: echo "VITO_VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
 
-      - name: Build release APK
-        working-directory: android
+      - name: Prepare release signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease -PVITO_VERSION_CODE="$VITO_VERSION_CODE"
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/vito-release.jks"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/vito-release.jks" >> "$GITHUB_ENV"
 
-      - name: Upload APK artifact
+      - name: Build signed release APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: vitophysio
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VITO_VERSION_NAME: 1.8.${{ github.run_number }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Stage APK
+        run: |
+          mkdir -p release
+          cp android/app/build/outputs/apk/release/Vito-physio.apk release/VitoPhysio.apk
+
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vito-physio-apk-${{ github.run_number }}
-          path: android/app/build/outputs/apk/release/Vito-physio.apk
-          if-no-files-found: error
+          name: VitoPhysio-1.8.${{ github.run_number }}
+          path: release/VitoPhysio.apk
+          retention-days: 14
+
+      - name: Publish APK release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.8.${{ github.run_number }}
+          name: Vito Physio 1.8.${{ github.run_number }}
+          body: |
+            VITO-branded expandable phone notifications with Reply (opens the conversation composer) and Mark as read (opens VITO and updates the inbox).
+
+            Installs over the previous version; no uninstall needed. Phone alerts re-register automatically.
+          files: release/VitoPhysio.apk
+          generate_release_notes: true

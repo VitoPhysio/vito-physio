@@ -581,7 +581,7 @@ export function AthletePortal({ user, view = "home" }: { user: User; view?: View
                 />
               </div>
               <div className="sm:col-span-2">
-                <Label htmlFor="profile-bio">Biography</Label>
+                <Label htmlFor="profile-bio">About the athlete</Label>
                 <Textarea
                   id="profile-bio"
                   name="bio"
@@ -589,8 +589,16 @@ export function AthletePortal({ user, view = "home" }: { user: User; view?: View
                   defaultValue={profile?.community?.bio ?? ""}
                   className="mt-1"
                   rows={5}
-                  placeholder="Tell the VITO community about yourself"
+                  placeholder="Share the athlete’s sporting journey, goals, and interests…"
+                  aria-describedby="profile-bio-guidance"
                 />
+                <p
+                  id="profile-bio-guidance"
+                  className="mt-1 text-xs leading-5 text-muted-foreground"
+                >
+                  Focus on sport, goals, and achievements. Keep private medical or case details out
+                  of the public profile.
+                </p>
               </div>
               <div>
                 <Label htmlFor="profile-skills">Skills</Label>

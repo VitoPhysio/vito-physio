@@ -1,5 +1,22 @@
 # Roadmap
 
+## Institutional workspace upgrade (brief)
+- [x] Phase 1: workspace entry, institution chooser, join requests, registration, multi-institution switching, institution roles enforced in the database.
+- [ ] Phase 2: athlete directory, profiles, team and coach assignments.
+- [ ] Phase 3: injury management, statistics, surveillance, pattern detection, prevention guidance.
+- [ ] Phase 4: institutional messaging, announcements, targeted notifications.
+- [ ] Phase 5: professional discovery, referrals, consent-based sharing.
+- [ ] Phase 6: institutional, athlete, team and surveillance reports with PDF/print.
+
+- [x] Add expandable branded Android alerts with Reply and Mark as read actions, keeping older APK delivery intact.
+- [x] Test notification action routing and deployment lockfile compatibility (113 tests pass; pnpm 10 frozen check passes).
+- [ ] Verify alerts on a physical phone. Blocked: new APK installation and signed-in Android device unavailable here.
+
+- [x] Fit shared message screens to phone widths with shrinkable columns, names and message content.
+- [x] Open chat photos in-app with pinch zoom, download and forwarding; share and forward messages.
+- [x] Run focused checks (20 tests pass; preview redirects signed-out messages to sign-in without runtime errors).
+- [ ] Verify these changes in signed-in phone chats. Blocked: external authenticated test session unavailable.
+
 - [x] Organise clinician and admin dashboards with horizontal dropdown menus.
 - [x] Group cases by status and sort by newest or athlete name.
 - [x] Enable editing saved case opening and management information using existing access rules.

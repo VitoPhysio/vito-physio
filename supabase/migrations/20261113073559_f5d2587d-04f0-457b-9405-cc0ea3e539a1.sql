@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.institution_role(uuid, uuid), public.is_institution_member(uuid, uuid), public.is_institution_admin(uuid, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.institution_role(uuid, uuid), public.is_institution_member(uuid, uuid), public.is_institution_admin(uuid, uuid) TO authenticated;

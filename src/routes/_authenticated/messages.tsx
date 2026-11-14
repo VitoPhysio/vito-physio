@@ -1,3 +1,5 @@
+import { dispatchPendingPushes } from "@/lib/notification.functions";
+import { messageUnreadKey } from "@/hooks/use-message-unread";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCanGoBack, useRouter } from "@tanstack/react-router";
@@ -10,6 +12,8 @@ import {
   CheckCheck,
   ChevronDown,
   Copy,
+  Forward,
+  Share2,
   Filter,
   LoaderCircle,
   MessageCircle,
@@ -30,8 +34,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { getMessageAttachmentMetadata } from "@/lib/message-attachments";
 import { PhotoAvatar } from "@/components/vito/Photo";
 import { Button } from "@/components/ui/button";
+import { ChatPhotoViewer } from "@/components/vito/ChatPhotoViewer";
+import { isAttachmentOnly } from "@/lib/chat-media";
+import { notificationActionSearch } from "@/lib/notification-actions";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useMessageGesture } from "@/hooks/use-message-gesture";
 import {
   DropdownMenu,
@@ -39,6 +48,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 
 export const Route = createFileRoute("/_authenticated/messages")({
   head: () => ({
@@ -51,6 +78,7 @@ export const Route = createFileRoute("/_authenticated/messages")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  validateSearch: notificationActionSearch,
   component: MessagesPage,
 });
 
@@ -139,7 +167,10 @@ function MessagesPage() {
   const [newConversationOpen, setNewConversationOpen] = useState(false);
   const [userSearch, setUserSearch] = useState("");
   const [startingConversation, setStartingConversation] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<ConversationView | null>(null);
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
 
+  const { conversation: linkedConversation, alertAction } = Route.useSearch();
   const conversations = useQuery({
     queryKey: ["messages", user.id],
     queryFn: () => loadConversations(user.id),
@@ -188,6 +219,35 @@ function MessagesPage() {
 
   const selected =
     (conversations.data ?? []).find((conversation) => conversation.id === selectedId) ?? null;
+  useEffect(() => {
+    if (!linkedConversation || !conversations.data?.some((item) => item.id === linkedConversation)) return;
+    if (alertAction !== "read") setSelectedId(linkedConversation);
+    void supabase.rpc("mark_conversation_read", { _conversation_id: linkedConversation }).then(({ error }) => {
+      if (!error) {
+        void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+        void queryClient.invalidateQueries({ queryKey: messageUnreadKey(user.id) });
+        if (alertAction === "read") {
+          setSelectedId(null);
+          toast.success("Conversation marked as read.");
+          void navigate({ to: "/messages", search: {}, replace: true });
+        }
+      } else if (alertAction === "read") {
+        toast.error("Could not mark this conversation as read. Please try again.");
+      }
+    });
+  }, [linkedConversation, alertAction, Boolean(conversations.data), queryClient, user.id, navigate]);
+
+  // New messages arriving in the conversation you're looking at are read immediately,
+  // so the Messages count stays accurate and no device push is sent for them.
+  useEffect(() => {
+    if (!selected || selected.unread === 0 || document.visibilityState !== "visible") return;
+    void supabase.rpc("mark_conversation_read", { _conversation_id: selected.id }).then(({ error }) => {
+      if (!error) {
+        void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+        void queryClient.invalidateQueries({ queryKey: messageUnreadKey(user.id) });
+      }
+    });
+  }, [selected?.id, selected?.unread, queryClient, user.id]);
   const messagingUsers = useQuery({
     queryKey: ["messaging-users", user.id],
     queryFn: () => loadMessagingUsers(),
@@ -230,7 +290,53 @@ function MessagesPage() {
     const { error } = await supabase.rpc("mark_conversation_read", {
       _conversation_id: conversation.id,
     });
-    if (!error) void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+    if (!error) {
+      void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+      void queryClient.invalidateQueries({ queryKey: messageUnreadKey(user.id) });
+    }
+  }
+
+  async function toggleConversationReadState(conversation: ConversationView) {
+    const markUnread = conversation.unread === 0;
+    if (markUnread && selectedId === conversation.id) setSelectedId(null);
+    const { error } = await supabase
+      .from("conversation_participants")
+      .update({ last_read_at: markUnread ? null : new Date().toISOString() })
+      .eq("conversation_id", conversation.id)
+      .eq("user_id", user.id);
+    if (error) {
+      toast.error("The conversation’s read status could not be updated.");
+      return;
+    }
+    toast.success(markUnread ? "Chat marked as unread." : "Chat marked as read.");
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["messages", user.id] }),
+      queryClient.invalidateQueries({ queryKey: messageUnreadKey(user.id) }),
+    ]);
+  }
+
+  async function deleteChat() {
+    const conversation = chatToDelete;
+    if (!conversation || deletingChatId) return;
+    setDeletingChatId(conversation.id);
+    await supabase.rpc("mark_conversation_read", { _conversation_id: conversation.id });
+    const { error } = await supabase
+      .from("conversation_participants")
+      .delete()
+      .eq("conversation_id", conversation.id)
+      .eq("user_id", user.id);
+    setDeletingChatId(null);
+    if (error) {
+      toast.error("The chat could not be removed. Please try again.");
+      return;
+    }
+    setChatToDelete(null);
+    setSelectedId((current) => (current === conversation.id ? null : current));
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["messages", user.id] }),
+      queryClient.invalidateQueries({ queryKey: messageUnreadKey(user.id) }),
+    ]);
+    toast.success("Chat removed from your inbox. Other participants keep their messages.");
   }
 
   function closeMessages() {
@@ -242,9 +348,9 @@ function MessagesPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-[100] side:left-20 flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-foreground">
+    <div className="fixed inset-0 z-[100] side:left-20 flex h-[100dvh] min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground">
       {!selected && (
-        <header className="flex shrink-0 items-center justify-between border-b bg-card px-4 py-3 shadow-sm sm:px-6">
+        <header className="grid grid-cols-[minmax(0,1fr)_auto] shrink-0 items-center gap-2 border-b bg-card px-4 py-3 shadow-sm sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -288,9 +394,9 @@ function MessagesPage() {
         </header>
       )}
 
-      <div className="grid min-h-0 flex-1 md:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]">
+      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,0.8fr)_minmax(0,1.5fr)]">
         <aside
-          className={`${selected ? "hidden md:flex" : "flex"} min-h-0 flex-col border-r bg-muted/20`}
+          className={`${selected ? "hidden md:flex" : "flex"} min-h-0 min-w-0 overflow-hidden flex-col border-r bg-muted/20`}
         >
           <div className="shrink-0 border-b p-4">
             <label className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 text-sm text-muted-foreground shadow-sm focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
@@ -328,6 +434,8 @@ function MessagesPage() {
                   conversation={conversation}
                   selected={conversation.id === selectedId}
                   onSelect={() => void openConversation(conversation)}
+                  onToggleReadState={() => void toggleConversationReadState(conversation)}
+                  onDelete={() => setChatToDelete(conversation)}
                   onOpenProfile={(participantId) =>
                     window.location.assign(`/members/${participantId}`)
                   }
@@ -345,10 +453,17 @@ function MessagesPage() {
           {selected ? (
             <ChatView
               conversation={selected}
+              focusReply={alertAction === "reply" && selected.id === linkedConversation}
+              onReplyFocused={() => void navigate({ to: "/messages", search: { conversation: selected.id }, replace: true })}
               userId={user.id}
               onBack={() => setSelectedId(null)}
+              onDelete={() => setChatToDelete(selected)}
               onOpenProfile={(participantId) => window.location.assign(`/members/${participantId}`)}
-              onSent={() => void queryClient.invalidateQueries({ queryKey: ["messages", user.id] })}
+              onSent={() => {
+                void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
+                // Wake the device-push queue so recipients get the OS alert right away.
+                void dispatchPendingPushes().catch(() => {});
+              }}
             />
           ) : (
             <div className="m-auto max-w-sm px-8 text-center text-muted-foreground">
@@ -499,6 +614,36 @@ function MessagesPage() {
           </div>
         </section>
       )}
+
+      <AlertDialog
+        open={Boolean(chatToDelete)}
+        onOpenChange={(open) => {
+          if (!open && !deletingChatId) setChatToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the conversation from your inbox and leaves the chat for your account. It
+              does not delete messages for other participants.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(deletingChatId)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={Boolean(deletingChatId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                void deleteChat();
+              }}
+            >
+              {deletingChatId ? "Deleting…" : "Delete chat"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -507,79 +652,107 @@ function ConversationRow({
   conversation,
   selected,
   onSelect,
+  onToggleReadState,
+  onDelete,
   onOpenProfile,
 }: {
   conversation: ConversationView;
   selected: boolean;
   onSelect: () => void;
+  onToggleReadState: () => void;
+  onDelete: () => void;
   onOpenProfile: (participantId: string) => void;
 }) {
   const profileId = conversation.otherProfiles[0]?.id;
   return (
-    <div
-      className={`flex w-full items-center gap-3 border-b px-4 py-4 transition hover:bg-secondary/80 ${selected ? "bg-secondary" : "bg-card"}`}
-    >
-      {profileId ? (
-        <button
-          type="button"
-          onClick={() => onOpenProfile(profileId)}
-          aria-label={`Open ${conversation.displayName}'s profile`}
-          className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          tabIndex={0}
+          role="group"
+          aria-label={`Chat with ${conversation.displayName}. Long press or open the context menu for actions.`}
+          className={`flex w-full items-center gap-3 border-b px-4 py-4 transition hover:bg-secondary/80 ${selected ? "bg-secondary" : "bg-card"}`}
         >
-          <PhotoAvatar
-            path={conversation.avatarPath}
-            name={conversation.displayName}
-            className="size-12"
-          />
-        </button>
-      ) : (
-        <PhotoAvatar
-          path={conversation.avatarPath}
-          name={conversation.displayName}
-          className="size-12 shrink-0"
-        />
-      )}
-      <button
-        type="button"
-        onClick={onSelect}
-        aria-label={`Open conversation with ${conversation.displayName}`}
-        className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
-      >
-        <span className="flex items-center justify-between gap-2">
-          <span className="truncate font-bold">{conversation.displayName}</span>
-          <span
-            className={`shrink-0 text-xs ${conversation.unread ? "font-bold text-primary" : "text-muted-foreground"}`}
-          >
-            {formatChatTime(conversation.last_message_at)}
-          </span>
-        </span>
-        <span className="mt-1 flex items-center gap-2">
-          <span
-            className={`min-w-0 flex-1 truncate text-sm ${conversation.unread ? "font-semibold text-foreground" : "text-muted-foreground"}`}
-          >
-            {conversation.latest?.body ?? "No messages yet"}
-          </span>
-          {conversation.unread > 0 && (
-            <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
-              {conversation.unread > 99 ? "99+" : conversation.unread}
-            </span>
+          {profileId ? (
+            <button
+              type="button"
+              onClick={() => onOpenProfile(profileId)}
+              aria-label={`Open ${conversation.displayName}'s profile`}
+              className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <PhotoAvatar
+                path={conversation.avatarPath}
+                name={conversation.displayName}
+                className="size-12"
+              />
+            </button>
+          ) : (
+            <PhotoAvatar
+              path={conversation.avatarPath}
+              name={conversation.displayName}
+              className="size-12 shrink-0"
+            />
           )}
-        </span>
-      </button>
-    </div>
+          <button
+            type="button"
+            onClick={onSelect}
+            aria-label={`Open conversation with ${conversation.displayName}`}
+            className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+          >
+            <span className="flex items-center justify-between gap-2">
+              <span className="truncate font-bold">{conversation.displayName}</span>
+              <span
+                className={`shrink-0 text-xs ${conversation.unread ? "font-bold text-primary" : "text-muted-foreground"}`}
+              >
+                {formatChatTime(conversation.last_message_at)}
+              </span>
+            </span>
+            <span className="mt-1 flex items-center gap-2">
+              <span
+                className={`min-w-0 flex-1 truncate text-sm ${conversation.unread ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+              >
+                {conversation.latest?.body ?? "No messages yet"}
+              </span>
+              {conversation.unread > 0 && (
+                <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                  {conversation.unread > 99 ? "99+" : conversation.unread}
+                </span>
+              )}
+            </span>
+          </button>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuLabel>{conversation.displayName}</ContextMenuLabel>
+        <ContextMenuItem onSelect={onSelect}>Open chat</ContextMenuItem>
+        <ContextMenuItem onSelect={onToggleReadState}>
+          {conversation.unread > 0 ? "Mark as read" : "Mark as unread"}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive">
+          <Trash2 className="mr-2 size-4" /> Delete chat
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
 function ChatView({
   conversation,
+  focusReply,
+  onReplyFocused,
   userId,
   onBack,
+  onDelete,
   onOpenProfile,
   onSent,
 }: {
   conversation: ConversationView;
+  focusReply: boolean;
+  onReplyFocused: () => void;
   userId: string;
   onBack: () => void;
+  onDelete: () => void;
   onOpenProfile: (participantId: string) => void;
   onSent: () => void;
 }) {
@@ -588,6 +761,11 @@ function ChatView({
   const [sending, setSending] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [actionsFor, setActionsFor] = useState<Message | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<Message | null>(null);
+  const [forwarding, setForwarding] = useState<Message | null>(null);
+  const [forwardSearch, setForwardSearch] = useState("");
+  const [forwardBusy, setForwardBusy] = useState(false);
+  const forwardUsers = useQuery({ queryKey: ["messaging-users", userId], queryFn: loadMessagingUsers, enabled: Boolean(forwarding), staleTime: 60_000 });
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -596,12 +774,20 @@ function ChatView({
   const profilePhotoUserId = conversation.otherProfiles[0]?.id ?? conversation.otherUserId;
 
   useEffect(() => {
+    if (!focusReply) return;
+    inputRef.current?.focus();
+    onReplyFocused();
+  }, [focusReply, onReplyFocused]);
+
+  useEffect(() => {
     historyRef.current?.scrollTo({ top: historyRef.current.scrollHeight });
   }, [conversation.messages.length, conversation.id]);
 
   useEffect(() => {
     setReplyTo(null);
     setActionsFor(null);
+    setViewingPhoto(null);
+    setForwarding(null);
   }, [conversation.id]);
 
   useEffect(() => {
@@ -644,6 +830,10 @@ function ChatView({
 
   function selectAttachment(file: File | undefined) {
     if (!file) return;
+    if (file.size === 0) {
+      toast.error("Empty files cannot be sent.");
+      return;
+    }
     if (file.size > MAX_ATTACHMENT_SIZE) {
       toast.error("Pictures and files must be 25 MB or smaller.");
       return;
@@ -687,10 +877,7 @@ function ChatView({
       conversation_id: conversation.id,
       sender_id: userId,
       body: text || "Shared an attachment",
-      attachment_path: uploadedPath,
-      attachment_name: pendingAttachment?.file.name ?? null,
-      attachment_content_type: pendingAttachment?.file.type || "application/octet-stream",
-      attachment_size: pendingAttachment?.file.size ?? null,
+      ...getMessageAttachmentMetadata(pendingAttachment?.file ?? null, uploadedPath),
       ...(replyTo && conversation.interactive ? { reply_to_id: replyTo.id } : {}),
     });
     if (error) {
@@ -764,6 +951,47 @@ function ChatView({
     }
   }
 
+  async function shareMessage(message: Message) {
+    if (message.attachment_url && message.attachment_content_type?.startsWith("image/")) {
+      setViewingPhoto(message);
+      return;
+    }
+    try {
+      if (navigator.share) await navigator.share({ text: message.body });
+      else await copyMessage(message);
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) toast.error("Unable to share this message.");
+    }
+  }
+
+  async function forwardMessage(member: MessagingUser) {
+    if (!forwarding || forwardBusy || forwarding.deleted_at) return;
+    setForwardBusy(true);
+    let uploadedPath: string | null = null;
+    try {
+      const { data: targetId, error: targetError } = await supabase.rpc("create_direct_conversation", { _other_user: member.id });
+      if (targetError || !targetId) throw targetError ?? new Error("Conversation unavailable");
+      let file: File | null = null;
+      if (forwarding.attachment_path) {
+        const { data: blob, error: readError } = await supabase.storage.from("message-attachments").download(forwarding.attachment_path);
+        if (readError || !blob) throw readError ?? new Error("Attachment unavailable");
+        file = new File([blob], forwarding.attachment_name ?? "attachment", { type: forwarding.attachment_content_type ?? blob.type });
+        uploadedPath = `${targetId}/${userId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const { error: uploadError } = await supabase.storage.from("message-attachments").upload(uploadedPath, file, { contentType: file.type, upsert: false });
+        if (uploadError) throw uploadError;
+      }
+      const { error } = await supabase.from("messages").insert({ conversation_id: targetId, sender_id: userId, body: forwarding.body, ...getMessageAttachmentMetadata(file, uploadedPath) });
+      if (error) throw error;
+      setForwarding(null);
+      setForwardSearch("");
+      toast.success("Message forwarded.");
+      onSent();
+    } catch {
+      if (uploadedPath) void supabase.storage.from("message-attachments").remove([uploadedPath]);
+      toast.error("Unable to forward this message. Please try again.");
+    } finally { setForwardBusy(false); }
+  }
+
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -774,12 +1002,12 @@ function ChatView({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <header className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-3 text-card-foreground shadow-sm sm:px-5">
         <button
           type="button"
           onClick={onBack}
-          className="grid size-9 place-items-center rounded-full text-primary hover:bg-secondary md:hidden"
+          className="grid size-9 shrink-0 place-items-center rounded-full text-primary hover:bg-secondary md:hidden"
           aria-label="Back to messages"
         >
           <ArrowLeft className="size-5" />
@@ -816,7 +1044,7 @@ function ChatView({
           ) : (
             <h2 className="truncate font-bold">{conversation.displayName}</h2>
           )}
-          <p className="text-xs text-muted-foreground">{roleLabel(conversation.otherRole)}</p>
+          <p className="truncate text-xs text-muted-foreground">{roleLabel(conversation.otherRole)}</p>
         </div>
         <button
           type="button"
@@ -836,13 +1064,25 @@ function ChatView({
         >
           <Video className="size-5" />
         </button>
-        <button
-          type="button"
-          aria-label="Conversation options"
-          className="rounded-full p-2 text-muted-foreground hover:bg-secondary"
-        >
-          <MoreVertical className="size-5" />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Conversation options"
+              className="rounded-full p-2 text-muted-foreground hover:bg-secondary"
+            >
+              <MoreVertical className="size-5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onSelect={onDelete}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 size-4" /> Delete chat
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       <div
@@ -855,7 +1095,7 @@ function ChatView({
           backgroundAttachment: "local",
         }}
       >
-        <div className="mx-auto flex max-w-3xl flex-col gap-3">
+        <div className="mx-auto flex min-w-0 max-w-3xl flex-col gap-3">
           {conversation.messages.length ? (
             conversation.messages.map((message, index) => {
               const mine = message.sender_id === userId;
@@ -883,6 +1123,7 @@ function ChatView({
                     onReply={() => startReply(message)}
                     onJumpTo={jumpToMessage}
                     onToggleReaction={(emoji) => void toggleReaction(message, emoji)}
+                    onOpenPhoto={() => setViewingPhoto(message)}
                   />
                 </div>
               );
@@ -1009,10 +1250,25 @@ function ChatView({
           onReact={(emoji) => void toggleReaction(actionsFor, emoji)}
           onReply={() => startReply(actionsFor)}
           onCopy={() => void copyMessage(actionsFor)}
+          onForward={() => { setForwardSearch(""); setForwarding(actionsFor); }}
+          onShare={() => void shareMessage(actionsFor)}
           onDeleteForMe={() => void deleteForMe(actionsFor)}
           onDeleteForEveryone={() => void deleteForEveryone(actionsFor)}
         />
       )}
+      {viewingPhoto?.attachment_url && <ChatPhotoViewer key={viewingPhoto.id} url={viewingPhoto.attachment_url} name={viewingPhoto.attachment_name ?? "Photo"} onClose={() => setViewingPhoto(null)} onForward={() => { setForwardSearch(""); setForwarding(viewingPhoto); setViewingPhoto(null); }} />}
+      <Dialog open={Boolean(forwarding)} onOpenChange={(open) => { if (!open && !forwardBusy) setForwarding(null); }}>
+        <DialogContent className="z-[180] w-[calc(100%_-_2rem)]" overlayClassName="z-[179]" aria-describedby={undefined}>
+          <DialogTitle>Forward message</DialogTitle>
+          <input value={forwardSearch} onChange={(event) => setForwardSearch(event.target.value)} aria-label="Search forwarding recipients" placeholder="Search users" className="min-w-0 w-full rounded-md border bg-background p-3 text-sm" />
+          <div className="max-h-[50dvh] overflow-y-auto">
+            {forwardUsers.isLoading ? <p className="py-4 text-sm">Loading users…</p> : forwardUsers.error ? <Button variant="outline" onClick={() => void forwardUsers.refetch()}>Try again</Button> : <>
+              {(forwardUsers.data ?? []).filter((member) => member.id !== userId && messagingUserDisplayName(member).toLowerCase().includes(forwardSearch.toLowerCase())).map((member) => <Button key={member.id} variant="ghost" disabled={forwardBusy} className="h-auto w-full justify-start gap-3 py-3" onClick={() => void forwardMessage(member)}><PhotoAvatar path={member.avatar_path} name={member.full_name} className="size-9 shrink-0" /><span className="min-w-0 flex-1 truncate text-left">{messagingUserDisplayName(member)}</span><Forward className="size-4 shrink-0" /></Button>)}
+              {!forwardUsers.data?.some((member) => member.id !== userId && messagingUserDisplayName(member).toLowerCase().includes(forwardSearch.toLowerCase())) && <p className="py-4 text-sm text-muted-foreground">No matching users.</p>}
+            </>}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1048,6 +1304,7 @@ function MessageBubble({
   onReply,
   onJumpTo,
   onToggleReaction,
+  onOpenPhoto,
 }: {
   ref: Ref<HTMLDivElement>;
   message: Message;
@@ -1060,11 +1317,11 @@ function MessageBubble({
   onReply: () => void;
   onJumpTo: (messageId: string) => void;
   onToggleReaction: (emoji: string) => void;
+  onOpenPhoto: () => void;
 }) {
   const { offset, progress, handlers } = useMessageGesture(canSwipe, onOpenActions, onReply);
   const deleted = Boolean(message.deleted_at);
-  const attachmentOnly =
-    !deleted && message.body === "Shared an attachment" && Boolean(message.attachment_path);
+  const attachmentOnly = isAttachmentOnly(message);
 
   const reactionGroups = useMemo(() => {
     const groups = new Map<string, { count: number; mine: boolean }>();
@@ -1080,7 +1337,7 @@ function MessageBubble({
   return (
     <div
       ref={ref}
-      className={`relative flex flex-col rounded-2xl transition-colors duration-700 ${mine ? "items-end" : "items-start"} ${highlighted ? "bg-primary/15" : ""}`}
+      className={`relative flex min-w-0 flex-col rounded-2xl transition-colors duration-700 ${mine ? "items-end" : "items-start"} ${highlighted ? "bg-primary/15" : ""}`}
     >
       <span
         aria-hidden
@@ -1135,19 +1392,19 @@ function MessageBubble({
         ) : (
           <>
             {message.attachment_url && message.attachment_content_type?.startsWith("image/") && (
-              <a
-                href={message.attachment_url}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(event) => event.stopPropagation()}
-                className="mb-2 block overflow-hidden rounded-xl"
+              <Button
+                variant="ghost"
+                type="button"
+                aria-label={`Open photo ${message.attachment_name ?? "Shared picture"}`}
+                onClick={(event) => { event.stopPropagation(); onOpenPhoto(); }}
+                className="mb-1 block h-auto max-w-full overflow-hidden rounded-none bg-transparent p-0 hover:bg-transparent"
               >
                 <img
                   src={message.attachment_url}
                   alt={message.attachment_name ?? "Shared picture"}
-                  className="max-h-64 w-full object-cover"
+                  className="max-h-64 max-w-full object-contain"
                 />
-              </a>
+              </Button>
             )}
             {message.attachment_url && !message.attachment_content_type?.startsWith("image/") && (
               <a
@@ -1162,12 +1419,12 @@ function MessageBubble({
               </a>
             )}
             {message.body !== "Shared an attachment" && (
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.body}</p>
+              <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm leading-relaxed">{message.body}</p>
             )}
           </>
         )}
         <div
-          className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-foreground/75" : "text-muted-foreground"}`}
+          className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${mine && !attachmentOnly ? "text-primary-foreground/75" : "text-muted-foreground"}`}
         >
           {formatMessageTime(message.created_at)}
           {mine && !deleted && <CheckCheck className="size-3" />}
@@ -1206,6 +1463,8 @@ function MessageActionSheet({
   onReact,
   onReply,
   onCopy,
+  onForward,
+  onShare,
   onDeleteForMe,
   onDeleteForEveryone,
 }: {
@@ -1217,6 +1476,8 @@ function MessageActionSheet({
   onReact: (emoji: string) => void;
   onReply: () => void;
   onCopy: () => void;
+  onForward: () => void;
+  onShare: () => void;
   onDeleteForMe: () => void;
   onDeleteForEveryone: () => void;
 }) {
@@ -1258,7 +1519,7 @@ function MessageActionSheet({
         aria-modal="true"
         aria-label="Message options"
         onClick={(event) => event.stopPropagation()}
-        className="w-full max-w-sm overflow-hidden rounded-t-3xl bg-card pb-[env(safe-area-inset-bottom)] shadow-2xl animate-in slide-in-from-bottom-4 fade-in sm:rounded-3xl"
+        className="max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-t-3xl bg-card pb-[env(safe-area-inset-bottom)] shadow-2xl animate-in slide-in-from-bottom-4 fade-in sm:rounded-3xl"
       >
         <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-muted sm:hidden" />
         <p
@@ -1342,6 +1603,10 @@ function MessageActionSheet({
                   <Copy className="size-5 text-primary" /> Copy
                 </Button>
               )}
+              {!deleted && <>
+                <Button variant="ghost" type="button" className={itemClass} onClick={() => run(onForward)}><Forward className="size-5 text-primary" /> Forward</Button>
+                <Button variant="ghost" type="button" className={itemClass} onClick={() => run(onShare)}><Share2 className="size-5 text-primary" /> Share</Button>
+              </>}
               {interactive && (
                 <Button
                   variant="ghost"
@@ -1620,8 +1885,8 @@ function userPickerErrorMessage(error: unknown) {
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  super_admin: "Super admin",
-  vito_admin: "VITO admin",
+  super_admin: "VITO Physio",
+  vito_admin: "VITO Physio",
   clinical_professional: "Clinical professional",
   clinical_supervisor: "Clinical supervisor",
   school_admin: "School admin",
