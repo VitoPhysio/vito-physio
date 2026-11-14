@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +30,7 @@ export function PhotoCropDialog({
   onCancel,
   onSave,
 }: PhotoCropDialogProps) {
-  const imageUrl = useMemo(() => (file ? URL.createObjectURL(file) : ""), [file]);
+  const [imageUrl, setImageUrl] = useState("");
   const imageRef = useRef<HTMLImageElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerId: number; x: number; y: number; offset: Offset } | null>(null);
@@ -41,12 +41,15 @@ export function PhotoCropDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(
-    () => () => {
-      if (imageUrl) URL.revokeObjectURL(imageUrl);
-    },
-    [imageUrl],
-  );
+  useEffect(() => {
+    if (!file) {
+      setImageUrl("");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setImageUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   useEffect(() => {
     if (!open) return;
@@ -56,12 +59,18 @@ export function PhotoCropDialog({
     setImageSize({ width: 0, height: 0 });
     const viewport = viewportRef.current;
     if (!viewport) return;
-    const measure = () =>
-      setViewportSize({ width: viewport.clientWidth, height: viewport.clientHeight });
+    const measure = () => {
+      const bounds = viewport.getBoundingClientRect();
+      setViewportSize({ width: bounds.width, height: bounds.height });
+    };
     measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(viewport);
-    return () => observer.disconnect();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(viewport);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, [file, open]);
 
   const baseScale =
@@ -186,11 +195,18 @@ export function PhotoCropDialog({
               src={imageUrl}
               alt="Photo crop preview"
               draggable={false}
-              onLoad={(event) =>
-                setImageSize({
-                  width: event.currentTarget.naturalWidth,
-                  height: event.currentTarget.naturalHeight,
-                })
+              onLoad={(event) => {
+                const image = event.currentTarget;
+                setImageSize({ width: image.naturalWidth, height: image.naturalHeight });
+                const viewport = viewportRef.current;
+                if (viewport) {
+                  const bounds = viewport.getBoundingClientRect();
+                  setViewportSize({ width: bounds.width, height: bounds.height });
+                }
+                setError("");
+              }}
+              onError={() =>
+                setError("This picture could not be loaded. Choose a PNG, JPG, or WEBP image.")
               }
               className="pointer-events-none absolute max-w-none"
               style={{
@@ -200,6 +216,11 @@ export function PhotoCropDialog({
                 top: (viewportSize.height - displayHeight) / 2 + boundedOffset.y,
               }}
             />
+          )}
+          {!imageSize.width && (
+            <span className="pointer-events-none absolute inset-0 grid place-items-center px-4 text-center text-sm text-white/80">
+              {error || "Loading picture…"}
+            </span>
           )}
           <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/80" />
         </div>
