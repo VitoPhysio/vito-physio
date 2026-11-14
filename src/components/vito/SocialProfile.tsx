@@ -44,6 +44,7 @@ import { PhotoAvatar, fileToPhotoPath, fileToSocialPostPhotoPath } from "@/compo
 import { PhotoCropDialog } from "@/components/vito/PhotoCropDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { updateLinkedPhoto } from "@/lib/photo.functions";
+import { memberProfileCopy, profileDisplayName, profileKind } from "@/lib/member-profile";
 
 export type SocialTab = "posts" | "replies" | "media";
 
@@ -96,11 +97,11 @@ type SocialComment = {
 };
 
 const ROLE_LABEL: Record<string, string> = {
-  super_admin: "Super admin",
-  vito_admin: "VITO admin",
+  super_admin: "VITO Physio",
+  vito_admin: "VITO Physio",
   clinical_professional: "Clinical professional",
   clinical_supervisor: "Clinical supervisor",
-  school_admin: "School admin",
+  school_admin: "Institution",
   coach: "Coach",
   athlete: "Athlete",
   parent: "Parent / guardian",
@@ -168,6 +169,22 @@ export function SocialProfile({
   }
 
   const member = profile.data;
+  const displayName = profileDisplayName(member.role, member.full_name, member.school_name);
+  const profileCopy = memberProfileCopy(profileKind(member.role ? [member.role] : []));
+  const isInstitutionProfile =
+    member.role === "school_admin" || member.role === "super_admin" || member.role === "vito_admin";
+  const profileDetails = isInstitutionProfile
+    ? [
+        member.role === "school_admin" ? member.school_name : "VITO Physio",
+        member.district,
+        member.country,
+      ]
+    : [member.sport, member.player_position, member.team || member.school_name];
+  const profilePosts = posts.data?.map((post) =>
+    isInstitutionProfile && post.author_id === profileId
+      ? { ...post, author_name: displayName }
+      : post,
+  );
 
   async function saveOwnerPhoto(target: "profile" | "community-cover", file: File | null) {
     setPhotoBusy(true);
@@ -237,7 +254,7 @@ export function SocialProfile({
           >
             <PhotoAvatar
               path={member.avatar_path}
-              name={member.full_name}
+              name={displayName}
               className="size-20 border-4 border-card bg-secondary text-2xl shadow-xl sm:size-24"
             />
           </button>
@@ -262,43 +279,60 @@ export function SocialProfile({
         </div>
         <div className="space-y-3 pb-5 pt-3">
           <div>
-            <h1 className="text-2xl font-black tracking-tight sm:text-3xl">
-              {member.full_name || "VITO Physio member"}
-            </h1>
+            <h1 className="text-2xl font-black tracking-tight sm:text-3xl">{displayName}</h1>
             <p className="mt-1 text-sm font-semibold text-primary">{roleLabel(member.role)}</p>
           </div>
           {member.headline && <p className="text-sm font-medium">{member.headline}</p>}
-          {(member.sport || member.player_position || member.team || member.school_name) && (
+          {profileDetails.some(Boolean) && (
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-primary">
-              {[member.sport, member.player_position, member.team || member.school_name]
-                .filter(Boolean)
-                .map((item, index, items) => (
-                  <span key={`${item}-${index}`} className="inline-flex items-center gap-2">
-                    {item}
-                    {index < items.length - 1 && (
-                      <span aria-hidden="true" className="text-accent">
-                        ·
-                      </span>
-                    )}
-                  </span>
-                ))}
+              {profileDetails.filter(Boolean).map((item, index, items) => (
+                <span key={`${item}-${index}`} className="inline-flex items-center gap-2">
+                  {item}
+                  {index < items.length - 1 && (
+                    <span aria-hidden="true" className="text-accent">
+                      ·
+                    </span>
+                  )}
+                </span>
+              ))}
             </div>
           )}
           {member.bio && (
-            <p className="max-w-2xl whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
-              {member.bio}
-            </p>
+            <div className="max-w-2xl space-y-1">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                {profileCopy.aboutLabel}
+              </p>
+              <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                {member.bio}
+              </p>
+            </div>
           )}
           {(member.interests.length > 0 || member.skills.length > 0) && (
-            <div className="flex flex-wrap gap-2">
-              {[...member.interests, ...member.skills].map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full bg-secondary px-3 py-1 text-xs font-medium"
-                >
-                  {item}
-                </span>
-              ))}
+            <div className="space-y-3">
+              {(
+                [
+                  [profileCopy.skillsLabel, member.skills],
+                  [profileCopy.interestsLabel, member.interests],
+                ] as const
+              )
+                .filter(([, items]) => items.length > 0)
+                .map(([label, items]) => (
+                  <div key={label} className="space-y-1.5">
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      {label}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {items.map((item) => (
+                        <span
+                          key={`${label}-${item}`}
+                          className="rounded-full bg-secondary px-3 py-1 text-xs font-medium"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
             </div>
           )}
         </div>
@@ -350,7 +384,7 @@ export function SocialProfile({
         {!posts.isLoading && !posts.isError && !posts.data?.length && (
           <div className="p-8 text-center text-sm text-muted-foreground">No {tab} yet.</div>
         )}
-        {posts.data?.map((post) => (
+        {profilePosts?.map((post) => (
           <SocialPostCard key={post.id} post={post} viewerId={viewerId} />
         ))}
       </div>
@@ -364,12 +398,12 @@ export function SocialProfile({
             {member.avatar_path ? (
               <SocialImage
                 path={member.avatar_path}
-                alt={`${member.full_name ?? "Member"} profile picture`}
+                alt={`${displayName} profile picture`}
                 className="max-h-[60dvh] max-w-full rounded-lg object-contain"
               />
             ) : (
               <div className="grid size-48 place-items-center rounded-full bg-secondary text-5xl font-bold text-primary">
-                {(member.full_name ?? "?").slice(0, 1).toUpperCase()}
+                {displayName.slice(0, 1).toUpperCase()}
               </div>
             )}
           </div>

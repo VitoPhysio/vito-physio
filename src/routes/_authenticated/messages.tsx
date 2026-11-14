@@ -47,6 +47,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 
 export const Route = createFileRoute("/_authenticated/messages")({
   head: () => ({
@@ -148,6 +166,8 @@ function MessagesPage() {
   const [newConversationOpen, setNewConversationOpen] = useState(false);
   const [userSearch, setUserSearch] = useState("");
   const [startingConversation, setStartingConversation] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<ConversationView | null>(null);
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
 
   const { conversation: linkedConversation } = Route.useSearch();
   const conversations = useQuery({
@@ -268,6 +288,49 @@ function MessagesPage() {
     }
   }
 
+  async function toggleConversationReadState(conversation: ConversationView) {
+    const markUnread = conversation.unread === 0;
+    if (markUnread && selectedId === conversation.id) setSelectedId(null);
+    const { error } = await supabase
+      .from("conversation_participants")
+      .update({ last_read_at: markUnread ? null : new Date().toISOString() })
+      .eq("conversation_id", conversation.id)
+      .eq("user_id", user.id);
+    if (error) {
+      toast.error("The conversation’s read status could not be updated.");
+      return;
+    }
+    toast.success(markUnread ? "Chat marked as unread." : "Chat marked as read.");
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["messages", user.id] }),
+      queryClient.invalidateQueries({ queryKey: messageUnreadKey(user.id) }),
+    ]);
+  }
+
+  async function deleteChat() {
+    const conversation = chatToDelete;
+    if (!conversation || deletingChatId) return;
+    setDeletingChatId(conversation.id);
+    await supabase.rpc("mark_conversation_read", { _conversation_id: conversation.id });
+    const { error } = await supabase
+      .from("conversation_participants")
+      .delete()
+      .eq("conversation_id", conversation.id)
+      .eq("user_id", user.id);
+    setDeletingChatId(null);
+    if (error) {
+      toast.error("The chat could not be removed. Please try again.");
+      return;
+    }
+    setChatToDelete(null);
+    setSelectedId((current) => (current === conversation.id ? null : current));
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["messages", user.id] }),
+      queryClient.invalidateQueries({ queryKey: messageUnreadKey(user.id) }),
+    ]);
+    toast.success("Chat removed from your inbox. Other participants keep their messages.");
+  }
+
   function closeMessages() {
     if (canGoBack) {
       router.history.back();
@@ -363,6 +426,8 @@ function MessagesPage() {
                   conversation={conversation}
                   selected={conversation.id === selectedId}
                   onSelect={() => void openConversation(conversation)}
+                  onToggleReadState={() => void toggleConversationReadState(conversation)}
+                  onDelete={() => setChatToDelete(conversation)}
                   onOpenProfile={(participantId) =>
                     window.location.assign(`/members/${participantId}`)
                   }
@@ -382,6 +447,7 @@ function MessagesPage() {
               conversation={selected}
               userId={user.id}
               onBack={() => setSelectedId(null)}
+              onDelete={() => setChatToDelete(selected)}
               onOpenProfile={(participantId) => window.location.assign(`/members/${participantId}`)}
               onSent={() => {
                 void queryClient.invalidateQueries({ queryKey: ["messages", user.id] });
@@ -538,6 +604,36 @@ function MessagesPage() {
           </div>
         </section>
       )}
+
+      <AlertDialog
+        open={Boolean(chatToDelete)}
+        onOpenChange={(open) => {
+          if (!open && !deletingChatId) setChatToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the conversation from your inbox and leaves the chat for your account. It
+              does not delete messages for other participants.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(deletingChatId)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={Boolean(deletingChatId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                void deleteChat();
+              }}
+            >
+              {deletingChatId ? "Deleting…" : "Delete chat"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -546,66 +642,88 @@ function ConversationRow({
   conversation,
   selected,
   onSelect,
+  onToggleReadState,
+  onDelete,
   onOpenProfile,
 }: {
   conversation: ConversationView;
   selected: boolean;
   onSelect: () => void;
+  onToggleReadState: () => void;
+  onDelete: () => void;
   onOpenProfile: (participantId: string) => void;
 }) {
   const profileId = conversation.otherProfiles[0]?.id;
   return (
-    <div
-      className={`flex w-full items-center gap-3 border-b px-4 py-4 transition hover:bg-secondary/80 ${selected ? "bg-secondary" : "bg-card"}`}
-    >
-      {profileId ? (
-        <button
-          type="button"
-          onClick={() => onOpenProfile(profileId)}
-          aria-label={`Open ${conversation.displayName}'s profile`}
-          className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          tabIndex={0}
+          role="group"
+          aria-label={`Chat with ${conversation.displayName}. Long press or open the context menu for actions.`}
+          className={`flex w-full items-center gap-3 border-b px-4 py-4 transition hover:bg-secondary/80 ${selected ? "bg-secondary" : "bg-card"}`}
         >
-          <PhotoAvatar
-            path={conversation.avatarPath}
-            name={conversation.displayName}
-            className="size-12"
-          />
-        </button>
-      ) : (
-        <PhotoAvatar
-          path={conversation.avatarPath}
-          name={conversation.displayName}
-          className="size-12 shrink-0"
-        />
-      )}
-      <button
-        type="button"
-        onClick={onSelect}
-        aria-label={`Open conversation with ${conversation.displayName}`}
-        className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
-      >
-        <span className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-          <span className="min-w-0 truncate font-bold">{conversation.displayName}</span>
-          <span
-            className={`shrink-0 text-xs ${conversation.unread ? "font-bold text-primary" : "text-muted-foreground"}`}
-          >
-            {formatChatTime(conversation.last_message_at)}
-          </span>
-        </span>
-        <span className="mt-1 flex items-center gap-2">
-          <span
-            className={`min-w-0 flex-1 truncate text-sm ${conversation.unread ? "font-semibold text-foreground" : "text-muted-foreground"}`}
-          >
-            {conversation.latest?.body ?? "No messages yet"}
-          </span>
-          {conversation.unread > 0 && (
-            <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
-              {conversation.unread > 99 ? "99+" : conversation.unread}
-            </span>
+          {profileId ? (
+            <button
+              type="button"
+              onClick={() => onOpenProfile(profileId)}
+              aria-label={`Open ${conversation.displayName}'s profile`}
+              className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <PhotoAvatar
+                path={conversation.avatarPath}
+                name={conversation.displayName}
+                className="size-12"
+              />
+            </button>
+          ) : (
+            <PhotoAvatar
+              path={conversation.avatarPath}
+              name={conversation.displayName}
+              className="size-12 shrink-0"
+            />
           )}
-        </span>
-      </button>
-    </div>
+          <button
+            type="button"
+            onClick={onSelect}
+            aria-label={`Open conversation with ${conversation.displayName}`}
+            className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+          >
+            <span className="flex items-center justify-between gap-2">
+              <span className="truncate font-bold">{conversation.displayName}</span>
+              <span
+                className={`shrink-0 text-xs ${conversation.unread ? "font-bold text-primary" : "text-muted-foreground"}`}
+              >
+                {formatChatTime(conversation.last_message_at)}
+              </span>
+            </span>
+            <span className="mt-1 flex items-center gap-2">
+              <span
+                className={`min-w-0 flex-1 truncate text-sm ${conversation.unread ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+              >
+                {conversation.latest?.body ?? "No messages yet"}
+              </span>
+              {conversation.unread > 0 && (
+                <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                  {conversation.unread > 99 ? "99+" : conversation.unread}
+                </span>
+              )}
+            </span>
+          </button>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuLabel>{conversation.displayName}</ContextMenuLabel>
+        <ContextMenuItem onSelect={onSelect}>Open chat</ContextMenuItem>
+        <ContextMenuItem onSelect={onToggleReadState}>
+          {conversation.unread > 0 ? "Mark as read" : "Mark as unread"}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive">
+          <Trash2 className="mr-2 size-4" /> Delete chat
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
@@ -613,12 +731,14 @@ function ChatView({
   conversation,
   userId,
   onBack,
+  onDelete,
   onOpenProfile,
   onSent,
 }: {
   conversation: ConversationView;
   userId: string;
   onBack: () => void;
+  onDelete: () => void;
   onOpenProfile: (participantId: string) => void;
   onSent: () => void;
 }) {
@@ -924,13 +1044,25 @@ function ChatView({
         >
           <Video className="size-5" />
         </button>
-        <button
-          type="button"
-          aria-label="Conversation options"
-          className="rounded-full p-2 text-muted-foreground hover:bg-secondary"
-        >
-          <MoreVertical className="size-5" />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Conversation options"
+              className="rounded-full p-2 text-muted-foreground hover:bg-secondary"
+            >
+              <MoreVertical className="size-5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onSelect={onDelete}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 size-4" /> Delete chat
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       <div
@@ -1733,8 +1865,8 @@ function userPickerErrorMessage(error: unknown) {
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  super_admin: "Super admin",
-  vito_admin: "VITO admin",
+  super_admin: "VITO Physio",
+  vito_admin: "VITO Physio",
   clinical_professional: "Clinical professional",
   clinical_supervisor: "Clinical supervisor",
   school_admin: "School admin",
