@@ -530,35 +530,44 @@ export type Database = {
         Row: {
           athlete_id: string | null
           audience: string | null
+          batch_id: string | null
           body: string
           created_at: string
           id: string
+          kind: string | null
           recipient_id: string | null
           school_id: string | null
           sender_id: string
           subject: string | null
+          team_id: string | null
         }
         Insert: {
           athlete_id?: string | null
           audience?: string | null
+          batch_id?: string | null
           body: string
           created_at?: string
           id?: string
+          kind?: string | null
           recipient_id?: string | null
           school_id?: string | null
           sender_id: string
           subject?: string | null
+          team_id?: string | null
         }
         Update: {
           athlete_id?: string | null
           audience?: string | null
+          batch_id?: string | null
           body?: string
           created_at?: string
           id?: string
+          kind?: string | null
           recipient_id?: string | null
           school_id?: string | null
           sender_id?: string
           subject?: string | null
+          team_id?: string | null
         }
         Relationships: [
           {
@@ -573,6 +582,13 @@ export type Database = {
             columns: ["school_id"]
             isOneToOne: false
             referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "institution_teams"
             referencedColumns: ["id"]
           },
         ]
@@ -1168,6 +1184,131 @@ export type Database = {
           },
         ]
       }
+      institution_pattern_reviews: {
+        Row: {
+          created_at: string
+          id: string
+          note: string
+          pattern_key: string
+          reviewed_by: string
+          school_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note: string
+          pattern_key: string
+          reviewed_by: string
+          school_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string
+          pattern_key?: string
+          reviewed_by?: string
+          school_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_pattern_reviews_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      institution_team_athletes: {
+        Row: {
+          added_by: string | null
+          athlete_id: string
+          created_at: string
+          team_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          athlete_id: string
+          created_at?: string
+          team_id: string
+        }
+        Update: {
+          added_by?: string | null
+          athlete_id?: string
+          created_at?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_team_athletes_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "institution_team_athletes_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "institution_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      institution_teams: {
+        Row: {
+          coach_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          name: string
+          school_id: string
+          sport: string | null
+          updated_at: string
+        }
+        Insert: {
+          coach_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          name: string
+          school_id: string
+          sport?: string | null
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          school_id?: string
+          sport?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institution_teams_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "institution_teams_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_hidden: {
         Row: {
           created_at: string
@@ -1719,37 +1860,76 @@ export type Database = {
       referrals: {
         Row: {
           athlete_id: string
+          consent_at: string | null
+          consent_by: string | null
+          consent_method: string | null
+          consent_name: string | null
+          consent_status: string
           created_at: string
           created_by: string | null
+          feedback: string | null
+          feedback_at: string | null
           id: string
           injury_id: string | null
+          priority: string | null
+          professional_id: string | null
+          purpose: string | null
           reason: string | null
           referral_code: string
           referred_to: string
+          requested_by: string | null
+          school_id: string | null
+          shared_scopes: string[]
           status: string
           updated_at: string
         }
         Insert: {
           athlete_id: string
+          consent_at?: string | null
+          consent_by?: string | null
+          consent_method?: string | null
+          consent_name?: string | null
+          consent_status?: string
           created_at?: string
           created_by?: string | null
+          feedback?: string | null
+          feedback_at?: string | null
           id?: string
           injury_id?: string | null
+          priority?: string | null
+          professional_id?: string | null
+          purpose?: string | null
           reason?: string | null
           referral_code?: string
           referred_to: string
+          requested_by?: string | null
+          school_id?: string | null
+          shared_scopes?: string[]
           status?: string
           updated_at?: string
         }
         Update: {
           athlete_id?: string
+          consent_at?: string | null
+          consent_by?: string | null
+          consent_method?: string | null
+          consent_name?: string | null
+          consent_status?: string
           created_at?: string
           created_by?: string | null
+          feedback?: string | null
+          feedback_at?: string | null
           id?: string
           injury_id?: string | null
+          priority?: string | null
+          professional_id?: string | null
+          purpose?: string | null
           reason?: string | null
           referral_code?: string
           referred_to?: string
+          requested_by?: string | null
+          school_id?: string | null
+          shared_scopes?: string[]
           status?: string
           updated_at?: string
         }
@@ -1766,6 +1946,20 @@ export type Database = {
             columns: ["injury_id"]
             isOneToOne: false
             referencedRelation: "injuries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -1921,6 +2115,61 @@ export type Database = {
           verification_status?: string
         }
         Relationships: []
+      }
+      sensitive_access_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          athlete_id: string | null
+          created_at: string
+          detail: Json
+          id: string
+          referral_id: string | null
+          school_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          athlete_id?: string | null
+          created_at?: string
+          detail?: Json
+          id?: string
+          referral_id?: string | null
+          school_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          athlete_id?: string | null
+          created_at?: string
+          detail?: Json
+          id?: string
+          referral_id?: string | null
+          school_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sensitive_access_log_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sensitive_access_log_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sensitive_access_log_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       social_comments: {
         Row: {
@@ -2170,6 +2419,16 @@ export type Database = {
         Args: { _body: string; _post_id: string }
         Returns: string
       }
+      apply_referral_consent: {
+        Args: {
+          _by: string
+          _granted: boolean
+          _method: string
+          _name: string
+          _referral: string
+        }
+        Returns: undefined
+      }
       can_access_message: {
         Args: { _message_id: string; _user_id?: string }
         Returns: boolean
@@ -2289,6 +2548,119 @@ export type Database = {
         }
         Returns: boolean
       }
+      institution_activity: { Args: { _school: string }; Returns: Json }
+      institution_add_pattern_review: {
+        Args: {
+          _note: string
+          _pattern_key: string
+          _school: string
+          _status: string
+        }
+        Returns: string
+      }
+      institution_athlete_profile: {
+        Args: { _athlete: string; _school: string }
+        Returns: Json
+      }
+      institution_athletes: {
+        Args: { _school: string }
+        Returns: {
+          active_injuries: number
+          athlete_code: string
+          coaches: string[]
+          competition_level: string
+          created_at: string
+          date_of_birth: string
+          first_name: string
+          gender: string
+          has_account: boolean
+          id: string
+          phone: string
+          photo_path: string
+          rehab_phase: string
+          sport: string
+          surname: string
+          team_ids: string[]
+          teams: string[]
+          total_injuries: number
+        }[]
+      }
+      institution_audit_log: {
+        Args: { _school: string }
+        Returns: {
+          action: string
+          actor_name: string
+          athlete_name: string
+          created_at: string
+          id: string
+          referral_code: string
+        }[]
+      }
+      institution_can_see_athlete: {
+        Args: { _athlete: string; _school: string; _user: string }
+        Returns: boolean
+      }
+      institution_cancel_referral: {
+        Args: { _referral: string }
+        Returns: undefined
+      }
+      institution_communications: {
+        Args: { _school: string }
+        Returns: {
+          batch_id: string
+          body: string
+          created_at: string
+          kind: string
+          mine: boolean
+          recipients: number
+          sender_name: string
+          subject: string
+          target: string
+        }[]
+      }
+      institution_create_referral: {
+        Args: {
+          _athlete: string
+          _injury: string
+          _priority: string
+          _professional: string
+          _purpose: string
+          _reason: string
+          _school: string
+          _scopes: string[]
+        }
+        Returns: string
+      }
+      institution_delete_team: { Args: { _team: string }; Returns: undefined }
+      institution_injury_records: {
+        Args: { _school: string }
+        Returns: {
+          activity_context: string
+          assessed: boolean
+          athlete_id: string
+          athlete_name: string
+          body_region: string
+          created_at: string
+          date_of_birth: string
+          days_lost: number
+          gender: string
+          id: string
+          injury_code: string
+          injury_date: string
+          injury_type: string
+          is_recurrence: boolean
+          last_review_date: string
+          mechanism_category: string
+          onset_type: string
+          rehab_phase: string
+          resolved_at: string
+          severity: string
+          sport: string
+          status: string
+          target_return_date: string
+          team_ids: string[]
+        }[]
+      }
       institution_join_requests: {
         Args: { _school: string }
         Returns: {
@@ -2314,9 +2686,122 @@ export type Database = {
         }[]
       }
       institution_overview: { Args: { _school: string }; Returns: Json }
+      institution_pattern_reviews_list: {
+        Args: { _school: string }
+        Returns: {
+          created_at: string
+          id: string
+          note: string
+          pattern_key: string
+          reviewer_is_professional: boolean
+          reviewer_name: string
+          status: string
+        }[]
+      }
+      institution_record_consent: {
+        Args: {
+          _consenter: string
+          _granted: boolean
+          _method: string
+          _referral: string
+          _relationship: string
+        }
+        Returns: undefined
+      }
+      institution_referrals: {
+        Args: { _school: string }
+        Returns: {
+          athlete_id: string
+          athlete_name: string
+          consent_method: string
+          consent_name: string
+          consent_status: string
+          created_at: string
+          feedback: string
+          id: string
+          mine: boolean
+          priority: string
+          professional_name: string
+          purpose: string
+          reason: string
+          referral_code: string
+          requested_by_name: string
+          scopes: string[]
+          status: string
+          updated_at: string
+        }[]
+      }
+      institution_register_athletes: {
+        Args: { _rows: Json; _school: string }
+        Returns: Json
+      }
+      institution_report_injury: {
+        Args: {
+          _activity_context: string
+          _athlete: string
+          _body_region: string
+          _injury_date: string
+          _injury_type: string
+          _mechanism: string
+          _notes: string
+          _school: string
+          _severity: string
+        }
+        Returns: string
+      }
       institution_role: {
         Args: { _school: string; _user: string }
         Returns: string
+      }
+      institution_save_team: {
+        Args: {
+          _coach: string
+          _kind: string
+          _name: string
+          _school: string
+          _sport: string
+          _team: string
+        }
+        Returns: string
+      }
+      institution_send_message: {
+        Args: {
+          _athlete: string
+          _body: string
+          _kind: string
+          _school: string
+          _subject: string
+          _target: string
+          _team: string
+        }
+        Returns: Json
+      }
+      institution_set_team_athletes: {
+        Args: { _athletes: string[]; _team: string }
+        Returns: number
+      }
+      institution_teams_list: {
+        Args: { _school: string }
+        Returns: {
+          athlete_ids: string[]
+          coach_id: string
+          coach_name: string
+          id: string
+          kind: string
+          name: string
+          sport: string
+        }[]
+      }
+      institution_update_athlete: {
+        Args: {
+          _athlete: string
+          _competition_level: string
+          _gender: string
+          _phone: string
+          _school: string
+          _sport: string
+        }
+        Returns: undefined
       }
       is_blog_admin: { Args: never; Returns: boolean }
       is_connected: { Args: { _a: string; _b: string }; Returns: boolean }
@@ -2342,6 +2827,17 @@ export type Database = {
           full_name: string
           id: string
           role: string
+        }[]
+      }
+      list_professionals: {
+        Args: { _district?: string; _q?: string; _specialty?: string }
+        Returns: {
+          avatar_path: string
+          district: string
+          full_name: string
+          headline: string
+          id: string
+          specialty: string
         }[]
       }
       list_public_organisations: {
@@ -2387,6 +2883,17 @@ export type Database = {
           shares_count: number
         }[]
       }
+      log_sensitive_access: {
+        Args: {
+          _action: string
+          _actor: string
+          _athlete: string
+          _detail: Json
+          _referral: string
+          _school: string
+        }
+        Returns: undefined
+      }
       mark_all_notifications_read: { Args: never; Returns: number }
       mark_conversation_read: {
         Args: { _conversation_id: string }
@@ -2411,6 +2918,32 @@ export type Database = {
         Args: { _category: string; _user_id: string }
         Returns: boolean
       }
+      professional_referral_detail: {
+        Args: { _referral: string }
+        Returns: Json
+      }
+      professional_referrals: {
+        Args: never
+        Returns: {
+          athlete_name: string
+          consent_status: string
+          created_at: string
+          feedback: string
+          id: string
+          institution: string
+          priority: string
+          purpose: string
+          reason: string
+          referral_code: string
+          scopes: string[]
+          status: string
+        }[]
+      }
+      professional_update_referral: {
+        Args: { _feedback: string; _referral: string; _status: string }
+        Returns: undefined
+      }
+      referral_consent_details: { Args: { _referral: string }; Returns: Json }
       register_institution: {
         Args: {
           _district: string
@@ -2428,6 +2961,10 @@ export type Database = {
       request_institution_membership: {
         Args: { _role: string; _school: string }
         Returns: string
+      }
+      respond_referral_consent: {
+        Args: { _approve: boolean; _referral: string }
+        Returns: undefined
       }
       review_join_request: {
         Args: { _approve: boolean; _request: string }

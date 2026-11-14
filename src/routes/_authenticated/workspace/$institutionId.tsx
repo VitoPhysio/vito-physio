@@ -4,7 +4,7 @@ import { InstitutionWorkspace } from "@/components/vito/institution/InstitutionW
 import { normalizeSection, WORKSPACE_SECTIONS } from "@/lib/institution";
 
 export const Route = createFileRoute("/_authenticated/workspace/$institutionId")({
-  validateSearch: z.object({ section: z.enum(WORKSPACE_SECTIONS).optional().catch(undefined) }),
+  validateSearch: z.object({ section: z.enum(WORKSPACE_SECTIONS).optional().catch(undefined), athlete: z.string().uuid().optional().catch(undefined) }),
   head: () => ({
     meta: [
       { title: "Institution dashboard — VITO Physio" },
@@ -20,6 +20,6 @@ export const Route = createFileRoute("/_authenticated/workspace/$institutionId")
 
 function WorkspacePage() {
   const { institutionId } = Route.useParams();
-  const { section } = Route.useSearch();
-  return <InstitutionWorkspace key={institutionId} institutionId={institutionId} section={normalizeSection(section)} />;
+  const { section, athlete } = Route.useSearch();
+  return <InstitutionWorkspace key={institutionId} institutionId={institutionId} section={normalizeSection(section)} athleteId={athlete} />;
 }

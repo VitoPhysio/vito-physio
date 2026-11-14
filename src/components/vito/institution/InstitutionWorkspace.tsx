@@ -10,6 +10,9 @@ import { PhotoAvatar } from "@/components/vito/Photo";
 import { VitoLoadingMark } from "@/components/vito/VitoBrandLockup";
 import { WorkspaceMenus, type WorkspaceMenu } from "@/components/vito/WorkspaceMenus";
 import { InstitutionForm } from "@/components/vito/institution/InstitutionForm";
+import { AthletesPanel } from "@/components/vito/institution/AthletesPanel";
+import { InjuriesPanel } from "@/components/vito/institution/InjuriesPanel";
+import { TeamsPanel } from "@/components/vito/institution/TeamsPanel";
 import { useMyInstitutions } from "@/components/vito/institution/InstitutionEntry";
 import {
   INSTITUTION_ROLE_LABEL,
@@ -42,14 +45,8 @@ const MENUS: WorkspaceMenu[] = [
 ];
 
 const UPCOMING: Partial<Record<WorkspaceSection, string>> = {
-  athletes: "Athlete directory, profiles and team assignments",
-  teams: "Teams, classes and coach assignments",
-  injuries: "Institution injury records",
-  surveillance: "Injury patterns, early warnings and prevention priorities",
-  rehabilitation: "Rehabilitation progress and return to sport",
   communications: "Institution messages, announcements and reminders",
   professionals: "Referrals and consent-based sharing with professionals",
-  reports: "Printable institutional, athlete and surveillance reports",
 };
 
 type Overview = {
@@ -62,7 +59,7 @@ type Overview = {
   sports: { sport: string; count: number }[];
 };
 
-export function InstitutionWorkspace({ institutionId, section }: { institutionId: string; section: WorkspaceSection }) {
+export function InstitutionWorkspace({ institutionId, section, athleteId }: { institutionId: string; section: WorkspaceSection; athleteId?: string | undefined }) {
   const { data: institutions, isLoading } = useMyInstitutions();
   const navigate = useNavigate();
   const current = institutions?.find((i) => i.id === institutionId);
@@ -141,6 +138,18 @@ export function InstitutionWorkspace({ institutionId, section }: { institutionId
 
       {section === "overview" && <OverviewPanel institutionId={institutionId} canReview={perms.reviewRequests} onReview={() => setSection("settings")} />}
       {section === "settings" && <SettingsPanel institution={current} perms={perms} />}
+      {section === "athletes" && (
+        <AthletesPanel
+          school={institutionId}
+          perms={perms}
+          athleteId={athleteId}
+          onOpen={(id) => void navigate({ to: "/workspace/$institutionId", params: { institutionId }, search: { section: "athletes", athlete: id } })}
+        />
+      )}
+      {section === "teams" && <TeamsPanel school={institutionId} perms={perms} />}
+      {(section === "injuries" || section === "surveillance" || section === "rehabilitation" || section === "reports") && (
+        <InjuriesPanel school={institutionId} schoolName={current.name} perms={perms} mode={section} />
+      )}
       {UPCOMING[section] && (
         <section className="rounded-2xl border border-dashed bg-card p-8 text-center">
           <h2 className="text-lg font-bold">{MENUS.flatMap((m) => m.items).find((i) => i.value === section)?.label}</h2>

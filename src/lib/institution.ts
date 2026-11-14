@@ -29,6 +29,16 @@ export function institutionPermissions(role: string | null | undefined) {
     reviewRequests: admin,
     manageMembers: admin,
     viewMemberEmails: admin,
+    manageAthletes: admin,
+    manageTeams: admin,
+    messageEveryone: admin,
+    messageTeams: member,
+    reportInjury: member,
+    referAthletes: member,
+    recordConsent: admin,
+    reviewPatterns: admin,
+    viewAudit: admin,
+    viewReports: member,
   };
 }
 
@@ -77,3 +87,35 @@ export function normalizeSection(value: unknown): WorkspaceSection {
     ? (value as WorkspaceSection)
     : "overview";
 }
+
+export const SHARING_SCOPES = [
+  { value: "participation", label: "Sports participation", detail: "Name, ID, age, sport, level and teams" },
+  { value: "injury_summary", label: "Injury and recovery summary", detail: "Injuries, severity, status, time lost and rehabilitation phase" },
+  { value: "clinical", label: "Confidential clinical records", detail: "Assessments and clinical notes written by VITO clinicians" },
+] as const;
+
+export const PROFESSIONAL_SPECIALTIES = [
+  "Sports physician",
+  "Physiotherapist",
+  "Orthopaedic specialist",
+  "General medical practitioner",
+  "Sports healthcare professional",
+] as const;
+
+export const REFERRAL_STATUS_LABEL: Record<string, string> = {
+  pending_consent: "Waiting for consent",
+  sent: "Sent to professional",
+  accepted: "Accepted",
+  declined: "Declined",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  open: "Open",
+};
+
+export const MESSAGE_KIND_LABEL: Record<string, string> = {
+  message: "Message",
+  announcement: "Announcement",
+  reminder: "Reminder",
+  appointment: "Appointment information",
+  follow_up: "Injury follow-up",
+};
