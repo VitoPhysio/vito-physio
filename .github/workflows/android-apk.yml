@@ -76,7 +76,12 @@ jobs:
         run: pnpm build
 
       - name: Sync Capacitor Android project
-        run: pnpm exec cap sync android
+        run: |
+          mkdir -p android/app/src/main/assets
+          pnpm exec cap sync android
+
+      - name: Calculate Android version code
+        run: echo "VITO_VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
 
       - name: Prepare release signing key
         env:
@@ -92,7 +97,6 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: vitophysio
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          VITO_VERSION_CODE: ${{ 100 + github.run_number }}
           VITO_VERSION_NAME: 1.8.${{ github.run_number }}
         run: ./gradlew assembleRelease --no-daemon
 
