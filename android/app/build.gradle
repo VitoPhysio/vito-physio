@@ -1,5 +1,7 @@
 apply plugin: 'com.android.application'
 
+def vitoVersionCode = project.findProperty('VITO_VERSION_CODE')?.toString()?.toInteger() ?: 6
+
 android {
     namespace = "com.vitophysio.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,7 +9,7 @@ android {
         applicationId "com.vitophysio.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
+        versionCode vitoVersionCode
         versionName "1.5.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
