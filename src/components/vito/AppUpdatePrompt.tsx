@@ -60,7 +60,10 @@ export function AppUpdatePrompt() {
             if (tag && (!manifest.version || compareVersions(tag, manifest.version) > 0)) {
               manifest.version = tag;
             }
-            if (apk?.browser_download_url) manifest.apkUrl = apk.browser_download_url;
+            // Keep the existing Vercel download pathway for Android installs. GitHub is
+            // authoritative for the version check, but the app must download through the
+            // server proxy so the APK filename, headers, and update flow stay consistent.
+            if (apk?.browser_download_url) manifest.apkUrl = APK_DOWNLOAD_URL;
           }
         } catch {}
         if (!manifest.version || compareVersions(manifest.version, installedVersion) <= 0) {
@@ -91,7 +94,7 @@ export function AppUpdatePrompt() {
 
   if (!update?.version || dismissed) return null;
 
-  const downloadUrl = update.apkUrl || APK_DOWNLOAD_URL;
+  const downloadUrl = APK_DOWNLOAD_URL;
   const openUpdate = async () => {
     setOpening(true);
     setOpenError(null);

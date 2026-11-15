@@ -32,7 +32,10 @@ export const Route = createFileRoute("/_authenticated/notifications")({
   head: () => ({
     meta: [
       { title: "Notifications — VITO Physio" },
-      { name: "description", content: "Your VITO Physio followers, reactions, appointments and care updates." },
+      {
+        name: "description",
+        content: "Your VITO Physio followers, reactions, appointments and care updates.",
+      },
       { property: "og:title", content: "Notifications — VITO Physio" },
       {
         property: "og:description",
@@ -109,9 +112,7 @@ function NotificationsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("notifications")
-        .select(
-          "id,title,body,category,actor_name,actor_avatar_path,path,read_at,created_at",
-        )
+        .select("id,title,body,category,actor_name,actor_avatar_path,path,read_at,created_at")
         .neq("category", "messages")
         .order("created_at", { ascending: false })
         .limit(100);
@@ -171,7 +172,10 @@ function NotificationsPage() {
         .from("notifications")
         .update({ read_at: new Date().toISOString() })
         .eq("id", notification.id);
-      if (error) { toast.error("Could not mark this notification as read."); return; }
+      if (error) {
+        toast.error("Could not mark this notification as read.");
+        return;
+      }
       void queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
       void queryClient.invalidateQueries({ queryKey: ["notification-count", user.id] });
     }
@@ -215,15 +219,27 @@ function NotificationsPage() {
     try {
       const result = await enableDevicePush();
       if (result.status === "registered") {
-        await registerToken({ data: { token: result.token, platform: result.platform, androidActions: result.androidActions } });
+        await registerToken({
+          data: {
+            token: result.token,
+            platform: result.platform,
+            androidActions: result.androidActions,
+          },
+        });
         await togglePreference("push_enabled", true);
         toast.success("This device will now receive VITO Physio notifications.");
         return;
       }
       if (result.status === "open-in-new-tab") {
         toast.info("Open VITO Physio in its own browser tab to allow notifications.");
+      } else if (result.status === "native-plugin-unavailable") {
+        toast.info(
+          "This APK does not include native notifications. Tap Update app, install the latest APK, then try again.",
+        );
       } else if (result.status === "not-configured") {
-        toast.info("Update the Firebase connection and select Include web push to enable phone notifications.");
+        toast.info(
+          "Update the Firebase connection and select Include web push to enable phone notifications.",
+        );
       } else if (result.status === "unsupported") {
         toast.info("This browser does not support notifications.");
       } else {
@@ -250,7 +266,8 @@ function NotificationsPage() {
             </p>
             <h1 className="mt-2 text-3xl font-black tracking-tight">Notifications</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Followers, reactions, comments, appointments and announcements. Chats live in Messages.
+              Followers, reactions, comments, appointments and announcements. Chats live in
+              Messages.
             </p>
           </div>
           {unreadCount > 0 && (
