@@ -29,17 +29,28 @@ export function PhoneNotificationsToggle({ userId }: { userId: string }) {
   async function turnOn() {
     const result = await enableDevicePush();
     if (result.status === "registered") {
-      await register({ data: { token: result.token, platform: result.platform, androidActions: result.androidActions } });
+      await register({
+        data: {
+          token: result.token,
+          platform: result.platform,
+          androidActions: result.androidActions,
+        },
+      });
       setEnabled(true);
       void queryClient.invalidateQueries({ queryKey: ["notification-preferences", userId] });
       toast.success("Notifications are on. You'll get pop-ups on this device.");
       return;
     }
     const messages: Record<typeof result.status, string> = {
-      "open-in-new-tab": "Open VITO Physio in its own tab or the installed app to allow notifications.",
+      "open-in-new-tab":
+        "Open VITO Physio in its own tab or the installed app to allow notifications.",
       "not-configured": "Notifications aren't set up for this version of the app yet.",
-      unsupported: "This browser can't show notifications. On iPhone, add VITO Physio to your Home Screen first.",
-      denied: "Notifications are blocked. Allow them in your phone or browser settings, then try again.",
+      "native-plugin-unavailable":
+        "This APK is missing Android notification support. Install the latest APK, then try again.",
+      unsupported:
+        "This browser can't show notifications. On iPhone, add VITO Physio to your Home Screen first.",
+      denied:
+        "Notifications are blocked. Allow them in your phone or browser settings, then try again.",
     };
     toast.info(messages[result.status]);
   }
