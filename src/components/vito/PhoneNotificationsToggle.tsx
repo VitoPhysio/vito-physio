@@ -9,6 +9,8 @@ import {
   disableDevicePush,
   enableDevicePush,
   forgetDeviceToken,
+  installedAppVersion,
+  openLatestApkDownload,
   storedDeviceToken,
 } from "@/lib/device-push";
 import { registerDeviceToken, unregisterDeviceToken } from "@/lib/notification.functions";
@@ -57,6 +59,14 @@ export function PhoneNotificationsToggle({ userId }: { userId: string }) {
       denied:
         "Notifications are blocked. Allow them in your phone or browser settings, then try again.",
     };
+    if (result.status === "native-plugin-unavailable") {
+      const version = await installedAppVersion();
+      toast.info(
+        `This phone has VITO ${version}, which can't show phone alerts. Download the latest app, install it over this one, then try again.`,
+        { duration: 15000, action: { label: "Download", onClick: () => void openLatestApkDownload() } },
+      );
+      return;
+    }
     toast.info(messages[result.status]);
   }
 

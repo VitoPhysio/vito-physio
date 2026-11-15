@@ -1,3 +1,4 @@
+import { installedAppVersion, openLatestApkDownload } from "@/lib/device-push";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   AtSign,
@@ -233,8 +234,10 @@ function NotificationsPage() {
       if (result.status === "open-in-new-tab") {
         toast.info("Open VITO Physio in its own browser tab to allow notifications.");
       } else if (result.status === "native-plugin-unavailable") {
+        const version = await installedAppVersion();
         toast.info(
-          "This APK does not include native notifications. Tap Update app, install the latest APK, then try again.",
+          `This phone has VITO ${version}, which can't show phone alerts. Download the latest app, install it over this one, then tap Enable again.`,
+          { duration: 15000, action: { label: "Download", onClick: () => void openLatestApkDownload() } },
         );
       } else if (result.status === "not-configured") {
         toast.info(

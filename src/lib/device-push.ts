@@ -55,7 +55,30 @@ export async function enableDevicePush(): Promise<DevicePushResult> {
   return result;
 }
 
+/** Installed Android app version, e.g. "1.8.41 (141)", for clear update messages. */
+export async function installedAppVersion(): Promise<string> {
+  try {
+    const { App } = await import("@capacitor/app");
+    const info = await App.getInfo();
+    return `${info.version} (${info.build})`;
+  } catch {
+    return "an older version";
+  }
+}
+
+/** Opens the latest APK download in the phone's browser (the in-app screen cannot download files). */
+export async function openLatestApkDownload() {
+  const url = "https://vito-physio.vercel.app/api/download-app";
+  try {
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.open({ url });
+  } catch {
+    window.open(url, "_system");
+  }
+}
+
 async function enableNativePush(): Promise<DevicePushResult> {
+  if (!Capacitor.isPluginAvailable("PushNotifications")) return { status: "native-plugin-unavailable" };
   try {
     return await enableNativePushImpl();
   } catch (error) {
