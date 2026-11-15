@@ -20,7 +20,6 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { AppDownloadPrompt } from "@/components/vito/AppDownloadPrompt";
-import { AppUpdatePrompt } from "@/components/vito/AppUpdatePrompt";
 import { applyTheme, getStoredTheme } from "@/lib/theme";
 
 const queryPersister = createSyncStoragePersister({
@@ -193,6 +192,24 @@ function RootComponent() {
         import("@/lib/notification.functions"),
         import("@/integrations/supabase/client"),
       ]);
+      const { storedDeviceToken, androidNotificationActions } = await import("@/lib/device-push");
+      // The phone's token often arrives before sign-in; save it to the account once signed in.
+      let syncedFor = "";
+      supabase.auth.onAuthStateChange((_event, session) => {
+        const saved = storedDeviceToken();
+        if (!session || !saved || saved.platform === "web") return;
+        const key = `${session.user.id}:${saved.token}`;
+        if (key === syncedFor) return;
+        syncedFor = key;
+        void androidNotificationActions()
+          .then((androidActions) =>
+            registerDeviceToken({ data: { token: saved.token, platform: saved.platform, androidActions } }),
+          )
+          .catch((error) => {
+            syncedFor = "";
+            console.error("[push] could not save this phone for alerts", error);
+          });
+      });
       await startNativePush(
         (path) => {
           const [pathname, query = ""] = path.split("?");
@@ -200,7 +217,12 @@ function RootComponent() {
         },
         async (token, platform, androidActions) => {
           const { data } = await supabase.auth.getSession();
-          if (data.session) await registerDeviceToken({ data: { token, platform, androidActions } });
+          if (!data.session) return;
+          syncedFor = `${data.session.user.id}:${token}`;
+          await registerDeviceToken({ data: { token, platform, androidActions } }).catch((error) => {
+            syncedFor = "";
+            console.error("[push] could not save this phone for alerts", error);
+          });
         },
       );
     })().catch(() => undefined);
@@ -252,7 +274,6 @@ function RootComponent() {
         </div>
       )}
       <AppDownloadPrompt />
-      <AppUpdatePrompt />
       <Toaster richColors position="top-center" />
     </PersistQueryClientProvider>
   );

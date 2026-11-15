@@ -58,8 +58,10 @@ export async function enableDevicePush(): Promise<DevicePushResult> {
 async function enableNativePush(): Promise<DevicePushResult> {
   try {
     return await enableNativePushImpl();
-  } catch {
-    return { status: "native-plugin-unavailable" };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/not implemented|not available/i.test(message)) return { status: "native-plugin-unavailable" };
+    throw new Error(`Phone alerts could not start: ${message}`);
   }
 }
 
@@ -79,8 +81,9 @@ async function enableNativePushImpl(): Promise<DevicePushResult> {
       clearTimeout(timer);
       resolve({ status: "registered", token: t.value, platform: currentPlatform() });
     });
-    void PushNotifications.addListener("registrationError", () => {
+    void PushNotifications.addListener("registrationError", (err) => {
       clearTimeout(timer);
+      console.error("[push] Android registration failed", err?.error);
       resolve({ status: "not-configured" });
     });
     void PushNotifications.register();
@@ -137,7 +140,14 @@ export async function startNativePush(
       .then((capable) => onToken(t.value, currentPlatform(), capable))
       .catch(() => undefined);
   });
-  const perm = await PushNotifications.checkPermissions();
+  await PushNotifications.addListener("registrationError", (err) => {
+    console.error("[push] Android registration failed", err?.error);
+  });
+  let perm = await PushNotifications.checkPermissions();
+  // Alerts are on by default: ask once on first launch (Android 13+ shows the system prompt).
+  if (perm.receive === "prompt" || perm.receive === "prompt-with-rationale") {
+    perm = await PushNotifications.requestPermissions().catch(() => perm);
+  }
   // Always refresh when allowed: a reinstall/update wipes saved tokens and invalidates the old one.
   if (perm.receive === "granted") await PushNotifications.register();
   const { App } = await import("@capacitor/app");

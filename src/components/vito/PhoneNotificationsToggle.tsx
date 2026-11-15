@@ -5,6 +5,7 @@ import { Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import {
+  currentPlatform,
   disableDevicePush,
   enableDevicePush,
   forgetDeviceToken,
@@ -22,7 +23,11 @@ export function PhoneNotificationsToggle({ userId }: { userId: string }) {
 
   useEffect(() => {
     const saved = storedDeviceToken();
-    const blocked = typeof Notification !== "undefined" && Notification.permission === "denied";
+    // Android app WebViews report browser permission as denied; only browsers use it.
+    const blocked =
+      currentPlatform() === "web" &&
+      typeof Notification !== "undefined" &&
+      Notification.permission === "denied";
     setEnabled(Boolean(saved) && !blocked);
   }, []);
 
