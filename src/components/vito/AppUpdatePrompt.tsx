@@ -25,6 +25,11 @@ type LatestRelease = {
 
 const DISMISS_PREFIX = "vito-app-update-dismissed:";
 
+function androidExternalIntent(absoluteUrl: string) {
+  const url = new URL(absoluteUrl);
+  return `intent://${url.host}${url.pathname}${url.search}#Intent;scheme=${url.protocol.slice(0, -1)};action=android.intent.action.VIEW;end`;
+}
+
 function isAndroidApp() {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
@@ -102,9 +107,10 @@ export function AppUpdatePrompt() {
     try {
       await Browser.open({ url: absoluteUrl });
     } catch {
-      // Older APKs do not contain the Browser plugin. Let Android's WebView/download
-      // handler take over instead of trapping the user on a dead button.
-      window.location.assign(absoluteUrl);
+      // Older APKs do not contain the Browser plugin. An ordinary WebView navigation
+      // cannot hand an APK to Android's installer, so use Android's external intent
+      // handler while keeping the same Vercel URL and download pathway.
+      window.location.assign(androidExternalIntent(absoluteUrl));
     } finally {
       setOpening(false);
     }
