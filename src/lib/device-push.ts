@@ -5,7 +5,14 @@ import { notificationActionPath, supportsAndroidActions } from "@/lib/notificati
 export type DevicePlatform = "web" | "android" | "ios";
 export type DevicePushResult =
   | { status: "registered"; token: string; platform: DevicePlatform; androidActions?: boolean }
-  | { status: "not-configured" | "unsupported" | "open-in-new-tab" | "denied" };
+  | {
+      status:
+        | "not-configured"
+        | "native-plugin-unavailable"
+        | "unsupported"
+        | "open-in-new-tab"
+        | "denied";
+    };
 
 const TOKEN_KEY = "vito-device-push-token";
 
@@ -14,7 +21,9 @@ export async function androidNotificationActions(): Promise<boolean> {
   try {
     const { App } = await import("@capacitor/app");
     return supportsAndroidActions("android", (await App.getInfo()).build);
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 export function currentPlatform(): DevicePlatform {
@@ -47,6 +56,14 @@ export async function enableDevicePush(): Promise<DevicePushResult> {
 }
 
 async function enableNativePush(): Promise<DevicePushResult> {
+  try {
+    return await enableNativePushImpl();
+  } catch {
+    return { status: "native-plugin-unavailable" };
+  }
+}
+
+async function enableNativePushImpl(): Promise<DevicePushResult> {
   const { PushNotifications } = await import("@capacitor/push-notifications");
   let perm = await PushNotifications.checkPermissions();
   if (perm.receive === "prompt" || perm.receive === "prompt-with-rationale") {
@@ -108,17 +125,25 @@ export async function startNativePush(
   await ensureChannel();
   await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
     const path = action.notification.data?.path;
-    if (typeof path === "string") open(notificationActionPath(path, action.notification.data?.vito_action));
+    if (typeof path === "string")
+      open(notificationActionPath(path, action.notification.data?.vito_action));
   });
   await PushNotifications.addListener("registration", (t) => {
-    localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: t.value, platform: currentPlatform() }));
-    void androidNotificationActions().then((capable) => onToken(t.value, currentPlatform(), capable)).catch(() => undefined);
+    localStorage.setItem(
+      TOKEN_KEY,
+      JSON.stringify({ token: t.value, platform: currentPlatform() }),
+    );
+    void androidNotificationActions()
+      .then((capable) => onToken(t.value, currentPlatform(), capable))
+      .catch(() => undefined);
   });
   const perm = await PushNotifications.checkPermissions();
   // Always refresh when allowed: a reinstall/update wipes saved tokens and invalidates the old one.
   if (perm.receive === "granted") await PushNotifications.register();
   const { App } = await import("@capacitor/app");
   await App.addListener("resume", () => {
-    void PushNotifications.checkPermissions().then((p) => (p.receive === "granted" ? PushNotifications.register() : undefined));
+    void PushNotifications.checkPermissions().then((p) =>
+      p.receive === "granted" ? PushNotifications.register() : undefined,
+    );
   });
 }

@@ -18,6 +18,11 @@ type VersionManifest = {
   releaseNotes?: string;
 };
 
+type LatestRelease = {
+  tag_name?: string;
+  assets?: Array<{ name?: string; browser_download_url?: string }>;
+};
+
 const DISMISS_PREFIX = "vito-app-update-dismissed:";
 
 function isAndroidApp() {
@@ -42,12 +47,20 @@ export function AppUpdatePrompt() {
         ]);
         if (!response.ok) return;
         const manifest = (await response.json()) as VersionManifest;
-        // Newest published APK (set automatically by each GitHub build) wins over the static file.
+        // The published GitHub release is authoritative. The static manifest is only a fallback.
         try {
-          const latest = await fetch("https://api.github.com/repos/VitoPhysio/vito-physio/releases/latest", { cache: "no-store" });
+          const latest = await fetch(
+            "https://api.github.com/repos/VitoPhysio/vito-physio/releases/latest",
+            { cache: "no-store" },
+          );
           if (latest.ok) {
-            const tag = ((await latest.json()) as { tag_name?: string }).tag_name?.replace(/^v/, "");
-            if (tag && (!manifest.version || compareVersions(tag, manifest.version) > 0)) manifest.version = tag;
+            const release = (await latest.json()) as LatestRelease;
+            const tag = release.tag_name?.replace(/^v/, "");
+            const apk = release.assets?.find((asset) => asset.name?.toLowerCase().endsWith(".apk"));
+            if (tag && (!manifest.version || compareVersions(tag, manifest.version) > 0)) {
+              manifest.version = tag;
+            }
+            if (apk?.browser_download_url) manifest.apkUrl = apk.browser_download_url;
           }
         } catch {}
         if (!manifest.version || compareVersions(manifest.version, installedVersion) <= 0) {
@@ -86,7 +99,9 @@ export function AppUpdatePrompt() {
     try {
       await Browser.open({ url: absoluteUrl });
     } catch {
-      setOpenError("The download could not be opened. Please try again.");
+      // Older APKs do not contain the Browser plugin. Let Android's WebView/download
+      // handler take over instead of trapping the user on a dead button.
+      window.location.assign(absoluteUrl);
     } finally {
       setOpening(false);
     }
@@ -120,7 +135,8 @@ export function AppUpdatePrompt() {
         <div className="min-w-0">
           <p className="font-bold leading-tight">A new Vito Physio update is ready</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Version {update.version} is ready. Tap Update app, open the downloaded file, then confirm Install.
+            Version {update.version} is ready. Tap Update app, open the downloaded file, then
+            confirm Install.
           </p>
           {update.releaseNotes && (
             <p className="mt-2 text-xs text-muted-foreground">{update.releaseNotes}</p>
