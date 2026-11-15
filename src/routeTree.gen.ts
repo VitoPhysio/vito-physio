@@ -22,10 +22,12 @@ import { Route as AuthenticatedLinkAccountRouteImport } from './routes/_authenti
 import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticated/messages'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedReferralsRouteImport } from './routes/_authenticated/referrals'
 import { Route as AuthenticatedResearchRouteImport } from './routes/_authenticated/research'
 import { Route as AuthenticatedBlogIndexRouteImport } from './routes/_authenticated/blog/index'
 import { Route as AuthenticatedBlogSlugRouteImport } from './routes/_authenticated/blog/$slug'
 import { Route as AuthenticatedBlogWriteRouteImport } from './routes/_authenticated/blog/write'
+import { Route as AuthenticatedConsentReferralIdRouteImport } from './routes/_authenticated/consent/$referralId'
 import { Route as AuthenticatedMembersMemberIdRouteImport } from './routes/_authenticated/members/$memberId'
 import { Route as AuthenticatedWorkspaceIndexRouteImport } from './routes/_authenticated/workspace/index'
 import { Route as AuthenticatedWorkspaceInstitutionIdRouteImport } from './routes/_authenticated/workspace/$institutionId'
@@ -98,6 +100,11 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedReferralsRoute = AuthenticatedReferralsRouteImport.update({
+  id: '/referrals',
+  path: '/referrals',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedResearchRoute = AuthenticatedResearchRouteImport.update({
   id: '/research',
   path: '/research',
@@ -118,6 +125,12 @@ const AuthenticatedBlogWriteRoute = AuthenticatedBlogWriteRouteImport.update({
   path: '/blog/write',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedConsentReferralIdRoute =
+  AuthenticatedConsentReferralIdRouteImport.update({
+    id: '/consent/$referralId',
+    path: '/consent/$referralId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMembersMemberIdRoute =
   AuthenticatedMembersMemberIdRouteImport.update({
     id: '/members/$memberId',
@@ -162,9 +175,11 @@ export interface FileRoutesByFullPath {
   '/messages': typeof AuthenticatedMessagesRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/referrals': typeof AuthenticatedReferralsRoute
   '/research': typeof AuthenticatedResearchRoute
   '/blog/$slug': typeof AuthenticatedBlogSlugRoute
   '/blog/write': typeof AuthenticatedBlogWriteRoute
+  '/consent/$referralId': typeof AuthenticatedConsentReferralIdRoute
   '/members/$memberId': typeof AuthenticatedMembersMemberIdRoute
   '/workspace/$institutionId': typeof AuthenticatedWorkspaceInstitutionIdRoute
   '/api/public/notification-delivery': typeof ApiPublicNotificationDeliveryRoute
@@ -185,9 +200,11 @@ export interface FileRoutesByTo {
   '/messages': typeof AuthenticatedMessagesRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/referrals': typeof AuthenticatedReferralsRoute
   '/research': typeof AuthenticatedResearchRoute
   '/blog/$slug': typeof AuthenticatedBlogSlugRoute
   '/blog/write': typeof AuthenticatedBlogWriteRoute
+  '/consent/$referralId': typeof AuthenticatedConsentReferralIdRoute
   '/members/$memberId': typeof AuthenticatedMembersMemberIdRoute
   '/workspace/$institutionId': typeof AuthenticatedWorkspaceInstitutionIdRoute
   '/api/public/notification-delivery': typeof ApiPublicNotificationDeliveryRoute
@@ -210,9 +227,11 @@ export interface FileRoutesById {
   '/_authenticated/messages': typeof AuthenticatedMessagesRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/referrals': typeof AuthenticatedReferralsRoute
   '/_authenticated/research': typeof AuthenticatedResearchRoute
   '/_authenticated/blog/$slug': typeof AuthenticatedBlogSlugRoute
   '/_authenticated/blog/write': typeof AuthenticatedBlogWriteRoute
+  '/_authenticated/consent/$referralId': typeof AuthenticatedConsentReferralIdRoute
   '/_authenticated/members/$memberId': typeof AuthenticatedMembersMemberIdRoute
   '/_authenticated/workspace/$institutionId': typeof AuthenticatedWorkspaceInstitutionIdRoute
   '/api/public/notification-delivery': typeof ApiPublicNotificationDeliveryRoute
@@ -235,9 +254,11 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/profile'
+    | '/referrals'
     | '/research'
     | '/blog/$slug'
     | '/blog/write'
+    | '/consent/$referralId'
     | '/members/$memberId'
     | '/workspace/$institutionId'
     | '/api/public/notification-delivery'
@@ -258,9 +279,11 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/profile'
+    | '/referrals'
     | '/research'
     | '/blog/$slug'
     | '/blog/write'
+    | '/consent/$referralId'
     | '/members/$memberId'
     | '/workspace/$institutionId'
     | '/api/public/notification-delivery'
@@ -282,9 +305,11 @@ export interface FileRouteTypes {
     | '/_authenticated/messages'
     | '/_authenticated/notifications'
     | '/_authenticated/profile'
+    | '/_authenticated/referrals'
     | '/_authenticated/research'
     | '/_authenticated/blog/$slug'
     | '/_authenticated/blog/write'
+    | '/_authenticated/consent/$referralId'
     | '/_authenticated/members/$memberId'
     | '/_authenticated/workspace/$institutionId'
     | '/api/public/notification-delivery'
@@ -396,6 +421,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProfileRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/referrals': {
+      id: '/_authenticated/referrals'
+      path: '/referrals'
+      fullPath: '/referrals'
+      preLoaderRoute: typeof AuthenticatedReferralsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/research': {
       id: '/_authenticated/research'
       path: '/research'
@@ -422,6 +454,13 @@ declare module '@tanstack/react-router' {
       path: '/blog/write'
       fullPath: '/blog/write'
       preLoaderRoute: typeof AuthenticatedBlogWriteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/consent/$referralId': {
+      id: '/_authenticated/consent/$referralId'
+      path: '/consent/$referralId'
+      fullPath: '/consent/$referralId'
+      preLoaderRoute: typeof AuthenticatedConsentReferralIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/members/$memberId': {
@@ -470,9 +509,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMessagesRoute: typeof AuthenticatedMessagesRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedReferralsRoute: typeof AuthenticatedReferralsRoute
   AuthenticatedResearchRoute: typeof AuthenticatedResearchRoute
   AuthenticatedBlogSlugRoute: typeof AuthenticatedBlogSlugRoute
   AuthenticatedBlogWriteRoute: typeof AuthenticatedBlogWriteRoute
+  AuthenticatedConsentReferralIdRoute: typeof AuthenticatedConsentReferralIdRoute
   AuthenticatedMembersMemberIdRoute: typeof AuthenticatedMembersMemberIdRoute
   AuthenticatedWorkspaceInstitutionIdRoute: typeof AuthenticatedWorkspaceInstitutionIdRoute
   AuthenticatedBlogIndexRoute: typeof AuthenticatedBlogIndexRoute
@@ -488,9 +529,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMessagesRoute: AuthenticatedMessagesRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedReferralsRoute: AuthenticatedReferralsRoute,
   AuthenticatedResearchRoute: AuthenticatedResearchRoute,
   AuthenticatedBlogSlugRoute: AuthenticatedBlogSlugRoute,
   AuthenticatedBlogWriteRoute: AuthenticatedBlogWriteRoute,
+  AuthenticatedConsentReferralIdRoute: AuthenticatedConsentReferralIdRoute,
   AuthenticatedMembersMemberIdRoute: AuthenticatedMembersMemberIdRoute,
   AuthenticatedWorkspaceInstitutionIdRoute:
     AuthenticatedWorkspaceInstitutionIdRoute,

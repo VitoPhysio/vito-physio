@@ -182,6 +182,13 @@ export function AppHeader({
           icon: ChartColumn,
           to: "/research",
         },
+        {
+          key: "referrals",
+          label: "Referral inbox",
+          description: "Referrals from institutions",
+          icon: ClipboardList,
+          to: "/referrals",
+        },
       );
     if (ADMIN.includes(role))
       nav.push({

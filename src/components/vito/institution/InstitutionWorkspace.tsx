@@ -13,6 +13,8 @@ import { InstitutionForm } from "@/components/vito/institution/InstitutionForm";
 import { AthletesPanel } from "@/components/vito/institution/AthletesPanel";
 import { InjuriesPanel } from "@/components/vito/institution/InjuriesPanel";
 import { TeamsPanel } from "@/components/vito/institution/TeamsPanel";
+import { CommunicationsPanel } from "@/components/vito/institution/CommunicationsPanel";
+import { ProfessionalsPanel } from "@/components/vito/institution/ProfessionalsPanel";
 import { useMyInstitutions } from "@/components/vito/institution/InstitutionEntry";
 import {
   INSTITUTION_ROLE_LABEL,
@@ -45,8 +47,6 @@ const MENUS: WorkspaceMenu[] = [
 ];
 
 const UPCOMING: Partial<Record<WorkspaceSection, string>> = {
-  communications: "Institution messages, announcements and reminders",
-  professionals: "Referrals and consent-based sharing with professionals",
 };
 
 type Overview = {
@@ -147,6 +147,8 @@ export function InstitutionWorkspace({ institutionId, section, athleteId }: { in
         />
       )}
       {section === "teams" && <TeamsPanel school={institutionId} perms={perms} />}
+      {section === "communications" && <CommunicationsPanel school={institutionId} perms={perms} />}
+      {section === "professionals" && <ProfessionalsPanel school={institutionId} perms={perms} />}
       {(section === "injuries" || section === "surveillance" || section === "rehabilitation" || section === "reports") && (
         <InjuriesPanel school={institutionId} schoolName={current.name} perms={perms} mode={section} />
       )}
