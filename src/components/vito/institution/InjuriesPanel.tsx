@@ -32,7 +32,9 @@ export function InjuriesPanel({ school, schoolName, perms, mode }: { school: str
   if (records.isLoading || athletes.isLoading) return <Loading what="injury records" />;
   if (records.error) return <LoadError error={records.error} />;
   const all = records.data ?? [];
-  const s = summarize(list, athletes.data ?? [], now);
+  const teamName = filters.teamId ? teamMap.get(filters.teamId) : undefined;
+  const athletesInView = filters.teamId ? (athletes.data ?? []).filter((a) => a.team_ids.includes(filters.teamId!)) : (athletes.data ?? []);
+  const s = summarize(list, athletesInView, now);
   const follow = needsFollowUp(list, now);
   const rehab = list.filter((r) => isActive(r) && r.rehab_phase);
   const trend = monthlyTrend(list, now);
@@ -43,8 +45,8 @@ export function InjuriesPanel({ school, schoolName, perms, mode }: { school: str
       {mode === "reports" && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-bold">{schoolName} — injury report</h2>
-            <p className="text-xs text-muted-foreground">Generated {now.toLocaleString()} · {list.length} injury records in view</p>
+            <h2 className="text-lg font-bold">{schoolName}{teamName ? ` · ${teamName}` : ""} — {teamName ? "team" : "injury"} report</h2>
+            <p className="text-xs text-muted-foreground">Generated {now.toLocaleString()} · {list.length} injury records · {athletesInView.length} athletes in view{!teamName && teams.length > 0 ? " · choose a team in the filters for a team report" : ""}</p>
           </div>
           <Button onClick={() => window.print()} className="print:hidden"><Printer className="size-4" /> Print or save as PDF</Button>
         </div>
