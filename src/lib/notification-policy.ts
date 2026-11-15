@@ -57,7 +57,22 @@ export function buildFcmMessage(input: {
     return { token: input.token, data, webpush: { headers: { Urgency: "high" } } };
   }
   if (input.platform === "android" && input.token.startsWith(ACTION_TOKEN_PREFIX)) {
-    return { token: input.token.slice(ACTION_TOKEN_PREFIX.length), data: { ...data, vito_actions: "1" }, android: { priority: "high" } };
+    return {
+      token: input.token.slice(ACTION_TOKEN_PREFIX.length),
+      data: { ...data, vito_actions: "1" },
+      notification: { title: input.title, body: input.body },
+      android: {
+        priority: "high",
+        notification: {
+          tag: input.tag,
+          channel_id: "vito-default",
+          default_sound: true,
+          notification_priority: "PRIORITY_HIGH",
+          visibility: "PUBLIC",
+          icon: "ic_notification_brand",
+        },
+      },
+    };
   }
   return {
     token: input.token,
