@@ -67,7 +67,7 @@ describe("app release version comparison", () => {
 describe("automatic Android versions", () => {
   it("numbers every APK build from the build counter so it installs over the last one", () => {
     const wf = readFileSync(".github/workflows/android-apk.yml", "utf8");
-    expect(wf).toContain("VITO_VERSION_CODE: ${{ 100 + github.run_number }}");
+    expect(wf).toContain('echo "VITO_VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"');
     expect(wf).toContain("tag_name: v1.8.${{ github.run_number }}");
   });
 });
