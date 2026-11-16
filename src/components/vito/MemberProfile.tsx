@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { loadMemberProfile, saveMemberProfile } from "@/lib/member-profile.functions";
 import { memberProfileCopy, memberProfileInput } from "@/lib/member-profile";
+import { Link } from "@tanstack/react-router";
 
 export const memberProfileQuery = (id: string) =>
   queryOptions({ queryKey: ["member-profile", id], queryFn: () => loadMemberProfile() });
@@ -80,13 +81,17 @@ export function MemberProfile({ user }: { user: User }) {
           <DialogHeader>
             <DialogTitle>Edit {copy.editorTitle}</DialogTitle>
           </DialogHeader>
-          <EditablePhoto
+          {data.kind === "organisation" && !data.institution ? (
+            <p className="text-sm text-muted-foreground">Administrator approval is required before editing this institution profile.</p>
+          ) : <EditablePhoto
             path={data.profile.avatar_path}
             name={data.profile.full_name}
-            target="profile"
-            targetId={user.id}
+            target={data.institution ? "organisation" : "profile"}
+            targetId={data.institution?.id ?? user.id}
+            label={data.institution ? "Change institution logo" : "Change photo"}
             onUpdated={() => void refresh()}
-          />
+          />}
+          {data.institution && <Button asChild variant="outline"><Link to="/workspace/$institutionId" params={{ institutionId: data.institution.id }} search={{ section: "settings" }}>Institution name and settings</Link></Button>}
           <form
             className="space-y-4"
             onSubmit={async (event) => {
@@ -139,6 +144,7 @@ export function MemberProfile({ user }: { user: User }) {
                     name={key}
                     maxLength={max}
                     defaultValue={value ?? ""}
+                    readOnly={key === "school_name" && data.kind === "organisation"}
                     required={
                       key === "full_name" || (key === "school_name" && data.kind === "organisation")
                     }
@@ -146,7 +152,7 @@ export function MemberProfile({ user }: { user: User }) {
                 </div>
               ))}
             </div>
-            {!copy.showAccountName && (
+            {!copy.showAccountName && data.kind !== "organisation" && (
               <p className="text-xs text-muted-foreground">
                 The account holder’s name is retained for account records; this profile is presented
                 as the institution.
@@ -191,7 +197,7 @@ export function MemberProfile({ user }: { user: User }) {
               <Button type="button" variant="outline" onClick={() => setEditing(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={busy}>
+              <Button type="submit" disabled={busy || (data.kind === "organisation" && !data.institution)}>
                 {busy ? "Saving…" : "Save profile"}
               </Button>
             </div>

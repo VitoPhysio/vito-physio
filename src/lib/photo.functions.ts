@@ -90,10 +90,17 @@ export const updateLinkedPhoto = createServerFn({ method: "POST" })
         .select("id")
         .eq("user_id", context.userId)
         .eq("school_id", data.targetId)
+        .eq("role", "school_admin")
+        .eq("status", "active")
         .limit(1);
       allowed = Boolean(links?.length);
     }
     if (!allowed) throw new Error("You cannot change this photo.");
+    if (data.target === "profile" && isSelf) {
+      const { data: institutions, error: institutionError } = await context.supabase.rpc("my_institutions");
+      if (institutionError) throw new Error("Your institution access could not be checked.");
+      if (institutions?.some((i) => i.role === "school_admin")) throw new Error("Change your institution logo in institution settings instead.");
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let error: { message: string } | null = null;
     if (data.target === "profile") {

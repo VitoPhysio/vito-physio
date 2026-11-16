@@ -3055,6 +3055,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      sync_institution_admin_identity: {
+        Args: { _user: string }
+        Returns: undefined
+      }
       toggle_social_follow: { Args: { _following: string }; Returns: boolean }
       toggle_social_like: { Args: { _post_id: string }; Returns: boolean }
       update_institution_profile: {
