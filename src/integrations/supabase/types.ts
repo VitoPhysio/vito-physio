@@ -2497,6 +2497,10 @@ export type Database = {
           sports: string[]
         }[]
       }
+      ensure_direct_conversation: {
+        Args: { _a: string; _b: string }
+        Returns: string
+      }
       get_member_cards: {
         Args: { _ids: string[] }
         Returns: {
@@ -2616,6 +2620,16 @@ export type Database = {
           sender_name: string
           subject: string
           target: string
+        }[]
+      }
+      institution_contacts: {
+        Args: { _school: string }
+        Returns: {
+          avatar_path: string
+          detail: string
+          full_name: string
+          relation: string
+          user_id: string
         }[]
       }
       institution_create_referral: {
