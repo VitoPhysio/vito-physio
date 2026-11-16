@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PhotoAvatar } from "@/components/vito/Photo";
+import { useServerFn } from "@tanstack/react-start";
+import { removeAthleteRecord } from "@/lib/admin.functions";
 
 /** Pending requests to join an already-registered school, club or academy. Approval links the account or athlete record. */
 export function JoinRequests({ userId }: { userId: string }) {
@@ -39,8 +41,20 @@ export function JoinRequests({ userId }: { userId: string }) {
 }
 
 /** Every registered athlete (self sign-ups included), searchable by name, ID, sport or organisation. */
-export function AthleteRegistry() {
+export function AthleteRegistry({ canDelete = false }: { canDelete?: boolean }) {
   const [q, setQ] = useState("");
+  const qc = useQueryClient();
+  const removeAthlete = useServerFn(removeAthleteRecord);
+  async function deleteAthlete(id: string, name: string) {
+    if (!confirm(`Permanently delete ${name}'s athlete record, injuries, appointments and documents? This cannot be undone.`)) return;
+    try {
+      await removeAthlete({ data: { athleteId: id } });
+      toast.success("Athlete record deleted");
+      qc.invalidateQueries({ queryKey: ["athlete-registry"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    }
+  }
   const list = useQuery({
     queryKey: ["athlete-registry"],
     queryFn: async () => {
@@ -56,7 +70,7 @@ export function AthleteRegistry() {
       <ul className="space-y-2">{rows.map((a) => (
         <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-3 text-sm">
           <span className="flex items-center gap-3"><PhotoAvatar path={a.photo_path} name={`${a.first_name} ${a.surname}`} /><span><b>{a.first_name} {a.surname}</b><br /><span className="text-xs text-muted-foreground">{a.athlete_code} · {a.sport || "Sport not set"} · {a.schools?.name ?? "No school/club"}</span></span></span>
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{a.self_registered ? "Self-registered" : "Added by VITO"}</span>
+          <span className="flex items-center gap-2"><span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{a.self_registered ? "Self-registered" : "Added by VITO"}</span>{canDelete && <Button size="sm" variant="destructive" onClick={() => deleteAthlete(a.id, `${a.first_name} ${a.surname}`)}>Delete</Button>}</span>
         </li>))}
         {!rows.length && <li className="text-sm text-muted-foreground">No athletes found.</li>}
       </ul>
