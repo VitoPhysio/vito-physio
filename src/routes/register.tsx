@@ -12,9 +12,14 @@ import { requestConsultation, listOrganisations } from "@/lib/intake.functions";
 import { PhotoPicker, fileToPhotoPath } from "@/components/vito/Photo";
 import { selectClass } from "@/components/vito/SimpleForm";
 import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
+import { institutionSignupMetadata } from "@/lib/institution-registration";
 
 type Mode = "organisation" | "athlete" | "consult";
 export const Route = createFileRoute("/register")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    institution: typeof search.institution === "string" ? search.institution : "",
+    category: search.category === "club" || search.category === "academy" ? search.category : "school",
+  }),
   head: () => ({
     meta: [
       { title: "Register or request a consult — VITO Physio" },
@@ -35,11 +40,12 @@ export const Route = createFileRoute("/register")({
   component: RegisterPage,
 });
 function RegisterPage() {
+  const search = Route.useSearch();
   const [mode, setMode] = useState<Mode>("organisation");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
-  const [joinId, setJoinId] = useState("");
+  const [joinId, setJoinId] = useState(search.institution);
   const orgs = useQuery({ queryKey: ["org-list"], queryFn: () => listOrganisations() });
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -52,7 +58,7 @@ function RegisterPage() {
     try {
       const file = fd.get("photo") as File | null;
       const photo =
-        mode !== "consult" && file && file.size ? { photo_path: await fileToPhotoPath(file) } : {};
+        mode !== "consult" && !(mode === "organisation" && joinId) && file && file.size ? { photo_path: await fileToPhotoPath(file) } : {};
       if (mode !== "consult") {
         if (get("password") !== get("confirm")) throw new Error("Passwords do not match.");
         const avatar = (photo as { photo_path?: string }).photo_path;
@@ -69,24 +75,13 @@ function RegisterPage() {
                 school_id: get("school_id"),
                 avatar_path: avatar,
               }
-            : joinId
-              ? {
-                  requested_role: get("join_role") === "coach" ? "coach" : "school_admin",
-                  full_name: get("contact_name"),
-                  join_school_id: joinId,
-                  phone: get("phone"),
-                  avatar_path: avatar,
-                }
-              : {
-                  requested_role: "school_admin",
-                  full_name: get("contact_name"),
-                  org_name: get("name"),
-                  org_type: get("school_type"),
-                  org_location: get("location"),
-                  phone: get("phone"),
-                  org_notes: get("notes"),
-                  avatar_path: avatar,
-                };
+            : institutionSignupMetadata({
+                name: joinId ? orgs.data?.find((o) => o.id === joinId)?.name ?? "" : get("name"),
+                type: (joinId ? orgs.data?.find((o) => o.id === joinId)?.school_type : get("school_type")) as "school" | "club" | "academy",
+                institutionId: joinId || undefined,
+                emailAuthorized: fd.has("email_authorized") as true,
+                phone: get("phone"), location: get("location"), notes: get("notes"), photo: avatar,
+              });
         if (
           mode === "organisation" &&
           !joinId &&
@@ -104,7 +99,7 @@ function RegisterPage() {
         if (err) throw err;
         setResult(
           joinId
-            ? `Almost done! Confirm your email using the link sent to ${email}. Your request to join has been sent to the VITO team for approval.`
+            ? `Confirm your email using the link sent to ${email}. The institution's administrator will review your administrator access request.`
             : `Almost done! We sent a confirmation link to ${email}. Click it to activate your account — your VITO ${mode === "athlete" ? "athlete" : "organisation"} ID is created automatically and shown on your dashboard.`,
         );
       } else {
@@ -243,13 +238,8 @@ function RegisterPage() {
                   </select>
                   {joinId && (
                     <div className="mt-2">
-                      <Label htmlFor="join_role">I am joining as</Label>
-                      <select id="join_role" name="join_role" className={`${selectClass} mt-1`}>
-                        <option value="school_admin">Admin</option>
-                        <option value="coach">Coach</option>
-                      </select>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        The VITO team will approve your request before you get access.
+                        Join as an institution administrator. An existing administrator must approve your access. Your profile uses the institution's name and logo.
                       </p>
                     </div>
                   )}
@@ -258,7 +248,7 @@ function RegisterPage() {
               {!(mode === "organisation" && joinId) && (
                 <>
                   <Field
-                    label={mode === "consult" ? "Your name" : "Organisation name"}
+                    label={mode === "consult" ? "Your name" : "Institution name"}
                     name="name"
                     required
                   />
@@ -271,6 +261,7 @@ function RegisterPage() {
                       name={mode === "consult" ? "organisation_type" : "school_type"}
                       className={`${selectClass} mt-1`}
                       required
+                      defaultValue={search.category}
                     >
                       {mode === "consult" && <option value="individual">Individual</option>}
                       <option value="school">School</option>
@@ -319,20 +310,23 @@ function RegisterPage() {
                   You will confirm this email before signing in.
                 </p>
               </div>
+              <Field label={mode === "organisation" ? "Working or institution email" : "Email"} name="email" type="email" required />
               {mode === "organisation" && (
-                <Field label="Your full name" name="contact_name" required />
+                <Label className="flex items-start gap-2 text-sm sm:col-span-2">
+                  <input type="checkbox" name="email_authorized" required className="mt-1" />
+                  I am authorized to represent this institution and use this email. A personal email is acceptable if the institution is aware and agrees.
+                </Label>
               )}
-              <Field label="Email" name="email" type="email" required />
               <div />
               <Field label="Password" name="password" type="password" required />
               <Field label="Confirm password" name="confirm" type="password" required />
             </>
           )}
-          {mode !== "consult" && (
+          {mode !== "consult" && !(mode === "organisation" && joinId) && (
             <div className="sm:col-span-2">
               <PhotoPicker
                 key={mode}
-                label={mode === "athlete" ? "Athlete photo" : "Logo or photo"}
+                label={mode === "athlete" ? "Athlete photo" : "Institution logo or photo"}
               />
             </div>
           )}

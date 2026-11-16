@@ -337,6 +337,14 @@ function SettingsPanel({ institution, perms }: { institution: CurrentInstitution
       {perms.reviewRequests && (
         <div className="rounded-2xl border bg-card p-4 sm:p-6">
           <h2 className="mb-3 font-bold">Membership requests</h2>
+          <Button variant="outline" size="sm" className="mb-3" onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(`${window.location.origin}/register?institution=${id}`);
+              toast.success("Administrator registration link copied. Send it to your colleague.");
+            } catch {
+              toast.error("Could not copy the link. Ask your colleague to open Register and select this institution.");
+            }
+          }}><UserPlus className="mr-2 size-4" /> Invite administrator</Button>
           {requests.isLoading ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : !requests.data?.length ? (
@@ -347,6 +355,7 @@ function SettingsPanel({ institution, perms }: { institution: CurrentInstitution
                 <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-xl border p-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{r.full_name || r.email || "Unnamed account"}</p>
+                    {r.email && <p className="truncate text-xs text-muted-foreground">{r.email}</p>}
                     <p className="text-xs text-muted-foreground">
                       Wants to join as {INSTITUTION_ROLE_LABEL[r.role as InstitutionRole] ?? r.role}
                     </p>

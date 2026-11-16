@@ -226,7 +226,13 @@ function AuthPage() {
                       type="button"
                       size="sm"
                       variant={role === c.value ? "default" : "outline"}
-                      onClick={() => setRole(c.value)}
+                      onClick={() => {
+                        if (c.value.startsWith("school_admin")) {
+                          void navigate({ to: "/register", search: { category: c.value.includes(":club") ? "club" : "school", institution: "" } });
+                          return;
+                        }
+                        setRole(c.value);
+                      }}
                     >
                       {c.label}
                     </Button>

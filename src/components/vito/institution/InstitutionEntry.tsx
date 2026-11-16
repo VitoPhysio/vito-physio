@@ -170,7 +170,7 @@ function JoinOrRegister({ onRegistered, canGoBack }: { onRegistered: (id: string
 function JoinInstitution() {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [role, setRole] = useState<InstitutionRole>("coach");
+  const [role, setRole] = useState<InstitutionRole>("school_admin");
   const queryClient = useQueryClient();
 
   useEffect(() => {

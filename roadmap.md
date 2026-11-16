@@ -1,5 +1,11 @@
 # Roadmap
 
+## Institution administrator registration
+- [ ] Use institution names, logos and authorized working emails in both registration paths.
+- [ ] Correct the reported administrator role and preserve approval-based onboarding of additional admins.
+- [ ] Keep administrator profiles aligned with institution identity; test registration and permissions.
+- [ ] Verify signed-in onboarding. Blocked: external authenticated test session unavailable.
+
 ## Institutional workspace upgrade (brief)
 - [x] Phase 1: workspace entry, institution chooser, join requests, registration, multi-institution switching, institution roles enforced in the database.
 - [ ] Phase 2: athlete directory, profiles, team and coach assignments.

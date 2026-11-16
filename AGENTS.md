@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Rules
+- Institution-admin signup uses the shared registration path and validated institution metadata; membership approval and database identity synchronization derive names/logos from schools, never grant access from editable metadata. Why: keep administrator identity institutional without bypassing approval.
 - Android action-capable tokens are prefixed only after installed build detection and stripped before FCM delivery; legacy APKs retain notification payloads. Why: remotely updated web code must not silence older native apps.
 - Community navigation reserves matching side-rail space on signed-in Home and authenticated community pages; staff workspace paths use the shared isWorkspacePath predicate to omit both navigation and its spacing. Why: avoid covered content and community icons inside clinical/admin workspaces.
 - Staff workspaces share dropdown navigation and case grouping; saved case edits whitelist clinical fields and use the existing signed-in client/RLS with row IDs preserved. Why: keep navigation consistent and prevent edits from relinking records or changing ownership.
