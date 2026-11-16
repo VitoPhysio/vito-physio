@@ -162,12 +162,12 @@ function Dashboard() {
                 </p>
                 <h2 className="mt-1 text-xl font-bold">Send a direct message</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Choose one clinician or Vito admin. Only the sender and selected recipient can see
-                  the message.
+                  Message a colleague, an athlete, an institution or a whole group. Each recipient
+                  gets it as a private chat in Messages and can reply to you there.
                 </p>
               </div>
               <Button asChild variant="outline" size="sm">
-                <Link to="/notifications">Open inbox</Link>
+                <Link to="/messages">Open Messages</Link>
               </Button>
             </div>
             <Compose userId={user.id} staffOnly />

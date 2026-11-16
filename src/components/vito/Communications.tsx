@@ -144,7 +144,7 @@ export function Compose({
       toast.error(error.message);
       return;
     }
-    toast.success("Message sent");
+    toast.success("Message sent — replies will arrive in Messages");
     setBody("");
     qc.invalidateQueries({ queryKey: ["inbox"] });
   }
@@ -228,10 +228,10 @@ export function Compose({
         <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
       </div>
       <div className="space-y-1">
-        <Label>Message ({body.length}/4000)</Label>
+        <Label>Message ({body.length}/3700)</Label>
         <Textarea
           rows={4}
-          maxLength={4000}
+          maxLength={3700}
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />
