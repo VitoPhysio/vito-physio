@@ -8,7 +8,7 @@ describe("institution administrator registration", () => {
   });
   it("joins an existing institution without creating one or replacing its logo", () => {
     const metadata = institutionSignupMetadata({ ...input, institutionId: "e4b27c39-c4fb-4a2d-a0ed-170c556a4473", photo: "personal-photo" });
-    expect(metadata.join_school_id).toBe("e4b27c39-c4fb-4a2d-a0ed-170c556a4473");
+    expect(metadata).toHaveProperty("join_school_id", "e4b27c39-c4fb-4a2d-a0ed-170c556a4473");
     expect(metadata).not.toHaveProperty("org_name");
     expect(metadata).not.toHaveProperty("avatar_path");
     expect(metadata.requested_role).toBe("school_admin");

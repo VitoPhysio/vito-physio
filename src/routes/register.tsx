@@ -17,8 +17,8 @@ import { institutionSignupMetadata } from "@/lib/institution-registration";
 type Mode = "organisation" | "athlete" | "consult";
 export const Route = createFileRoute("/register")({
   validateSearch: (search: Record<string, unknown>) => ({
-    institution: typeof search.institution === "string" ? search.institution : "",
-    category: search.category === "club" || search.category === "academy" ? search.category : "school",
+    institution: typeof search["institution"] === "string" ? search["institution"] : "",
+    category: search["category"] === "club" || search["category"] === "academy" ? search["category"] : "school",
   }),
   head: () => ({
     meta: [

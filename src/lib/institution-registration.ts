@@ -4,7 +4,7 @@ const institutionSignup = z.object({
   name: z.string().trim().min(3).max(160),
   type: z.enum(["school", "club", "academy"]),
   institutionId: z.string().uuid().optional(),
-  emailAuthorized: z.literal(true, { error: "Confirm that the institution authorizes this email." }),
+  emailAuthorized: z.literal(true, { message: "Confirm that the institution authorizes this email." }),
   phone: z.string().trim().max(40),
   location: z.string().trim().max(160),
   notes: z.string().trim().max(1000),
