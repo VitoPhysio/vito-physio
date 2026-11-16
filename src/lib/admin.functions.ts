@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { accountDeletionBlock, athleteRecordDeletionBlock } from "@/lib/account-deletion";
 
 async function adminLevel(supabase: any, userId: string) {
   const [{ data: sup }, { data: vito }] = await Promise.all([
@@ -150,23 +151,79 @@ export const removeAccount = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ userId: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
     const level = await adminLevel(context.supabase, context.userId);
-    if (data.userId === context.userId) throw new Error("You cannot remove your own account.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: r } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", data.userId);
-    const roles = (r ?? []).map((x) => x.role);
-    if (roles.includes("super_admin")) throw new Error("The super admin cannot be removed.");
-    if (roles.includes("vito_admin") && level !== "super")
-      throw new Error("Only the super admin can remove VITO admins.");
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
-    if (error) throw new Error("Account could not be removed.");
+    const admin = supabaseAdmin as any;
+    const { data: r } = await admin.from("user_roles").select("role").eq("user_id", data.userId);
+    const roles = (r ?? []).map((x: { role: string }) => x.role);
+    const blocked = accountDeletionBlock(level, context.userId, data.userId, roles);
+    if (blocked) throw new Error(blocked);
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("full_name, email, account_code")
+      .eq("id", data.userId)
+      .maybeSingle();
+    // The athlete's own self-registered record goes with their account (clinical rows cascade).
+    const { data: own } = await admin
+      .from("athlete_guardians")
+      .select("athlete_id, athletes!inner(self_registered)")
+      .eq("user_id", data.userId)
+      .eq("relationship", "self");
+    const ownAthleteIds = (own ?? [])
+      .filter((g: any) => g.athletes?.self_registered)
+      .map((g: any) => g.athlete_id);
+    // Sent chat messages block auth deletion, so remove them first.
+    const { error: msgError } = await admin.from("messages").delete().eq("sender_id", data.userId);
+    if (msgError) throw new Error("The account's messages could not be removed.");
+    const { error } = await admin.auth.admin.deleteUser(data.userId);
+    if (error && !/not found/i.test(error.message)) {
+      console.error("deleteUser failed", error);
+      throw new Error("Account could not be removed.");
+    }
     await Promise.all([
-      supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId),
-      supabaseAdmin.from("school_users").delete().eq("user_id", data.userId),
-      supabaseAdmin.from("athlete_guardians").delete().eq("user_id", data.userId),
-      supabaseAdmin.from("profiles").delete().eq("id", data.userId),
+      admin.from("user_roles").delete().eq("user_id", data.userId),
+      admin.from("school_users").delete().eq("user_id", data.userId),
+      admin.from("athlete_guardians").delete().eq("user_id", data.userId),
+      admin.from("profiles").delete().eq("id", data.userId),
     ]);
+    if (ownAthleteIds.length) await admin.from("athletes").delete().in("id", ownAthleteIds);
+    await admin.from("sensitive_access_log").insert({
+      actor_id: context.userId,
+      action: "account_deleted",
+      detail: { user_id: data.userId, ...profile, athlete_records_deleted: ownAthleteIds.length },
+    });
+    return { ok: true };
+  });
+
+export const removeAthleteRecord = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ athleteId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const level = await adminLevel(context.supabase, context.userId);
+    const blocked = athleteRecordDeletionBlock(level);
+    if (blocked) throw new Error(blocked);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as any;
+    const { data: athlete } = await admin
+      .from("athletes")
+      .select("athlete_code, first_name, surname")
+      .eq("id", data.athleteId)
+      .maybeSingle();
+    if (!athlete) throw new Error("Athlete record not found.");
+    const { data: docs } = await admin
+      .from("documents")
+      .select("storage_path")
+      .eq("athlete_id", data.athleteId);
+    const paths = (docs ?? []).map((d: { storage_path: string }) => d.storage_path).filter(Boolean);
+    const { error } = await admin.from("athletes").delete().eq("id", data.athleteId);
+    if (error) {
+      console.error("athlete delete failed", error);
+      throw new Error("Athlete record could not be deleted.");
+    }
+    if (paths.length) await admin.storage.from("case-documents").remove(paths);
+    await admin.from("sensitive_access_log").insert({
+      actor_id: context.userId,
+      action: "athlete_record_deleted",
+      detail: { athlete_id: data.athleteId, ...athlete },
+    });
     return { ok: true };
   });

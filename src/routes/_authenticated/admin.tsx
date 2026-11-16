@@ -491,7 +491,7 @@ function AdminPage() {
         {section === "joins" && <JoinRequests userId={data.me} />}
         {section === "delivery" && <DeliveryStatusPanel delivery={delivery} />}
         {section === "email" && <AdminEmailComposer accounts={data.accounts} send={sendEmail} />}
-        {section === "athletes" && <AthleteRegistry />}
+        {section === "athletes" && <AthleteRegistry canDelete={data.level === "super"} />}
         {section === "accounts" && <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-bold">Registered accounts ({data.accounts.length})</h2>
@@ -523,16 +523,16 @@ function AdminPage() {
                   <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">
                     {LABEL[a.role] ?? a.role}
                   </span>
-                  {a.id !== data.me && a.role !== "super_admin" && (
+                  {a.id !== data.me && a.role !== "super_admin" && (data.level === "super" || a.role !== "vito_admin") && (
                     <Button
                       size="sm"
                       variant="destructive"
                       onClick={() =>
-                        confirm(`Remove ${a.email}? This cannot be undone.`) &&
-                        run(() => remove({ data: { userId: a.id } }), "Account removed")
+                        confirm(`Permanently delete ${a.full_name ?? a.email}'s account${a.role === "athlete" ? ", their athlete record and clinical history" : ""}? This cannot be undone.`) &&
+                        run(() => remove({ data: { userId: a.id } }), "Account deleted")
                       }
                     >
-                      Remove
+                      Delete
                     </Button>
                   )}
                 </span>
