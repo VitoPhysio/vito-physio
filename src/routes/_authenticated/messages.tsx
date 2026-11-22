@@ -39,6 +39,7 @@ import { PhotoAvatar } from "@/components/vito/Photo";
 import { Button } from "@/components/ui/button";
 import { ChatPhotoViewer } from "@/components/vito/ChatPhotoViewer";
 import { isAttachmentOnly } from "@/lib/chat-media";
+import { isWorkspaceThread } from "@/lib/workspace-messaging";
 import { notificationActionSearch } from "@/lib/notification-actions";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useMessageGesture } from "@/hooks/use-message-gesture";
@@ -78,7 +79,10 @@ export const Route = createFileRoute("/_authenticated/messages")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  validateSearch: notificationActionSearch,
+  validateSearch: (search: Record<string, unknown>): { conversation?: string; alertAction?: "reply" | "read"; box?: "social" | "workspace" } => ({
+    ...notificationActionSearch(search),
+    ...(search["box"] === "workspace" || search["box"] === "social" ? { box: search["box"] } : {}),
+  }),
   component: MessagesPage,
 });
 
@@ -129,7 +133,7 @@ type Participant = {
 };
 type Conversation = {
   id: string;
-  kind: "direct" | "group";
+  kind: "direct" | "group" | "workspace";
   created_at: string;
   last_message_at: string;
 };
@@ -170,7 +174,8 @@ function MessagesPage() {
   const [chatToDelete, setChatToDelete] = useState<ConversationView | null>(null);
   const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
 
-  const { conversation: linkedConversation, alertAction } = Route.useSearch();
+  const { conversation: linkedConversation, alertAction, box: linkedBox } = Route.useSearch();
+  const [box, setBox] = useState<"social" | "workspace">(linkedBox ?? "social");
   const conversations = useQuery({
     queryKey: ["messages", user.id],
     queryFn: () => loadConversations(user.id),
@@ -205,6 +210,7 @@ function MessagesPage() {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return (conversations.data ?? []).filter((conversation) => {
+      if (isWorkspaceThread(conversation) !== (box === "workspace")) return false;
       const matchesFilter =
         filter === "all" ||
         (filter === "unread" ? conversation.unread > 0 : conversation.unread === 0);
@@ -215,7 +221,17 @@ function MessagesPage() {
           .includes(needle);
       return matchesFilter && matchesQuery;
     });
-  }, [conversations.data, filter, query]);
+  }, [conversations.data, filter, query, box]);
+  const unreadByBox = useMemo(() => {
+    const out = { social: 0, workspace: 0 };
+    for (const c of conversations.data ?? []) out[isWorkspaceThread(c) ? "workspace" : "social"] += c.unread;
+    return out;
+  }, [conversations.data]);
+  useEffect(() => {
+    const linked = linkedConversation ? conversations.data?.find((c) => c.id === linkedConversation) : undefined;
+    if (linked) setBox(isWorkspaceThread(linked) ? "workspace" : "social");
+  }, [linkedConversation, conversations.data]);
+
 
   const selected =
     (conversations.data ?? []).find((conversation) => conversation.id === selectedId) ?? null;
@@ -229,13 +245,13 @@ function MessagesPage() {
         if (alertAction === "read") {
           setSelectedId(null);
           toast.success("Conversation marked as read.");
-          void navigate({ to: "/messages", search: {}, replace: true });
+          void navigate({ to: "/messages", search: { box }, replace: true });
         }
       } else if (alertAction === "read") {
         toast.error("Could not mark this conversation as read. Please try again.");
       }
     });
-  }, [linkedConversation, alertAction, Boolean(conversations.data), queryClient, user.id, navigate]);
+  }, [linkedConversation, alertAction, Boolean(conversations.data), queryClient, user.id, navigate, box]);
 
   // New messages arriving in the conversation you're looking at are read immediately,
   // so the Messages count stays accurate and no device push is sent for them.
@@ -271,7 +287,7 @@ function MessagesPage() {
 
   async function startConversation(member: MessagingUser) {
     setStartingConversation(true);
-    const { data: conversationId, error } = await supabase.rpc("create_direct_conversation", {
+    const { data: conversationId, error } = await supabase.rpc(box === "workspace" ? "create_workspace_conversation" : "create_direct_conversation", {
       _other_user: member.id,
     });
     setStartingConversation(false);
@@ -409,6 +425,22 @@ function MessagesPage() {
                 className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
               />
             </label>
+            <div role="tablist" aria-label="Message type" className="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 text-sm font-semibold">
+              {(["social", "workspace"] as const).map((value) => (
+                <Button
+                  key={value}
+                  variant="ghost"
+                  type="button"
+                  role="tab"
+                  aria-selected={box === value}
+                  onClick={() => setBox(value)}
+                  className={`flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 transition ${box === value ? "bg-card text-primary shadow-sm" : "text-muted-foreground"}`}
+                >
+                  {value === "social" ? "Social" : "Workspace"}
+                  {unreadByBox[value] > 0 && <span className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground">{unreadByBox[value]}</span>}
+                </Button>
+              ))}
+            </div>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {conversations.isLoading ? (

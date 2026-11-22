@@ -433,6 +433,7 @@ export type Database = {
           preferred_date: string | null
           requester_id: string
           response: string | null
+          school_id: string | null
           status: string
           updated_at: string
         }
@@ -447,6 +448,7 @@ export type Database = {
           preferred_date?: string | null
           requester_id: string
           response?: string | null
+          school_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -461,6 +463,7 @@ export type Database = {
           preferred_date?: string | null
           requester_id?: string
           response?: string | null
+          school_id?: string | null
           status?: string
           updated_at?: string
         }
@@ -477,6 +480,13 @@ export type Database = {
             columns: ["athlete_id"]
             isOneToOne: false
             referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_requests_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
             referencedColumns: ["id"]
           },
         ]
@@ -2477,6 +2487,10 @@ export type Database = {
         Args: { _body?: string; _media_path?: string; _parent_post_id?: string }
         Returns: string
       }
+      create_workspace_conversation: {
+        Args: { _other_user: string }
+        Returns: string
+      }
       delete_message_for_everyone: {
         Args: { _message_id: string }
         Returns: undefined
@@ -2498,6 +2512,10 @@ export type Database = {
         }[]
       }
       ensure_direct_conversation: {
+        Args: { _a: string; _b: string }
+        Returns: string
+      }
+      ensure_workspace_conversation: {
         Args: { _a: string; _b: string }
         Returns: string
       }
@@ -2762,6 +2780,10 @@ export type Database = {
           _severity: string
         }
         Returns: string
+      }
+      institution_respond_care_request: {
+        Args: { _id: string; _response: string; _status: string }
+        Returns: undefined
       }
       institution_role: {
         Args: { _school: string; _user: string }

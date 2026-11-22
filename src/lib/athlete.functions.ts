@@ -1,3 +1,4 @@
+import { resolveCareTarget } from '@/lib/care-requests';
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -60,10 +61,17 @@ export const contactClinician = createServerFn({ method: 'POST' })
     kind: z.enum(['message', 'appointment', 'consultation', 'follow_up']),
     subject: z.string().trim().max(160).optional(),
     body: z.string().trim().min(2).max(4000),
+    target: z.enum(['clinic', 'institution']).default('clinic'),
   }).parse(input))
   .handler(async ({ data, context }) => {
     if (data.athlete_id && !(await linkedAthleteIds(context)).includes(data.athlete_id)) throw new Error('This athlete is not linked to your account.');
-    if (data.recipient_id) {
+    let schoolId: string | null = null;
+    if (data.target === 'institution') {
+      if (!data.athlete_id) throw new Error('Choose your athlete record to message your institution.');
+      const { data: athlete } = await context.supabase.from('athletes').select('school_id').eq('id', data.athlete_id).maybeSingle();
+      schoolId = resolveCareTarget('institution', athlete?.school_id).school_id;
+    }
+    if (data.recipient_id && !schoolId) {
       const { data: staff } = await context.supabase.rpc('is_vito_staff', { _user_id: data.recipient_id });
       if (!staff) throw new Error('Messages can only be sent to the VITO clinical team.');
     }
@@ -72,16 +80,18 @@ export const contactClinician = createServerFn({ method: 'POST' })
     const { supabaseAdmin } = await import('@/integrations/supabase/client.server');
     const { error } = await supabaseAdmin.from('communications').insert({
       sender_id: context.userId,
-      recipient_id: data.recipient_id ?? null,
+      recipient_id: schoolId ? null : (data.recipient_id ?? null),
       athlete_id: data.athlete_id ?? null,
-      audience: data.recipient_id ? null : 'clinicians',
+      school_id: schoolId,
+      audience: schoolId ? 'institution' : data.recipient_id ? null : 'clinicians',
       subject,
       body: data.body,
     });
     if (error) throw new Error('Your message could not be sent.');
     // Appointment / consultation / follow-up requests also land in the staff request queue.
     if (data.kind !== 'message' && data.athlete_id) {
-      await context.supabase.from('care_requests').insert({ athlete_id: data.athlete_id, requester_id: context.userId, kind: data.kind, message: data.body });
+      const { error: requestError } = await context.supabase.from('care_requests').insert({ athlete_id: data.athlete_id, requester_id: context.userId, kind: data.kind, message: data.body, school_id: schoolId });
+      if (requestError) throw new Error('Your message was sent, but the request could not be added to the queue.');
     }
     return { ok: true };
   });

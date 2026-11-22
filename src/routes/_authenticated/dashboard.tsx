@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { PhotoAvatar } from "@/components/vito/Photo";
-import { Compose } from "@/components/vito/Communications";
+import { Compose, Inbox } from "@/components/vito/Communications";
 import { AthletePortal } from "@/components/athlete/Portal";
 import { CareRequests } from "@/components/vito/CareRequests";
 import logo from "@/assets/vito-logo.png";
@@ -140,7 +140,7 @@ function Dashboard() {
       <main className="mx-auto max-w-5xl space-y-8 px-5 py-8">
         <WorkspaceMenus value={section} onSelect={setSection} menus={[
           { label: "Overview", items: [{ label: "Summary", value: "overview" }, { label: "Caseload", value: "cases" }] },
-          { label: "Care & communication", items: [{ label: "Athlete requests", value: "requests" }, { label: "Staff messages", value: "messages" }] },
+          { label: "Care & communication", items: [{ label: "Athlete requests", value: "requests" }, { label: "Workspace messages", value: "messages" }] },
           ...(isAdmin ? [{ label: "Organisation", items: [{ label: "Partners", value: "partners" }, { label: "Accounts & approvals", value: "accounts" }] }] : []),
         ]} />
         {(section === "overview" || section === "cases") && data.staff && (
@@ -160,16 +160,16 @@ function Dashboard() {
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
                   Staff communications
                 </p>
-                <h2 className="mt-1 text-xl font-bold">Send a direct message</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Message a colleague, an athlete, an institution or a whole group. Each recipient
-                  gets it as a private chat in Messages and can reply to you there.
-                </p>
+                <h2 className="mt-1 text-xl font-bold">Workspace messages</h2>
+
               </div>
               <Button asChild variant="outline" size="sm">
-                <Link to="/messages">Open Messages</Link>
+                <Link to="/messages" search={{ box: "workspace" }}>Open Workspace inbox</Link>
               </Button>
             </div>
+            <h3 className="mb-2 font-semibold">Received messages & replies</h3>
+            <Inbox userId={user.id} />
+            <h3 className="mb-2 mt-6 font-semibold">New message</h3>
             <Compose userId={user.id} staffOnly />
           </section>
         )}

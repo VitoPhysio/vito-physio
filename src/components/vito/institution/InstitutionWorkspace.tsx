@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, AlertTriangle, ShieldCheck, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { AthletesPanel } from "@/components/vito/institution/AthletesPanel";
 import { InjuriesPanel } from "@/components/vito/institution/InjuriesPanel";
 import { TeamsPanel } from "@/components/vito/institution/TeamsPanel";
 import { CommunicationsPanel } from "@/components/vito/institution/CommunicationsPanel";
+import { CareRequests } from "@/components/vito/CareRequests";
 import { ProfessionalsPanel } from "@/components/vito/institution/ProfessionalsPanel";
 import { useMyInstitutions } from "@/components/vito/institution/InstitutionEntry";
 import {
@@ -39,6 +40,7 @@ const MENUS: WorkspaceMenu[] = [
   {
     label: "Care & communication",
     items: [
+      { label: "Athlete requests", value: "requests" },
       { label: "Communications", value: "communications" },
       { label: "Connect to professionals", value: "professionals" },
     ],
@@ -62,6 +64,7 @@ type Overview = {
 export function InstitutionWorkspace({ institutionId, section, athleteId }: { institutionId: string; section: WorkspaceSection; athleteId?: string | undefined }) {
   const { data: institutions, isLoading } = useMyInstitutions();
   const navigate = useNavigate();
+  const viewerId = useRouteContext({ from: "/_authenticated" }).user.id;
   const current = institutions?.find((i) => i.id === institutionId);
 
   useEffect(() => {
@@ -147,6 +150,15 @@ export function InstitutionWorkspace({ institutionId, section, athleteId }: { in
         />
       )}
       {section === "teams" && <TeamsPanel school={institutionId} perms={perms} />}
+      {section === "requests" && (
+        <section className="space-y-3 rounded-2xl border bg-card p-4 shadow-sm">
+          <div>
+            <h2 className="text-lg font-bold">Athlete requests</h2>
+            <p className="text-sm text-muted-foreground">Appointment, consultation and follow-up requests your athletes sent to {current.name}. Answers go to the athlete's Workspace inbox.</p>
+          </div>
+          <CareRequests userId={viewerId} mode={{ as: "institution", school: institutionId }} />
+        </section>
+      )}
       {section === "communications" && <CommunicationsPanel school={institutionId} perms={perms} />}
       {section === "professionals" && <ProfessionalsPanel school={institutionId} perms={perms} />}
       {(section === "injuries" || section === "surveillance" || section === "rehabilitation" || section === "reports") && (

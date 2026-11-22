@@ -76,6 +76,7 @@ export const WORKSPACE_SECTIONS = [
   "surveillance",
   "rehabilitation",
   "communications",
+  "requests",
   "professionals",
   "reports",
   "settings",

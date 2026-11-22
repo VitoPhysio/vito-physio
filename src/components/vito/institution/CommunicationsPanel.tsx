@@ -133,16 +133,16 @@ function ContactsPanel({ school }: { school: string }) {
 
   async function openChat(userId: string) {
     setOpening(userId);
-    const { data, error } = await supabase.rpc("create_direct_conversation", { _other_user: userId });
+    const { data, error } = await supabase.rpc("create_workspace_conversation", { _other_user: userId });
     setOpening(null);
     if (error || !data) return void toast.error(error?.message ?? "Could not open the chat");
-    void navigate({ to: "/messages", search: { conversation: data } });
+    void navigate({ to: "/messages", search: { conversation: data, box: "workspace" } });
   }
 
   return (
-    <Panel title="Chat directly" action={<Link to="/messages" className="text-sm font-semibold text-primary">Open Messages</Link>}>
+    <Panel title="Chat directly" action={<Link to="/messages" search={{ box: "workspace" }} className="text-sm font-semibold text-primary">Open Workspace inbox</Link>}>
       <p className="mb-3 text-sm text-muted-foreground">
-        Start a private two-way chat with VITO administration, clinicians, your colleagues, athletes or guardians. Replies arrive in Messages.
+        Start a private two-way chat with VITO administration, clinicians, your colleagues, athletes or guardians. Replies arrive in the Workspace inbox in Messages, kept apart from personal chats.
       </p>
       <div className="mb-3 flex flex-wrap gap-2">
         <Input className="h-9 max-w-xs" placeholder="Search people" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search people" />

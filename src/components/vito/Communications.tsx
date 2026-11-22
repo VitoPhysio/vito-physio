@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,62 +8,72 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { selectClass } from "./SimpleForm";
 
+import { Link } from "@tanstack/react-router";
+import { workspaceSenderName } from "@/lib/workspace-messaging";
+
 type Target = "person" | "athlete" | "school" | "group";
 
 export function Inbox({ userId }: { userId: string }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ["inbox", userId],
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ["messages", userId, "workspace-summary"],
     queryFn: async () => {
-      const { data: msgs, error } = await supabase
-        .from("communications")
-        .select(
-          "id, sender_id, subject, body, audience, created_at, athletes(athlete_code, first_name, surname), schools(name)",
-        )
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      const ids = [...new Set((msgs ?? []).map((m) => m.sender_id))];
-      const { data: names } = ids.length
-        ? await supabase.rpc("get_sender_names", { _ids: ids })
-        : { data: [] };
+      const { data: memberships, error: membershipError } = await supabase
+        .from("conversation_participants").select("conversation_id,last_read_at").eq("user_id", userId);
+      if (membershipError) throw membershipError;
+      const ids = (memberships ?? []).map((m) => m.conversation_id);
+      if (!ids.length) return [];
+      const { data: threads, error: threadError } = await supabase.from("conversations")
+        .select("id,last_message_at").eq("kind", "workspace").in("id", ids)
+        .order("last_message_at", { ascending: false }).limit(10);
+      if (threadError) throw threadError;
+      if (!threads?.length) return [];
+      const summaries = await Promise.all(threads.map(async (thread) => {
+        const [messageResult, participantResult] = await Promise.all([
+          supabase.from("messages").select("sender_id,body,created_at,deleted_at").eq("conversation_id", thread.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+          supabase.from("conversation_participants").select("user_id").eq("conversation_id", thread.id).neq("user_id", userId),
+        ]);
+        if (messageResult.error) throw messageResult.error;
+        if (participantResult.error) throw participantResult.error;
+        return { ...thread, message: messageResult.data, others: (participantResult.data ?? []).map((x) => x.user_id) };
+      }));
+      const people = [...new Set(summaries.flatMap((s) => [...s.others, ...(s.message ? [s.message.sender_id] : [])]))];
+      const { data: names, error: nameError } = await supabase.rpc("get_sender_names", { _ids: people });
+      if (nameError) throw nameError;
       const map = new Map((names ?? []).map((n) => [n.id, n]));
-      return (msgs ?? []).map((m) => {
-        const n = map.get(m.sender_id);
+      return summaries.map((s) => {
+        const sender = s.message ? map.get(s.message.sender_id) : undefined;
+        const lastRead = memberships?.find((m) => m.conversation_id === s.id)?.last_read_at;
         return {
-          ...m,
-          sender: n?.is_admin ? "VITO administration (admin)" : (n?.full_name ?? "VITO clinician"),
-          mine: m.sender_id === userId,
+          ...s,
+          name: s.others.map((id) => { const n = map.get(id); return workspaceSenderName(n?.full_name, n?.is_admin ?? false); }).join(", ") || "Workspace conversation",
+          sender: s.message?.sender_id === userId ? "You" : workspaceSenderName(sender?.full_name, sender?.is_admin ?? false),
+          unread: Boolean(s.message && s.message.sender_id !== userId && (!lastRead || s.message.created_at > lastRead)),
         };
       });
     },
+    staleTime: 5000,
   });
-
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading messages…</p>;
-  if (!data?.length) return <p className="text-sm text-muted-foreground">No messages yet.</p>;
-  return (
-    <ul className="space-y-3">
-      {data.map((m) => (
-        <li key={m.id} className="rounded-xl border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span className="font-semibold text-primary">{m.mine ? "You (sent)" : m.sender}</span>
-            <span>{new Date(m.created_at).toLocaleString()}</span>
-          </div>
-          {(m.audience || m.athletes || m.schools) && (
-            <p className="mt-1 text-xs text-accent">
-              To:{" "}
-              {m.audience
-                ? `All ${m.audience}`
-                : m.athletes
-                  ? `${m.athletes.first_name} ${m.athletes.surname} (${m.athletes.athlete_code})`
-                  : m.schools?.name}
-            </p>
-          )}
-          {m.subject && <p className="mt-2 font-semibold text-foreground">{m.subject}</p>}
-          <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{m.body}</p>
-        </li>
-      ))}
-    </ul>
-  );
+  useEffect(() => {
+    const channel = supabase.channel(`workspace-summary-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+        void qc.invalidateQueries({ queryKey: ["messages", userId] });
+      }).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [userId, qc]);
+  if (query.isLoading) return <p className="text-sm text-muted-foreground">Loading workspace messages…</p>;
+  if (query.error) return <div role="alert"><p className="text-sm text-destructive">Workspace messages could not be loaded.</p><Button size="sm" variant="outline" onClick={() => void query.refetch()}>Retry</Button></div>;
+  if (!query.data?.length) return <p className="text-sm text-muted-foreground">No workspace conversations yet.</p>;
+  return <ul className="divide-y">
+    {query.data.map((thread) => <li key={thread.id} className="flex min-w-0 flex-wrap items-center gap-3 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="break-words text-sm font-semibold">{thread.name}{thread.unread && <span className="ml-2 text-xs text-primary">New</span>}</p>
+        <p className="truncate text-sm text-muted-foreground">{thread.message ? `${thread.sender}: ${thread.message.deleted_at ? "Message deleted" : thread.message.body}` : "No messages yet"}</p>
+        <p className="text-xs text-muted-foreground">{new Date(thread.last_message_at).toLocaleString()}</p>
+      </div>
+      <Button asChild size="sm" variant="outline"><Link to="/messages" search={{ conversation: thread.id, box: "workspace" }}>Open & reply</Link></Button>
+    </li>)}
+  </ul>;
 }
 
 export function Compose({
@@ -144,9 +154,9 @@ export function Compose({
       toast.error(error.message);
       return;
     }
-    toast.success("Message sent — replies will arrive in Messages");
+    toast.success("Message sent — replies will arrive in your Workspace inbox");
     setBody("");
-    qc.invalidateQueries({ queryKey: ["inbox"] });
+    qc.invalidateQueries({ queryKey: ["messages", userId] });
   }
 
   const tabs: { v: Target; l: string }[] = [

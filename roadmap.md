@@ -8,14 +8,22 @@
 
 ## Institutional workspace upgrade (brief)
 - [x] Phase 1: workspace entry, institution chooser, join requests, registration, multi-institution switching, institution roles enforced in the database.
-- [ ] Phase 2: athlete directory, profiles, team and coach assignments.
-- [ ] Phase 3: injury management, statistics, surveillance, pattern detection, prevention guidance.
-- [ ] Phase 4: institutional messaging, announcements, targeted notifications.
-- [ ] Phase 5: professional discovery, referrals, consent-based sharing.
-- [ ] Phase 6: institutional, athlete, team and surveillance reports with PDF/print.
+- [x] Phase 2: athlete directory, profiles, team and coach assignments (PR #101).
+- [x] Phase 3: injury management, statistics, surveillance, pattern detection, prevention guidance (PR #101).
+- [x] Phase 4: messaging screen (PR #112).
+- [x] Phase 5: referral, consent and professional inbox screens (PR #112).
+- [x] Phase 6: printable institution/surveillance report and per-team report (PR #112).
+- [x] Institution Communications: fix sent-message history; deliver institution, VITO staff and clinician messages into two-way chats; add direct chat contacts.
+- [x] Athlete alignment: athletes send requests/messages to VITO clinicians or their institution; staff and institutions answer from their dashboards; answers reach athletes.
+- [x] Keep workspace interactions (requests, institution/clinical messages) in a separate Workspace inbox, distinct from social chats.
+- [x] Add replyable Workspace message lists to athlete Requests and staff dashboards, with actual participant names.
+- [x] Upload the combined athlete workspace files to GitHub main without replacing unrelated work; all 118 tests pass.
+- [x] Rebuild the athlete workspace: status hero, quick actions, Overview/Recovery/Schedule/Requests/Records tabs.
+- [ ] Verify two-way chats with real institution, staff and athlete accounts. Blocked: no signed-in test session available here.
+- [ ] Phase 7: verify all workspace flows with real admin, coach, guardian and professional accounts. Blocked: no signed-in test session available here.
 
 - [x] Add expandable branded Android alerts with Reply and Mark as read actions, keeping older APK delivery intact.
-- [x] Test notification action routing and deployment lockfile compatibility (113 tests pass; pnpm 10 frozen check passes).
+- [x] Test notification action routing and deployment lockfile compatibility (previous GitHub checks).
 - [ ] Verify alerts on a physical phone. Blocked: new APK installation and signed-in Android device unavailable here.
 
 - [x] Fit shared message screens to phone widths with shrinkable columns, names and message content.
@@ -55,5 +63,3 @@
 - [x] Provide honest empty states for community features awaiting integration.
 - [x] Record MVP, future phases and acceptance criteria.- [x] Registration: email+password sign-up, choose existing school/club/academy, athletes searchable on admin
 - [x] Remove clinician-entered athlete number; only generated athlete ID
-- [x] Institution Communications: fix sent-message history; deliver institution, VITO staff and clinician messages into two-way chats; add direct chat contacts.
-- [ ] Verify two-way chats with real institution, staff and athlete accounts. Blocked: no signed-in test session available here.

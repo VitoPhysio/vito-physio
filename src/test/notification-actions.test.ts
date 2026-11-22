@@ -25,18 +25,8 @@ describe("Android alert actions", () => {
     const alert = buildFcmMessage({ token: `${ACTION_TOKEN_PREFIX}real-token`, platform: "android", title: "Coach", body: "Training", path: "/messages?conversation=abc", tag: "abc" });
     expect(alert.token).toBe("real-token");
     expect(alert.data).toMatchObject({ vito_actions: "1", path: "/messages?conversation=abc" });
-    expect(alert).toHaveProperty("notification", { title: "Coach", body: "Training" });
-    expect(alert).toHaveProperty("android", {
-      priority: "high",
-      notification: {
-        tag: "abc",
-        channel_id: "vito-default",
-        default_sound: true,
-        notification_priority: "PRIORITY_HIGH",
-        visibility: "PUBLIC",
-        icon: "ic_notification_brand",
-      },
-    });
+    expect(alert).not.toHaveProperty("notification");
+    expect(alert).toHaveProperty("android", { priority: "high" });
   });
   it("keeps ordinary system notifications working for older APKs", () => {
     const alert = buildFcmMessage({ token: "old-token", platform: "android", title: "Coach", body: "Training", path: "/messages?conversation=abc", tag: "abc" });

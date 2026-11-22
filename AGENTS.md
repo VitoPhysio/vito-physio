@@ -28,4 +28,6 @@
 - Unavailable community features render honest empty states without querying undeployed tables. Why: avoid broken schemas and accidental clinical-directory exposure.
 - Institution workspace (/workspace) scopes every view to one selected institution in the URL; institution roles live in school_users.role/status, and membership, registration, approvals and counts go through institution-checking SECURITY DEFINER functions. Why: one account can hold different roles across institutions without mixing data or granting global roles.
 - Native push tokens are saved to the signed-in account on every auth change and app launch; Android alerts ask permission on first launch; no in-app APK update prompt (web content loads live from Vercel). Why: tokens arriving before sign-in were silently dropped.
-- Every communications row is mirrored into the recipients' direct chats by a database trigger, and the institution workspace opens chats through institution_contacts. Why: one Messages inbox lets institutions, VITO staff, clinicians, athletes and guardians reply to each other.
+- Every communications row and care-request response is delivered into participant-scoped workspace conversations; dashboard inbox summaries read those threads, while personal direct/group chats stay social. Why: clinical and institution interactions remain separate and replyable.
+
+- Athlete care screens reuse the shared care-request destination rules and clinical data, with their own tabbed presentation. Why: modernize access without duplicating records or staff workflows.

@@ -76,7 +76,7 @@ export function useHealth(userId: string, enabled = true) {
       const { data: links, error } = await supabase
         .from("athlete_guardians")
         .select(
-          "athlete_id, relationship, athletes(id, first_name, surname, athlete_code, sport, photo_path, school_id)",
+          "athlete_id, relationship, athletes(id, first_name, surname, athlete_code, sport, photo_path, school_id, schools(name))",
         )
         .eq("user_id", userId);
       if (error) throw error;
