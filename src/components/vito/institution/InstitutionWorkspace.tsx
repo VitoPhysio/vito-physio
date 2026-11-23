@@ -10,6 +10,7 @@ import { PhotoAvatar } from "@/components/vito/Photo";
 import { VitoLoadingMark } from "@/components/vito/VitoBrandLockup";
 import { WorkspaceMenus, type WorkspaceMenu } from "@/components/vito/WorkspaceMenus";
 import { InstitutionForm } from "@/components/vito/institution/InstitutionForm";
+import { InstitutionWorkspaceHeader } from "@/components/vito/institution/InstitutionWorkspaceHeader";
 import { AthletesPanel } from "@/components/vito/institution/AthletesPanel";
 import { InjuriesPanel } from "@/components/vito/institution/InjuriesPanel";
 import { TeamsPanel } from "@/components/vito/institution/TeamsPanel";
@@ -19,7 +20,6 @@ import { ProfessionalsPanel } from "@/components/vito/institution/ProfessionalsP
 import { useMyInstitutions } from "@/components/vito/institution/InstitutionEntry";
 import {
   INSTITUTION_ROLE_LABEL,
-  INSTITUTION_TYPE_LABEL,
   LAST_INSTITUTION_KEY,
   institutionPermissions,
   type InstitutionRole,
@@ -38,7 +38,7 @@ const MENUS: WorkspaceMenu[] = [
     ],
   },
   {
-    label: "Care & communication",
+    label: "Care & messages",
     items: [
       { label: "Athlete requests", value: "requests" },
       { label: "Communications", value: "communications" },
@@ -99,45 +99,16 @@ export function InstitutionWorkspace({ institutionId, section, athleteId }: { in
 
   return (
     <main className="mx-auto max-w-6xl space-y-5 px-4 py-6">
-      <header className="flex flex-wrap items-center gap-3 rounded-2xl border bg-card p-4 shadow-sm">
-        <PhotoAvatar path={current.logo_path} name={current.name} className="size-12" />
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-black tracking-tight">{current.name}</h1>
-          <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            {INSTITUTION_TYPE_LABEL[current.school_type] ?? current.school_type}
-            {current.district || current.location ? ` · ${current.district || current.location}` : ""}
-            <Badge>{INSTITUTION_ROLE_LABEL[current.role as InstitutionRole] ?? current.role}</Badge>
-            {current.verification_status === "verified" ? (
-              <Badge variant="secondary" className="gap-1">
-                <ShieldCheck className="size-3" /> Verified
-              </Badge>
-            ) : (
-              <Badge variant="outline">Verification pending</Badge>
-            )}
-          </p>
-        </div>
-        <label className="flex items-center gap-2 text-sm">
-          <span className="sr-only sm:not-sr-only sm:text-muted-foreground">Institution</span>
-          <select
-            aria-label="Switch institution"
-            value={institutionId}
-            onChange={(e) => {
-              if (e.target.value === "__add") return void navigate({ to: "/workspace", search: { add: true } });
-              void navigate({ to: "/workspace/$institutionId", params: { institutionId: e.target.value } });
-            }}
-            className="h-9 max-w-[16rem] rounded-md border border-input bg-background px-3 text-sm"
-          >
-            {institutions?.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.name}
-              </option>
-            ))}
-            <option value="__add">+ Join or register another</option>
-          </select>
-        </label>
-      </header>
+      <InstitutionWorkspaceHeader
+        institution={current}
+        institutions={institutions ?? []}
+        onSwitch={(id) => void navigate({ to: "/workspace/$institutionId", params: { institutionId: id } })}
+        onAdd={() => void navigate({ to: "/workspace", search: { add: true } })}
+      />
 
-      <WorkspaceMenus menus={MENUS} value={section} onSelect={setSection} />
+      <div className="[&_nav]:grid [&_nav]:grid-cols-2 sm:[&_nav]:flex [&_button]:h-auto [&_button]:min-h-10 [&_button]:min-w-0 [&_button]:justify-between [&_button]:whitespace-normal [&_button]:text-left [&_svg]:shrink-0">
+        <WorkspaceMenus menus={MENUS} value={section} onSelect={setSection} />
+      </div>
 
       {section === "overview" && <OverviewPanel institutionId={institutionId} canReview={perms.reviewRequests} onReview={() => setSection("settings")} />}
       {section === "settings" && <SettingsPanel institution={current} perms={perms} />}
@@ -177,9 +148,9 @@ export function InstitutionWorkspace({ institutionId, section, athleteId }: { in
 function Stat({ label, value, icon: Icon }: { label: string; value: number | string; icon: typeof Users }) {
   return (
     <div className="rounded-2xl border bg-card p-4 shadow-sm">
-      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-        <Icon className="size-4 text-primary" />
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 text-xs font-semibold uppercase text-muted-foreground">
+        <span className="min-w-0">{label}</span>
+        <Icon className="size-4 shrink-0 text-primary" />
       </div>
       <p className="mt-2 text-3xl font-black tabular-nums">{value}</p>
     </div>

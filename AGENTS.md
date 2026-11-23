@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Rules
+- Institution and coach workspace identity uses the shared InstitutionWorkspaceHeader with wrapping names and a separate icon-only institution switcher. Why: long institution names must not compete with repeated selector text on mobile.
 - Institution-admin signup uses the shared registration path and validated institution metadata; membership approval and database identity synchronization derive names/logos from schools, never grant access from editable metadata. Why: keep administrator identity institutional without bypassing approval.
 - Android action-capable tokens are prefixed only after installed build detection and stripped before FCM delivery; legacy APKs retain notification payloads. Why: remotely updated web code must not silence older native apps.
 - Community navigation reserves matching side-rail space on signed-in Home and authenticated community pages; staff workspace paths use the shared isWorkspacePath predicate to omit both navigation and its spacing. Why: avoid covered content and community icons inside clinical/admin workspaces.

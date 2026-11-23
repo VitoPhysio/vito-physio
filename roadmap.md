@@ -1,5 +1,9 @@
 # Roadmap
 
+## Institution and coach dashboard header
+- [x] Show complete institution names, minimise secondary badges and switching controls, and align mobile navigation without overlap; checked at 320px, 360px and desktop widths with institution and coach identities.
+- [ ] Verify the updated header within a signed-in institution account. Blocked: external authenticated test session unavailable.
+
 ## Institution administrator registration
 - [ ] Use institution names, logos and authorized working emails in both registration paths.
 - [ ] Correct the reported administrator role and preserve approval-based onboarding of additional admins.
