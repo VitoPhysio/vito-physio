@@ -6,6 +6,7 @@ import { PhotoAvatar } from "@/components/vito/Photo";
 import { Compose, Inbox } from "@/components/vito/Communications";
 import { AthletePortal } from "@/components/athlete/Portal";
 import { CareRequests } from "@/components/vito/CareRequests";
+import { ConsultationWorkspace } from "@/components/vito/ConsultationWorkspace";
 import logo from "@/assets/vito-logo.png";
 import { useState } from "react";
 import { WorkspaceMenus } from "@/components/vito/WorkspaceMenus";
@@ -45,7 +46,8 @@ const STAFF = ["super_admin", "vito_admin", "clinical_professional", "clinical_s
 
 function Dashboard() {
   const { user } = Route.useRouteContext();
-  const [section, setSection] = useState("overview");
+  const search = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+  const [section, setSection] = useState(search.get("section") ?? "overview");
   const [sort, setSort] = useState<CaseSort>("newest");
 
   const { data, isLoading } = useQuery({
@@ -62,32 +64,46 @@ function Dashboard() {
         if (f) q = q.eq(f[0], f[1]);
         return (await q).count ?? 0;
       };
-      const [schools, athletes, cases, openRefs, recent, partners] = await Promise.all([
-        supabase
-          .from("schools")
-          .select("id", { count: "exact", head: true })
-          .then((r) => r.count ?? 0),
-        count("athletes"),
-        count("injuries"),
-        staff ? count("referrals", ["status", "open"]) : Promise.resolve(0),
-        supabase
-          .from("injuries")
-          .select(
-            "id, injury_code, body_region, status, created_at, athletes(first_name, surname, athlete_code, photo_path)",
-          )
-          .order("created_at", { ascending: false }),
-        staff
-          ? supabase.from("schools").select("id, name, school_code, school_type").order("name")
-          : Promise.resolve({
-              data: [] as { id: string; name: string; school_code: string; school_type: string }[],
-            }),
-      ]);
+      const [schools, athletes, cases, openRefs, openConsultations, recent, partners] =
+        await Promise.all([
+          supabase
+            .from("schools")
+            .select("id", { count: "exact", head: true })
+            .then((r) => r.count ?? 0),
+          count("athletes"),
+          count("injuries"),
+          staff ? count("referrals", ["status", "open"]) : Promise.resolve(0),
+          staff
+            ? supabase
+                .from("consultation_requests")
+                .select("id", { count: "exact", head: true })
+                .eq("status", "new")
+                .then((r) => r.count ?? 0)
+            : Promise.resolve(0),
+          supabase
+            .from("injuries")
+            .select(
+              "id, injury_code, body_region, status, created_at, athletes(first_name, surname, athlete_code, photo_path)",
+            )
+            .order("created_at", { ascending: false }),
+          staff
+            ? supabase.from("schools").select("id, name, school_code, school_type").order("name")
+            : Promise.resolve({
+                data: [] as {
+                  id: string;
+                  name: string;
+                  school_code: string;
+                  school_type: string;
+                }[],
+              }),
+        ]);
       const stats = staff
         ? [
             { label: "Schools, academies & clubs", value: schools },
             { label: "Athletes", value: athletes },
             { label: "Injury cases", value: cases },
             { label: "Open referrals", value: openRefs },
+            { label: "Open consultations", value: openConsultations },
           ]
         : [
             { label: "Athletes", value: athletes },
@@ -113,7 +129,13 @@ function Dashboard() {
     );
   }
 
-  if (data.role === "athlete" || data.role === "parent") return <AthletePortal user={user} />;
+  if (data.role === "athlete" || data.role === "parent")
+    return (
+      <AthletePortal
+        user={user}
+        initialTab={search.get("section") === "requests" ? "requests" : undefined}
+      />
+    );
 
   const isAdmin = data.role === "super_admin" || data.role === "vito_admin";
 
@@ -138,11 +160,38 @@ function Dashboard() {
         </div>
       </section>
       <main className="mx-auto max-w-5xl space-y-8 px-5 py-8">
-        <WorkspaceMenus value={section} onSelect={setSection} menus={[
-          { label: "Overview", items: [{ label: "Summary", value: "overview" }, { label: "Caseload", value: "cases" }] },
-          { label: "Care & communication", items: [{ label: "Athlete requests", value: "requests" }, { label: "Workspace messages", value: "messages" }] },
-          ...(isAdmin ? [{ label: "Organisation", items: [{ label: "Partners", value: "partners" }, { label: "Accounts & approvals", value: "accounts" }] }] : []),
-        ]} />
+        <WorkspaceMenus
+          value={section}
+          onSelect={setSection}
+          menus={[
+            {
+              label: "Overview",
+              items: [
+                { label: "Summary", value: "overview" },
+                { label: "Caseload", value: "cases" },
+              ],
+            },
+            {
+              label: "Care & communication",
+              items: [
+                { label: "Consultations", value: "consultations" },
+                { label: "Athlete requests", value: "requests" },
+                { label: "Workspace messages", value: "messages" },
+              ],
+            },
+            ...(isAdmin
+              ? [
+                  {
+                    label: "Organisation",
+                    items: [
+                      { label: "Partners", value: "partners" },
+                      { label: "Accounts & approvals", value: "accounts" },
+                    ],
+                  },
+                ]
+              : []),
+          ]}
+        />
         {(section === "overview" || section === "cases") && data.staff && (
           <Button asChild size="lg" className="w-full sm:w-auto">
             <Link to="/cases">Go to case workspace</Link>
@@ -161,10 +210,11 @@ function Dashboard() {
                   Staff communications
                 </p>
                 <h2 className="mt-1 text-xl font-bold">Workspace messages</h2>
-
               </div>
               <Button asChild variant="outline" size="sm">
-                <Link to="/messages" search={{ box: "workspace" }}>Open Workspace inbox</Link>
+                <Link to="/messages" search={{ box: "workspace" }}>
+                  Open Workspace inbox
+                </Link>
               </Button>
             </div>
             <h3 className="mb-2 font-semibold">Received messages & replies</h3>
@@ -173,50 +223,96 @@ function Dashboard() {
             <Compose userId={user.id} staffOnly />
           </section>
         )}
-        {section === "overview" && <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {data.stats.map((s) => (
-            <div key={s.label} className="rounded-2xl border bg-card p-5">
-              <p className="text-sm text-muted-foreground">{s.label}</p>
-              <p className="mt-1 text-3xl font-extrabold text-primary">{s.value}</p>
-            </div>
-          ))}
-        </div>}
+        {section === "overview" && (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {data.stats.map((s) => (
+              <div key={s.label} className="rounded-2xl border bg-card p-5">
+                <p className="text-sm text-muted-foreground">{s.label}</p>
+                <p className="mt-1 text-3xl font-extrabold text-primary">{s.value}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {data.staff && section === "requests" && (
           <section>
-            <h2 className="mb-3 text-lg font-bold">Athlete requests (from the athlete home page)</h2>
+            <h2 className="mb-3 text-lg font-bold">
+              Athlete requests (from the athlete home page)
+            </h2>
             <CareRequests staff userId={user.id} />
           </section>
         )}
-        {section === "cases" && <section>
-          <label className="mb-4 flex items-center gap-3 text-sm font-medium">Arrange cases<select aria-label="Arrange cases" value={sort} onChange={(event) => setSort(event.target.value as CaseSort)} className="rounded-md border border-input bg-background px-3 py-2"><option value="newest">Newest first</option><option value="alphabetical">Athlete name A–Z</option></select></label>
-          <h2 className="mb-3 text-lg font-bold">
-            {data.staff ? "Caseload & recovery monitoring" : "Injuries & recovery status"}
-          </h2>
-          {data.recent.length ? (
-            <div className="space-y-4">{groupCases(data.recent, sort).map((group) => <details key={group.status} open><summary className="mb-2 cursor-pointer font-semibold capitalize">{group.status} ({group.cases.length})</summary><ul className="space-y-2">
-              {group.cases.map((c) => (
-                <li
-                  key={c.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card p-3 text-sm"
-                >
-                  <span className="flex items-center gap-2">
-                    <PhotoAvatar
-                      path={c.athletes?.photo_path}
-                      name={`${c.athletes?.first_name} ${c.athletes?.surname}`}
-                      className="size-7"
-                    />
-                    <b className="text-primary">{c.injury_code}</b> · {c.athletes?.first_name}{" "}
-                    {c.athletes?.surname} · {c.body_region}
-                  </span>
-                  <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{c.status}</span>
-                </li>
-              ))}
-            </ul></details>)}</div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No cases to show yet.</p>
-          )}
-        </section>}
+        {data.staff && section === "consultations" && (
+          <section className="space-y-3 py-2">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent">
+                Consultation & appointment workspace
+              </p>
+              <h2 className="mt-1 text-xl font-bold">Requests, assignments and outcomes</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Claim an open request to assign it to yourself, confirm the accepted meeting mode
+                and details, then mark it successful when completed.
+              </p>
+            </div>
+            <ConsultationWorkspace
+              userId={user.id}
+              focusRequestId={search.get("request") ?? undefined}
+            />
+          </section>
+        )}
+        {section === "cases" && (
+          <section>
+            <label className="mb-4 flex items-center gap-3 text-sm font-medium">
+              Arrange cases
+              <select
+                aria-label="Arrange cases"
+                value={sort}
+                onChange={(event) => setSort(event.target.value as CaseSort)}
+                className="rounded-md border border-input bg-background px-3 py-2"
+              >
+                <option value="newest">Newest first</option>
+                <option value="alphabetical">Athlete name A–Z</option>
+              </select>
+            </label>
+            <h2 className="mb-3 text-lg font-bold">
+              {data.staff ? "Caseload & recovery monitoring" : "Injuries & recovery status"}
+            </h2>
+            {data.recent.length ? (
+              <div className="space-y-4">
+                {groupCases(data.recent, sort).map((group) => (
+                  <details key={group.status} open>
+                    <summary className="mb-2 cursor-pointer font-semibold capitalize">
+                      {group.status} ({group.cases.length})
+                    </summary>
+                    <ul className="space-y-2">
+                      {group.cases.map((c) => (
+                        <li
+                          key={c.id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card p-3 text-sm"
+                        >
+                          <span className="flex items-center gap-2">
+                            <PhotoAvatar
+                              path={c.athletes?.photo_path}
+                              name={`${c.athletes?.first_name} ${c.athletes?.surname}`}
+                              className="size-7"
+                            />
+                            <b className="text-primary">{c.injury_code}</b> ·{" "}
+                            {c.athletes?.first_name} {c.athletes?.surname} · {c.body_region}
+                          </span>
+                          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">
+                            {c.status}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No cases to show yet.</p>
+            )}
+          </section>
+        )}
 
         {isAdmin && section === "partners" && (
           <section className="grid gap-4 md:grid-cols-3">

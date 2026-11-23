@@ -73,7 +73,15 @@ const homeSections: { key: HomeSection; label: string }[] = [
   { key: "activity", label: "Sporting activity" },
 ];
 
-export function AthletePortal({ user, view = "home" }: { user: User; view?: View }) {
+export function AthletePortal({
+  user,
+  view = "home",
+  initialTab,
+}: {
+  user: User;
+  view?: View;
+  initialTab?: "overview" | "requests" | undefined;
+}) {
   const viewer = useViewer(user);
   const health = useHealth(user.id, view === "profile");
   const profileData = useQuery({
@@ -91,7 +99,7 @@ export function AthletePortal({ user, view = "home" }: { user: User; view?: View
   const athlete = h?.athletes[0];
   const profile = profileData.data;
   const profileAthlete = profile?.athlete ?? athlete;
-  if (view === "home") return <AthleteHome user={user} />;
+  if (view === "home") return <AthleteHome user={user} initialTab={initialTab} />;
   return (
     <div
       className={
@@ -107,7 +115,6 @@ export function AthletePortal({ user, view = "home" }: { user: User; view?: View
             : "mx-auto max-w-6xl space-y-8 px-4 pb-10 pt-2 sm:px-5"
         }
       >
-
         {view === "profile" && (
           <div className="min-h-screen">
             <div className="min-h-dvh w-full">

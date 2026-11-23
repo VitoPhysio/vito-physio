@@ -49,7 +49,7 @@ async function recordDelivery({
   errorMessage?: string | undefined;
 }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await (supabaseAdmin as any).from("delivery_logs").insert({
+  const { error } = await supabaseAdmin.from("delivery_logs").insert({
     consultation_request_id: consultationRequestId || null,
     recipient_user_id: recipientUserId || null,
     source,
@@ -79,17 +79,20 @@ async function sendGmailEmail({
   subject,
   text,
   recipientUserId,
+  consultationRequestId,
   source,
 }: {
   to: string;
   subject: string;
   text: string;
   recipientUserId?: string;
+  consultationRequestId?: string;
   source: DeliverySource;
 }) {
   const transport = createGmailTransport();
   if (!transport) {
     await recordDelivery({
+      consultationRequestId,
       recipientUserId,
       source,
       channel: "email",
@@ -103,6 +106,7 @@ async function sendGmailEmail({
     const from = process.env["GMAIL_SMTP_USER"] || COMPANY_EMAIL;
     const result = await transport.sendMail({ from: `VITO Physio <${from}>`, to, subject, text });
     await recordDelivery({
+      consultationRequestId,
       recipientUserId,
       source,
       channel: "email",
@@ -113,6 +117,7 @@ async function sendGmailEmail({
     return { status: "sent" as const };
   } catch (error) {
     await recordDelivery({
+      consultationRequestId,
       recipientUserId,
       source,
       channel: "email",
@@ -136,6 +141,48 @@ export async function sendConsultationAlerts(alert: ConsultationAlert) {
     sendConsultationWhatsApp(alert, message),
   ]);
   return { email, whatsapp };
+}
+
+export async function sendConsultationConfirmationEmail({
+  consultationRequestId,
+  recipientUserId,
+  to,
+  contactName,
+  acceptedMode,
+  scheduledAt,
+  meetingDetails,
+}: {
+  consultationRequestId: string;
+  recipientUserId: string | null;
+  to: string;
+  contactName: string;
+  acceptedMode: string;
+  scheduledAt: string;
+  meetingDetails: string;
+}) {
+  const modeLabel: Record<string, string> = {
+    physical: "In person",
+    phone: "Phone call",
+    google_meet: "Google Meet",
+    whatsapp_call: "WhatsApp call",
+  };
+  return sendGmailEmail({
+    to,
+    subject: "Your VITO Physio consultation is confirmed",
+    text: [
+      `Hello ${contactName},`,
+      "",
+      "Your VITO Physio consultation has been confirmed.",
+      `Meeting mode: ${modeLabel[acceptedMode] ?? acceptedMode}`,
+      `Date and time: ${new Date(scheduledAt).toISOString()} (UTC)`,
+      `${acceptedMode === "physical" ? "Location" : acceptedMode === "google_meet" ? "Google Meet link" : acceptedMode === "whatsapp_call" ? "WhatsApp number" : "Call details"}: ${meetingDetails}`,
+      "",
+      "If you need to change this appointment, reply to this email or contact VITO Physio.",
+    ].join("\n"),
+    ...(recipientUserId ? { recipientUserId } : {}),
+    consultationRequestId,
+    source: "consultation",
+  });
 }
 
 async function sendConsultationWhatsApp(alert: ConsultationAlert, message: string) {

@@ -795,35 +795,62 @@ export type Database = {
       }
       consultation_requests: {
         Row: {
+          accepted_mode: string | null
+          assigned_to: string | null
           contact_name: string
+          claimed_at: string | null
+          completed_at: string | null
           created_at: string
           email: string
           id: string
+          meeting_details: string | null
           message: string
           organisation_type: string
           phone: string | null
+          preferred_details: string | null
+          preferred_mode: string
+          requester_user_id: string | null
+          scheduled_at: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          accepted_mode?: string | null
+          assigned_to?: string | null
           contact_name: string
+          claimed_at?: string | null
+          completed_at?: string | null
           created_at?: string
           email: string
           id?: string
+          meeting_details?: string | null
           message: string
           organisation_type?: string
           phone?: string | null
+          preferred_details?: string | null
+          preferred_mode?: string
+          requester_user_id?: string | null
+          scheduled_at?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          accepted_mode?: string | null
+          assigned_to?: string | null
           contact_name?: string
+          claimed_at?: string | null
+          completed_at?: string | null
           created_at?: string
           email?: string
           id?: string
+          meeting_details?: string | null
           message?: string
           organisation_type?: string
           phone?: string | null
+          preferred_details?: string | null
+          preferred_mode?: string
+          requester_user_id?: string | null
+          scheduled_at?: string | null
           status?: string
           updated_at?: string
         }
@@ -2428,6 +2455,22 @@ export type Database = {
       add_social_comment: {
         Args: { _body: string; _post_id: string }
         Returns: string
+      }
+      claim_consultation_request: {
+        Args: { _id: string }
+        Returns: boolean
+      }
+      close_consultation_request: {
+        Args: { _id: string }
+        Returns: boolean
+      }
+      complete_consultation_request: {
+        Args: { _id: string }
+        Returns: boolean
+      }
+      confirm_consultation_meeting: {
+        Args: { _accepted_mode: string; _id: string; _meeting_details: string; _scheduled_at: string }
+        Returns: boolean
       }
       apply_referral_consent: {
         Args: {
