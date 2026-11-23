@@ -31,6 +31,39 @@ const MODES: { value: ConsultationMode; label: string }[] = [
 ];
 const modeLabel = (value: string | null) =>
   MODES.find((m) => m.value === value)?.label ?? "Not confirmed";
+const telephoneHref = (value: string) => {
+  const number = value.replace(/[^\d+*#,;]/g, "");
+  return /\d/.test(number) ? `tel:${number}` : null;
+};
+const whatsappHref = (value: string) => {
+  const number = value.replace(/\D/g, "");
+  return number.length >= 8 ? `https://wa.me/${number}` : null;
+};
+function MeetingDetails({ mode, value }: { mode: string; value: string }) {
+  const href =
+    mode === "google_meet" && /^https:\/\/(meet\.google\.com|calendar\.google\.com)\//i.test(value)
+      ? value
+      : mode === "phone"
+        ? telephoneHref(value)
+        : mode === "whatsapp_call"
+          ? whatsappHref(value)
+          : null;
+  if (!href) return <span className="break-words">{value}</span>;
+  return (
+    <a
+      className="break-all text-primary underline"
+      href={href}
+      target={mode === "google_meet" || mode === "whatsapp_call" ? "_blank" : undefined}
+      rel={mode === "google_meet" || mode === "whatsapp_call" ? "noreferrer" : undefined}
+    >
+      {mode === "google_meet"
+        ? "Open Google Meet"
+        : mode === "whatsapp_call"
+          ? `Open WhatsApp · ${value}`
+          : value}
+    </a>
+  );
+}
 const modeIcon = (value: string | null) =>
   value === "physical"
     ? MapPin
@@ -326,8 +359,8 @@ export function ConsultationWorkspace({
                       <p className="mt-1">{new Date(row.scheduled_at).toLocaleString()}</p>
                     )}
                     {row.meeting_details && (
-                      <p className="mt-1 break-words text-muted-foreground">
-                        {row.meeting_details}
+                      <p className="mt-1 text-muted-foreground">
+                        <MeetingDetails mode={row.accepted_mode} value={row.meeting_details} />
                       </p>
                     )}
                   </div>
@@ -476,35 +509,40 @@ export function AthleteConsultations({ user, contactName }: { user: User; contac
   async function submit() {
     if (message.trim().length < 10)
       return void toast.error("Please describe what you need (at least 10 characters).");
+    if ((preferredMode === "phone" || preferredMode === "whatsapp_call") && !phone.trim())
+      return void toast.error(
+        "Add the number where VITO can reach you for the selected call mode.",
+      );
     if (preferredMode === "physical" && !preferredDetails.trim())
       return void toast.error("Add a preferred location or access details.");
     setBusy(true);
-    const { error } = await supabase.from("consultation_requests").insert({
-      requester_user_id: user.id,
-      contact_name: contactName || user.email || "Athlete",
-      email: user.email ?? "",
-      phone: phone.trim() || null,
-      organisation_type: "individual",
-      message: message.trim(),
-      preferred_mode: preferredMode,
-      preferred_details: preferredDetails.trim() || null,
-    });
-    setBusy(false);
-    if (error) return void toast.error(error.message);
-    toast.success("Consultation request sent to the VITO team.");
-    setMessage("");
-    setPhone("");
-    setPreferredDetails("");
-    setPreferredMode("physical");
-    setShowForm(false);
-    void qc.invalidateQueries({ queryKey: ["consultation-requests", "athlete", user.id] });
+    try {
+      const { error } = await supabase.from("consultation_requests").insert({
+        requester_user_id: user.id,
+        contact_name: contactName || user.email || "Athlete",
+        email: user.email ?? "",
+        phone: phone.trim() || null,
+        organisation_type: "individual",
+        message: message.trim(),
+        preferred_mode: preferredMode,
+        preferred_details: preferredDetails.trim() || null,
+      });
+      if (error) return void toast.error(error.message);
+      toast.success("Consultation request sent to the VITO team.");
+      setMessage("");
+      setPhone("");
+      setPreferredDetails("");
+      setPreferredMode("physical");
+      setShowForm(false);
+      void qc.invalidateQueries({ queryKey: ["consultation-requests", "athlete", user.id] });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Your consultation request could not be sent.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
-  if (query.isError)
-    return (
-      <p role="alert" className="text-sm text-destructive">
-        Your consultation requests could not be loaded.
-      </p>
-    );
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -537,13 +575,18 @@ export function AthleteConsultations({ user, contactName }: { user: User; contac
               </select>
             </div>
             <div>
-              <Label htmlFor="athlete-consult-phone">Phone / WhatsApp number</Label>
+              <Label htmlFor="athlete-consult-phone">
+                Phone / WhatsApp number
+                {(preferredMode === "phone" || preferredMode === "whatsapp_call") && " *"}
+              </Label>
               <Input
                 id="athlete-consult-phone"
+                type="tel"
                 className="mt-1"
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
                 maxLength={40}
+                placeholder="e.g. +254 700 000 000"
               />
             </div>
           </div>
@@ -579,7 +622,20 @@ export function AthleteConsultations({ user, contactName }: { user: User; contac
           </Button>
         </div>
       )}
-      {query.isLoading ? (
+      {query.isError ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/40 p-4 text-sm"
+        >
+          <span>
+            Your consultation history could not be loaded. You can still submit a request; retry to
+            see past requests.
+          </span>
+          <Button size="sm" variant="outline" onClick={() => void query.refetch()}>
+            Retry loading
+          </Button>
+        </div>
+      ) : query.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading your consultations…</p>
       ) : query.data?.length ? (
         <ul className="space-y-3">
@@ -610,21 +666,11 @@ export function AthleteConsultations({ user, contactName }: { user: User; contac
                         {new Date(row.scheduled_at).toLocaleString()}
                       </p>
                     )}
-                    {row.meeting_details &&
-                      (row.accepted_mode === "google_meet" ? (
-                        <p className="mt-1">
-                          <a
-                            className="break-all text-primary underline"
-                            href={row.meeting_details}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Open Google Meet
-                          </a>
-                        </p>
-                      ) : (
-                        <p className="mt-1 break-words">{row.meeting_details}</p>
-                      ))}
+                    {row.meeting_details && (
+                      <p className="mt-1">
+                        <MeetingDetails mode={row.accepted_mode} value={row.meeting_details} />
+                      </p>
+                    )}
                   </div>
                 )}
                 {row.status === "completed" && (
