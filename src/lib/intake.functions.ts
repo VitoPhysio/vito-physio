@@ -89,6 +89,10 @@ export const requestConsultation = createServerFn({ method: "POST" })
         phone,
         organisation_type: z.enum(["individual", "school", "academy", "club"]),
         message: z.string().trim().min(10).max(2000),
+        preferred_mode: z
+          .enum(["physical", "phone", "google_meet", "whatsapp_call"])
+          .default("physical"),
+        preferred_details: z.string().trim().max(500).optional().default(""),
       })
       .parse(input),
   )
@@ -102,6 +106,8 @@ export const requestConsultation = createServerFn({ method: "POST" })
         phone: data.phone || null,
         organisation_type: data.organisation_type,
         message: data.message,
+        preferred_mode: data.preferred_mode,
+        preferred_details: data.preferred_details || null,
       })
       .select("id")
       .single();

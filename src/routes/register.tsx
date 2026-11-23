@@ -15,10 +15,14 @@ import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultati
 import { institutionSignupMetadata } from "@/lib/institution-registration";
 
 type Mode = "organisation" | "athlete" | "consult";
+type ConsultationMode = "physical" | "phone" | "google_meet" | "whatsapp_call";
 export const Route = createFileRoute("/register")({
   validateSearch: (search: Record<string, unknown>) => ({
     institution: typeof search["institution"] === "string" ? search["institution"] : "",
-    category: search["category"] === "club" || search["category"] === "academy" ? search["category"] : "school",
+    category:
+      search["category"] === "club" || search["category"] === "academy"
+        ? search["category"]
+        : "school",
   }),
   head: () => ({
     meta: [
@@ -45,6 +49,7 @@ function RegisterPage() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
+  const [consultMode, setConsultMode] = useState<ConsultationMode>("physical");
   const [joinId, setJoinId] = useState(search.institution);
   const orgs = useQuery({ queryKey: ["org-list"], queryFn: () => listOrganisations() });
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -58,7 +63,9 @@ function RegisterPage() {
     try {
       const file = fd.get("photo") as File | null;
       const photo =
-        mode !== "consult" && !(mode === "organisation" && joinId) && file && file.size ? { photo_path: await fileToPhotoPath(file) } : {};
+        mode !== "consult" && !(mode === "organisation" && joinId) && file && file.size
+          ? { photo_path: await fileToPhotoPath(file) }
+          : {};
       if (mode !== "consult") {
         if (get("password") !== get("confirm")) throw new Error("Passwords do not match.");
         const avatar = (photo as { photo_path?: string }).photo_path;
@@ -76,11 +83,16 @@ function RegisterPage() {
                 avatar_path: avatar,
               }
             : institutionSignupMetadata({
-                name: joinId ? orgs.data?.find((o) => o.id === joinId)?.name ?? "" : get("name"),
-                type: (joinId ? orgs.data?.find((o) => o.id === joinId)?.school_type : get("school_type")) as "school" | "club" | "academy",
+                name: joinId ? (orgs.data?.find((o) => o.id === joinId)?.name ?? "") : get("name"),
+                type: (joinId
+                  ? orgs.data?.find((o) => o.id === joinId)?.school_type
+                  : get("school_type")) as "school" | "club" | "academy",
                 institutionId: joinId || undefined,
                 emailAuthorized: fd.has("email_authorized") as true,
-                phone: get("phone"), location: get("location"), notes: get("notes"), photo: avatar,
+                phone: get("phone"),
+                location: get("location"),
+                notes: get("notes"),
+                photo: avatar,
               });
         if (
           mode === "organisation" &&
@@ -111,6 +123,8 @@ function RegisterPage() {
             organisation_type: get("organisation_type") as
               "individual" | "school" | "academy" | "club",
             message: get("message"),
+            preferred_mode: get("preferred_mode") as ConsultationMode,
+            preferred_details: get("preferred_details"),
           },
         });
         setResult("Your consultation request has been saved. The VITO team can review it.");
@@ -239,7 +253,8 @@ function RegisterPage() {
                   {joinId && (
                     <div className="mt-2">
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Join as an institution administrator. An existing administrator must approve your access. Your profile uses the institution's name and logo.
+                        Join as an institution administrator. An existing administrator must approve
+                        your access. Your profile uses the institution's name and logo.
                       </p>
                     </div>
                   )}
@@ -276,6 +291,46 @@ function RegisterPage() {
                   <Field label="Email" name="email" type="email" required />
                   <Field label="Phone" name="phone" />
                   <div className="sm:col-span-2">
+                    <Label htmlFor="preferred_mode">Preferred meeting mode</Label>
+                    <select
+                      id="preferred_mode"
+                      name="preferred_mode"
+                      className={`${selectClass} mt-1`}
+                      value={consultMode}
+                      onChange={(event) => setConsultMode(event.target.value as ConsultationMode)}
+                    >
+                      <option value="physical">In person</option>
+                      <option value="phone">Phone call</option>
+                      <option value="google_meet">Google Meet</option>
+                      <option value="whatsapp_call">WhatsApp call</option>
+                    </select>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Your clinician will confirm the final mode and appointment details.
+                    </p>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="preferred_details">
+                      {consultMode === "physical"
+                        ? "Preferred location or access details"
+                        : consultMode === "phone"
+                          ? "Best number or call-time notes"
+                          : consultMode === "google_meet"
+                            ? "Google Meet preferences (optional)"
+                            : "WhatsApp number or call-time notes"}
+                    </Label>
+                    <Input
+                      id="preferred_details"
+                      name="preferred_details"
+                      maxLength={500}
+                      className="mt-1"
+                      placeholder={
+                        consultMode === "physical"
+                          ? "Town, clinic or accessibility needs"
+                          : "Add any useful details (optional)"
+                      }
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
                     <Label htmlFor="message">What do you need help with?</Label>
                     <Textarea
                       id="message"
@@ -310,11 +365,17 @@ function RegisterPage() {
                   You will confirm this email before signing in.
                 </p>
               </div>
-              <Field label={mode === "organisation" ? "Working or institution email" : "Email"} name="email" type="email" required />
+              <Field
+                label={mode === "organisation" ? "Working or institution email" : "Email"}
+                name="email"
+                type="email"
+                required
+              />
               {mode === "organisation" && (
                 <Label className="flex items-start gap-2 text-sm sm:col-span-2">
-                  <input type="checkbox" name="email_authorized" required className="mt-1" />
-                  I am authorized to represent this institution and use this email. A personal email is acceptable if the institution is aware and agrees.
+                  <input type="checkbox" name="email_authorized" required className="mt-1" />I am
+                  authorized to represent this institution and use this email. A personal email is
+                  acceptable if the institution is aware and agrees.
                 </Label>
               )}
               <div />
