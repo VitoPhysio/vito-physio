@@ -7,6 +7,7 @@ import { Compose, Inbox } from "@/components/vito/Communications";
 import { AthletePortal } from "@/components/athlete/Portal";
 import { CareRequests } from "@/components/vito/CareRequests";
 import { ConsultationWorkspace } from "@/components/vito/ConsultationWorkspace";
+import { ClinicianInstitutionWorkspace } from "@/components/vito/ClinicianInstitutionWorkspace";
 import logo from "@/assets/vito-logo.png";
 import { useState } from "react";
 import { WorkspaceMenus } from "@/components/vito/WorkspaceMenus";
@@ -179,6 +180,14 @@ function Dashboard() {
                 { label: "Workspace messages", value: "messages" },
               ],
             },
+            ...(data.staff
+              ? [
+                  {
+                    label: "Athletes & institutions",
+                    items: [{ label: "Institution & team explorer", value: "institutions" }],
+                  },
+                ]
+              : []),
             ...(isAdmin
               ? [
                   {
@@ -260,6 +269,7 @@ function Dashboard() {
             />
           </section>
         )}
+        {data.staff && section === "institutions" && <ClinicianInstitutionWorkspace />}
         {section === "cases" && (
           <section>
             <label className="mb-4 flex items-center gap-3 text-sm font-medium">
