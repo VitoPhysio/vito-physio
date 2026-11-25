@@ -12,6 +12,11 @@ import { listOrganisations } from "@/lib/intake.functions";
 import { selectClass } from "@/components/vito/SimpleForm";
 import logo from "@/assets/vito-logo.png";
 import { WhatsAppConsultationButton } from "@/components/vito/WhatsAppConsultationButton";
+import {
+  isPhoneSignInLookupError,
+  normalizeAuthPhoneNumber,
+  phoneAuthErrorMessage,
+} from "@/lib/phone-auth";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -37,19 +42,27 @@ const CATEGORIES = [
   { value: "parent", label: "Parent / guardian" },
 ];
 const NEEDS_APPROVAL = ["vito_admin", "clinical_professional"];
+type PhoneChannel = "sms" | "whatsapp";
 
 function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [signInPathway, setSignInPathway] = useState<"email" | "phone" | null>(null);
   const [role, setRole] = useState("athlete");
   const [fullName, setFullName] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneCode, setPhoneCode] = useState("");
+  const [phoneChannel, setPhoneChannel] = useState<PhoneChannel>("sms");
+  const [phoneStage, setPhoneStage] = useState<"phone" | "code">("phone");
+  const [phoneSetup, setPhoneSetup] = useState(false);
   const [busy, setBusy] = useState(false);
   const [setup, setSetup] = useState(false);
   const [surname, setSurname] = useState("");
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const orgs = useQuery({ queryKey: ["org-list"], queryFn: () => listOrganisations() });
+  const showAccountFields = mode === "signup" || signInPathway === "email";
 
   async function extra(kind: "reset" | "resend") {
     if (!identifier.includes("@")) {
@@ -91,6 +104,73 @@ function AuthPage() {
     e.preventDefault();
     setBusy(true);
     setMsg(null);
+    if (mode === "signin" && signInPathway === "phone") {
+      try {
+        const normalizedPhone = normalizeAuthPhoneNumber(phone);
+        if (phoneStage === "phone") {
+          if (phoneSetup) {
+            if (!identifier.trim() || !password) {
+              throw new Error(
+                "Enter the email, athlete ID or VITO account ID and password for your existing account.",
+              );
+            }
+            const session = await signInWithIdentifier({
+              data: { identifier: identifier.trim(), password },
+            });
+            if ("needsPassword" in session) {
+              throw new Error(
+                "Set up your athlete ID password from email sign-in first, then return here to link your phone.",
+              );
+            }
+            const { error: sessionError } = await supabase.auth.setSession(session);
+            if (sessionError) throw sessionError;
+            const { error: phoneError } = await supabase.auth.updateUser({
+              phone: normalizedPhone,
+            });
+            if (phoneError) throw phoneError;
+            setPassword("");
+            setMsg({
+              kind: "ok",
+              text: `A verification code was sent by SMS to ${normalizedPhone}. Enter it below to link this number to your VITO account.`,
+            });
+          } else {
+            const { error } = await supabase.auth.signInWithOtp({
+              phone: normalizedPhone,
+              options: { shouldCreateUser: false, channel: phoneChannel },
+            });
+            if (error && !isPhoneSignInLookupError(error.message)) throw error;
+            const channelName = phoneChannel === "sms" ? "SMS" : "WhatsApp";
+            setMsg({
+              kind: "ok",
+              text: `If this number is linked to a VITO account, a sign-in code will arrive via ${channelName}. If it does not arrive, choose another sign-in method or set up phone sign-in first.`,
+            });
+          }
+          setPhone(normalizedPhone);
+          setPhoneCode("");
+          setPhoneStage("code");
+        } else {
+          const token = phoneCode.trim();
+          if (!/^\d{6}$/.test(token)) throw new Error("Enter the six-digit verification code.");
+          const { data, error } = await supabase.auth.verifyOtp({
+            phone: normalizedPhone,
+            token,
+            type: phoneSetup ? "phone_change" : "sms",
+          });
+          if (error) throw error;
+          if (!phoneSetup && !data.session)
+            throw new Error(
+              "The code was accepted, but no sign-in session was returned. Please try again.",
+            );
+          await navigate({ to: "/" });
+        }
+      } catch (error) {
+        const rawMessage = error instanceof Error ? error.message : "Phone sign-in failed.";
+        setMsg({ kind: "err", text: phoneAuthErrorMessage(rawMessage, phoneSetup) });
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     if (mode === "signup") {
       let avatar_path: string | null = null;
       const email = identifier.trim().toLowerCase();
@@ -203,18 +283,230 @@ function AuthPage() {
         <div className="mb-5 grid grid-cols-2 gap-2">
           <Button
             variant={mode === "signin" ? "default" : "outline"}
-            onClick={() => setMode("signin")}
+            onClick={() => {
+              setMode("signin");
+              setSignInPathway(null);
+              setPhoneStage("phone");
+              setPhoneSetup(false);
+              setPassword("");
+              setSetup(false);
+              setMsg(null);
+            }}
           >
             Sign in
           </Button>
           <Button
             variant={mode === "signup" ? "default" : "outline"}
-            onClick={() => setMode("signup")}
+            onClick={() => {
+              setMode("signup");
+              setSignInPathway(null);
+              setPhoneStage("phone");
+              setPhoneSetup(false);
+              setPassword("");
+              setSetup(false);
+              setMsg(null);
+            }}
           >
             Create account
           </Button>
         </div>
         <form onSubmit={submit} className="space-y-4">
+          {mode === "signin" && !signInPathway && (
+            <div className="space-y-3">
+              <div>
+                <h1 className="text-lg font-semibold">Choose how to sign in</h1>
+                <p className="text-sm text-muted-foreground">Use your existing VITO account.</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto w-full justify-start px-4 py-4 text-left"
+                onClick={() => setSignInPathway("email")}
+              >
+                <span>
+                  <span className="block font-medium">Email or VITO ID</span>
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    Continue with your password
+                  </span>
+                </span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto w-full justify-start px-4 py-4 text-left"
+                onClick={() => {
+                  setSignInPathway("phone");
+                  setPhoneStage("phone");
+                  setPhoneSetup(false);
+                  setMsg(null);
+                }}
+              >
+                <span>
+                  <span className="block font-medium">Phone number</span>
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    Get a one-time sign-in code
+                  </span>
+                </span>
+              </Button>
+            </div>
+          )}
+          {mode === "signin" && signInPathway === "phone" && (
+            <div className="space-y-4">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="px-0"
+                onClick={() => {
+                  setSignInPathway(null);
+                  setPhoneStage("phone");
+                  setPhoneSetup(false);
+                  setPhoneCode("");
+                  setMsg(null);
+                }}
+              >
+                ← Choose another sign-in method
+              </Button>
+              <div>
+                <h1 className="text-lg font-semibold">Sign in with your phone</h1>
+                <p className="text-sm text-muted-foreground">
+                  Enter the international number linked to your VITO account.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="phone-number">Phone number</Label>
+                <Input
+                  id="phone-number"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  required
+                  maxLength={32}
+                  value={phone}
+                  disabled={phoneStage === "code"}
+                  onChange={(event) => setPhone(event.target.value)}
+                  placeholder="+256 7xx xxx xxx"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Include the country code, for example +256. Codes are sent by Supabase Auth.
+                </p>
+              </div>
+              {phoneStage === "phone" && !phoneSetup && (
+                <div className="space-y-1">
+                  <Label htmlFor="phone-channel">Send code by</Label>
+                  <select
+                    id="phone-channel"
+                    className={selectClass}
+                    value={phoneChannel}
+                    onChange={(event) => setPhoneChannel(event.target.value as PhoneChannel)}
+                  >
+                    <option value="sms">SMS text message</option>
+                    <option value="whatsapp">WhatsApp</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    WhatsApp requires Supabase Auth to use Twilio or Twilio Verify with a WhatsApp
+                    sender.
+                  </p>
+                </div>
+              )}
+              {phoneSetup && phoneStage === "phone" && (
+                <>
+                  <p className="rounded-md border-l-4 border-primary bg-secondary p-3 text-xs text-foreground">
+                    To link this number safely, first confirm your existing VITO account. Supabase
+                    sends this linking code by SMS. After verification, you can sign in with SMS or
+                    WhatsApp if that delivery channel is configured.
+                  </p>
+                  <div className="space-y-1">
+                    <Label htmlFor="phone-link-identifier">
+                      Email, athlete ID or VITO account ID
+                    </Label>
+                    <Input
+                      id="phone-link-identifier"
+                      type="text"
+                      required
+                      value={identifier}
+                      onChange={(event) => setIdentifier(event.target.value)}
+                      autoComplete="username"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="phone-link-password">Existing account password</Label>
+                    <PasswordInput
+                      id="phone-link-password"
+                      required
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      autoComplete="current-password"
+                    />
+                  </div>
+                </>
+              )}
+              {phoneStage === "code" && (
+                <>
+                  <div className="space-y-1">
+                    <Label htmlFor="phone-code">Six-digit code</Label>
+                    <Input
+                      id="phone-code"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      required
+                      maxLength={6}
+                      value={phoneCode}
+                      onChange={(event) =>
+                        setPhoneCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+                      }
+                      placeholder="123456"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="px-0"
+                    onClick={() => {
+                      setPhoneStage("phone");
+                      setPhoneCode("");
+                      setMsg(null);
+                    }}
+                  >
+                    Change number or request a new code
+                  </Button>
+                </>
+              )}
+              {!phoneSetup && phoneStage === "phone" && (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-sm"
+                  onClick={() => {
+                    setPhoneSetup(true);
+                    setPhoneChannel("sms");
+                    setIdentifier("");
+                    setPassword("");
+                    setMsg(null);
+                  }}
+                >
+                  Set up phone sign-in for an existing account
+                </Button>
+              )}
+              {phoneSetup && phoneStage === "phone" && (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-sm"
+                  onClick={() => {
+                    setPhoneSetup(false);
+                    setIdentifier("");
+                    setPassword("");
+                    setMsg(null);
+                  }}
+                >
+                  Back to phone sign-in
+                </Button>
+              )}
+            </div>
+          )}
           {mode === "signup" && (
             <>
               <div className="space-y-2">
@@ -228,7 +520,13 @@ function AuthPage() {
                       variant={role === c.value ? "default" : "outline"}
                       onClick={() => {
                         if (c.value.startsWith("school_admin")) {
-                          void navigate({ to: "/register", search: { category: c.value.includes(":club") ? "club" : "school", institution: "" } });
+                          void navigate({
+                            to: "/register",
+                            search: {
+                              category: c.value.includes(":club") ? "club" : "school",
+                              institution: "",
+                            },
+                          });
                           return;
                         }
                         setRole(c.value);
@@ -300,36 +598,40 @@ function AuthPage() {
               <PhotoPicker />
             </>
           )}
-          <div className="space-y-1">
-            <Label htmlFor="email">
-              {mode === "signin" ? "Email, athlete ID or VITO account ID" : "Email"}
-            </Label>
-            <Input
-              id="email"
-              type={mode === "signin" ? "text" : "email"}
-              required
-              value={identifier}
-              onChange={(e) => {
-                setIdentifier(e.target.value);
-                setSetup(false);
-              }}
-              placeholder={
-                mode === "signin" ? "name@example.com or VITO-ATH-…" : "name@example.com"
-              }
-              autoComplete="username"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="pw">Password</Label>
-            <PasswordInput
-              id="pw"
-              required
-              minLength={mode === "signup" || setup ? 8 : 1}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete={mode === "signup" || setup ? "new-password" : "current-password"}
-            />
-          </div>
+          {showAccountFields && (
+            <div className="space-y-1">
+              <Label htmlFor="email">
+                {mode === "signin" ? "Email, athlete ID or VITO account ID" : "Email"}
+              </Label>
+              <Input
+                id="email"
+                type={mode === "signin" ? "text" : "email"}
+                required
+                value={identifier}
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  setSetup(false);
+                }}
+                placeholder={
+                  mode === "signin" ? "name@example.com or VITO-ATH-…" : "name@example.com"
+                }
+                autoComplete="username"
+              />
+            </div>
+          )}
+          {showAccountFields && (
+            <div className="space-y-1">
+              <Label htmlFor="pw">Password</Label>
+              <PasswordInput
+                id="pw"
+                required
+                minLength={mode === "signup" || setup ? 8 : 1}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={mode === "signup" || setup ? "new-password" : "current-password"}
+              />
+            </div>
+          )}
           {mode === "signin" && setup && (
             <div className="space-y-1">
               <Label htmlFor="surname">Surname</Label>
@@ -353,7 +655,7 @@ function AuthPage() {
               />
             </div>
           )}
-          {mode === "signin" && (
+          {mode === "signin" && signInPathway === "email" && (
             <div className="flex flex-wrap justify-between gap-2 text-xs">
               <button
                 type="button"
@@ -376,9 +678,21 @@ function AuthPage() {
               {msg.text}
             </p>
           )}
-          <Button type="submit" className="w-full" disabled={busy}>
-            {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
-          </Button>
+          {(mode === "signup" || signInPathway !== null) && (
+            <Button type="submit" className="w-full" disabled={busy}>
+              {busy
+                ? "Please wait…"
+                : mode === "signup"
+                  ? "Create account"
+                  : signInPathway === "phone"
+                    ? phoneStage === "code"
+                      ? "Verify code"
+                      : phoneSetup
+                        ? "Verify account and send SMS"
+                        : `Send ${phoneChannel === "sms" ? "SMS" : "WhatsApp"} code`
+                    : "Sign in"}
+            </Button>
+          )}
         </form>
       </div>
     </div>
